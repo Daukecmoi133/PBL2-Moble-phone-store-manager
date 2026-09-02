@@ -38,6 +38,13 @@ typedef struct Calender {
     void setTime(int year, int month, int day, int hour, int minute, int second);
 };
 
+
+class FileManager { // quản lý file
+public:
+    FileManager();
+    ~FileManager() = default;
+};
+// ================ PHONE ================
 class Phone { // định nghĩa 1 chiếc điện thoại
 private: 
     string id; // mã sản phẩm
@@ -53,7 +60,7 @@ private:
 
 public:
     Phone();
-
+    ~Phone() = default;
     // Getter
     string getID() const;
     Name getName() const;
@@ -78,6 +85,138 @@ public:
     // chức năng
 };
 
+//=============== PEOPLE ==================
+
+class People { // định nghĩa người dùng
+private:
+    string id;
+    Name name;
+    string phoneNumber;
+    string email;
+    string address;
+
+public:
+    // getter
+    string getID() const;
+    Name getName() const;
+    string getPhoneNumber() const;
+    string getEmail() const;
+    string getAddress() const;
+
+    // setter
+    void setID(string& id);
+    void setName(Name& name);
+    void setPhoneNumber(string& phoneNumber);
+    void setEmail(string& email);
+    void setAddress(string& address);
+};
+
+// -------- CUSTUMER ------------------------
+
+class Customer : public People { // định nghĩa khách hàng
+private:
+    int points; // điểm tích lũy
+    Account* account;
+
+public:
+    Customer();
+    ~Customer() = default;
+    // functions
+    void addPoints(int points);
+};
+
+class CardItem { // định nghĩa các thành phần của giỏ hàng
+private:
+    Phone* phone;
+    int quantity;
+    double unitPrice;
+
+public:
+    CardItem(Phone* phone, int quantity);
+
+    // getter
+    Phone* getPhone() const;
+    int getQuantity() const;
+
+    // setter
+    void setQuantity(int quantity);
+    
+    // functions
+    void increaseQuantity(int amount);
+};
+
+class Cart { // định nghĩa giỏ hàng
+private:
+    string id;
+    Customer* customer;
+    vector<CardItem> item;
+
+public:
+    Cart();
+    ~Cart() = default;
+    // functions
+    void addItem(Phone* phone, int quantity);
+    bool delItem(string& id);
+    void updateItem(string& id, int quantity);
+
+    double calculationSubtotal() const;
+    
+    void clear();
+    bool isEmpry() const;
+};
+
+// -------- EMPLOYEE ------------------------
+class Employee : public People { //  định nghĩa nhân viên - dùng cho toàn bộ người trong cửa hàng
+private:
+    Account* account;
+public:
+    Employee();
+
+    virtual ~Employee() = default; // Hủy ảo -> tránh leak Memory do đa hình
+
+    // getter
+    virtual string getRole() const = 0;
+};
+class AdminEmployee : public Employee { // định nghĩa lớp con nhân viên quản lý từ lớp cha nhân viên
+public: 
+    string getRole() const override;
+};
+
+class SalesEmployee : public Employee { // định nghĩa lớp con nhân viên sale từ lớp cha nhân viên
+public: 
+    string getRole() const override;
+};
+
+class WarehouseEmployee : public Employee { // định nghĩa lớp con nhân viên kho từ lớp cha nhân viên
+public:
+    string getRole() const override;
+};
+
+// ------------- SUPPLIER ------------------------
+class Supplier : public People { // định nghĩa nhà cung cấp
+public:
+    Supplier();
+};
+
+class ImportReceipt {
+private: 
+    string id;
+    Supplier* supplier;
+    Employee* employee;
+    vector<Detail> detail;
+
+public:
+    ImportReceipt();
+
+    // functions
+    void addDetail();
+    void delDetail();
+
+    void calculateSubtotal() const;
+    void calculateTotal() const;
+};
+
+// =============== ACCOUNT & AUTH ==============
 enum class Permission { // định nghĩa các mục cho phép
     PRODUCT_VIEW, 
     PRODUCT_CREATE,
@@ -107,7 +246,6 @@ public:
     void delPermission(Permission& permission);
 
 };
-
 class Account { // định nghĩa tài khoản
 private:
     string username;
@@ -121,106 +259,7 @@ public:
 
 };
 
-class People { // định nghĩa người dùng
-private:
-    string id;
-    Name name;
-    string phoneNumber;
-    string email;
-    string address;
-
-public:
-    // getter
-    string getID() const;
-    Name getName() const;
-    string getPhoneNumber() const;
-    string getEmail() const;
-    string getAddress() const;
-
-    // setter
-    void setID(string& id);
-    void setName(Name& name);
-    void setPhoneNumber(string& phoneNumber);
-    void setEmail(string& email);
-    void setAddress(string& address);
-};
-
-class Custumer : public People { // định nghĩa khách hàng
-private:
-    int points; // điểm tích lũy
-    Account* account;
-
-public:
-    Custumer();
-
-    // functions
-    void addPoints(int points);
-};
-
-class Employee : public People { //  định nghĩa nhân viên - dùng cho toàn bộ người trong cửa hàng
-private:
-    Account* account;
-public:
-    Employee();
-
-    virtual ~Employee() = default; // Hủy ảo -> tránh leak Memory do đa hình
-
-    // getter
-    virtual string getRole() const = 0;
-};
-class AdminEmployee : public Employee { // định nghĩa lớp con nhân viên quản lý từ lớp cha nhân viên
-public: 
-    string getRole() const override;
-};
-
-class SalesEmployee : public Employee { // định nghĩa lớp con nhân viên sale từ lớp cha nhân viên
-public: 
-    string getRole() const override;
-};
-
-class WarehouseEmployee : public Employee { // định nghĩa lớp con nhân viên kho từ lớp cha nhân viên
-public:
-    string getRole() const override;
-};
-
-class CardItem { // định nghĩa các thành phần của giỏ hàng
-private:
-    Phone* phone;
-    int quantiy;
-    double unitPrice;
-
-public:
-    CardItem(Phone* phone, int quantity);
-
-    // getter
-    Phone* getPhone() const;
-    int getQuantity() const;
-
-    // setter
-    void setQuantity(int quantity);
-    
-    // functions
-    void increaseQuantity(int amount);
-};
-
-class Cart { // định nghĩa giỏ hàng
-private:
-    string id;
-    Custumer* custumer;
-    vector<CardItem> item;
-
-public:
-    // functions
-    void addItem(Phone* phone, int quantity);
-    bool delItem(string& id);
-    void updateItem(string& id, int quanlity);
-
-    double calculationSubtotal() const;
-    
-    void clear();
-    bool isEmpry() const;
-};
-
+// =============== ORDER & INVOICE ==============
 enum class OrderStatus { // trạng thái đơn hàng
     PENDING,
     CONFIRMED,
@@ -266,7 +305,7 @@ public:
 class Order {
 private:
     string id;
-    Custumer* custumer;
+    Customer* customer;
     DeliveryMethod method;
     vector<Detail> detail;
 
@@ -295,7 +334,7 @@ public:
 class Invoice {
 private:
     string id;
-    Custumer* custumer;
+    Customer* customer;
     Employee* employee;
     vector<Detail> detail;
 
@@ -311,29 +350,7 @@ public:
     void calculateTotal() const;
 };
 
-class Supplier : public People { // định nghĩa nhà cung cấp
-public:
-    Supplier();
-};
-
-class ImportReceipt {
-private: 
-    string id;
-    Supplier* supplier;
-    Employee* employee;
-    vector<Detail> detail;
-
-public:
-    ImportReceipt();
-
-    // functions
-    void addDetail();
-    void delDetail();
-
-    void calculateSubtotal() const;
-    void calculateTotal() const;
-};
-
+// =============== DISCOUNT ==============
 enum class DiscountType { // định nghĩa loại giảm giá
     PERCENTAGE,
     FIXED_AMOUNT
@@ -367,6 +384,39 @@ public:
     string getCode() const; 
 };
 
+// =============== WARRANTY ==============
 class Warranty { // định nghĩa bảo hành
     // làm sau
 };
+
+// =============== REPOSITORY ==============
+class PhoneRepository { // định nghĩa kho điện thoại
+private:
+
+};
+
+class CustomerRepository { // định nghĩa kho khách hàng
+};
+
+class EmployeeRepository { // định nghĩa kho nhân viên
+};
+
+class OrderRepository { // định nghĩa kho đơn hàng
+};
+
+class InvoiceRepository { // định nghĩa kho hóa đơn
+};
+
+class DiscountCodeRepository { // định nghĩa kho mã giảm giá
+};
+
+class WarrantyRepository { // định nghĩa kho bảo hành
+};
+
+// =============== MAIN ==============
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    return 0;
+}

@@ -1,0 +1,3 @@
+100 C:\Users\ASUS\OneDrive\Desktop\PBL2\data\Device\productImages
+101 oppo_reno_16_f_5g_bac.png
+102 ...
