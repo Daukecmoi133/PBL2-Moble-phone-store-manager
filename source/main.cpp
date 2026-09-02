@@ -35,7 +35,7 @@ typedef struct Calender {
 
     string getTimeCurrent();
 
-    void setTimeCurrent();
+    void setTime(int year, int month, int day, int hour, int minute, int second);
 };
 
 class Phone { // định nghĩa 1 chiếc điện thoại
@@ -121,7 +121,7 @@ public:
 
 };
 
-class Custumer { // định nghĩa khách hàng
+class People { // định nghĩa người dùng
 private:
     string id;
     Name name;
@@ -129,36 +129,36 @@ private:
     string email;
     string address;
 
-    int points;
-    Account* account;
-
 public:
-    Custumer();
-    
     // getter
     string getID() const;
     Name getName() const;
     string getPhoneNumber() const;
+    string getEmail() const;
     string getAddress() const;
-    int getPoints() const;
 
     // setter
     void setID(string& id);
     void setName(Name& name);
-    void setPhoneNumber(string& PhoneNumber);
-    void setAddress(string& Address);
+    void setPhoneNumber(string& phoneNumber);
+    void setEmail(string& email);
+    void setAddress(string& address);
+};
+
+class Custumer : public People { // định nghĩa khách hàng
+private:
+    int points; // điểm tích lũy
+    Account* account;
+
+public:
+    Custumer();
 
     // functions
     void addPoints(int points);
 };
 
-class Employee { //  định nghĩa nhân viên - dùng cho toàn bộ người trong cửa hàng
+class Employee : public People { //  định nghĩa nhân viên - dùng cho toàn bộ người trong cửa hàng
 private:
-    string id;
-    Name name;
-    string phoneNumber;
-    string email;
-
     Account* account;
 public:
     Employee();
@@ -166,18 +166,11 @@ public:
     virtual ~Employee() = default; // Hủy ảo -> tránh leak Memory do đa hình
 
     // getter
-    string getID() const;
-    Name getName() const;
-    string getPhoneNumber() const;
-    string getEmail() const;
-
-    // setter
-    void setID(string& id);
-    void setName(Name &name);
-    void setPhoneNumber(string& phoneNumber);
-    void setEmail(string& email);
-
     virtual string getRole() const = 0;
+};
+class AdminEmployee : public Employee { // định nghĩa lớp con nhân viên quản lý từ lớp cha nhân viên
+public: 
+    string getRole() const override;
 };
 
 class SalesEmployee : public Employee { // định nghĩa lớp con nhân viên sale từ lớp cha nhân viên
@@ -253,13 +246,31 @@ public:
     double calculateSubtotal() const;
 };
 
+class ShippingInfor { // thông tin giao hàng
+private:
+    string address;
+    string phoneNumber;
+    string receiverName;
+public:
+    // getter
+    string getAddress() const;
+    string getPhoneNumber() const;
+    string getReceiverName() const;
+
+    // setter
+    void setAddress(string& address);
+    void setPhoneNumber(string& phoneNumber);
+    void setReceiverName(string& receiverName);
+};
+
 class Order {
 private:
     string id;
     Custumer* custumer;
     DeliveryMethod method;
-    Detail detail;
+    vector<Detail> detail;
 
+    ShippingInfor shippingInfor;
     OrderStatus status;
     Calender time;
 
@@ -286,7 +297,7 @@ private:
     string id;
     Custumer* custumer;
     Employee* employee;
-    Detail detail;
+    vector<Detail> detail;
 
 public:
     Invoice();
@@ -300,8 +311,62 @@ public:
     void calculateTotal() const;
 };
 
-class Discount {
-private:
-    string id;
+class Supplier : public People { // định nghĩa nhà cung cấp
+public:
+    Supplier();
+};
 
+class ImportReceipt {
+private: 
+    string id;
+    Supplier* supplier;
+    Employee* employee;
+    vector<Detail> detail;
+
+public:
+    ImportReceipt();
+
+    // functions
+    void addDetail();
+    void delDetail();
+
+    void calculateSubtotal() const;
+    void calculateTotal() const;
+};
+
+enum class DiscountType { // định nghĩa loại giảm giá
+    PERCENTAGE,
+    FIXED_AMOUNT
+};
+
+class DiscountCode { // định nghĩa mã giảm giá
+private: 
+    string code;
+    DiscountType type;
+    double value;
+
+    Calender startDate;
+    Calender endDate;
+
+    double minOrderValue; // giá trị đơn hàng tối thiểu để áp dụng mã giảm giá
+    double maxDiscontValue; // giá trị giảm giá tối đa áp dụng cho đơn hàng
+
+    int maxUsage;
+    int usedCount;
+
+public:
+    DiscountCode();
+
+    bool isValid(Calender& currentTime) const; // kiểm tra xem mã giảm giá có còn hiệu lực hay không
+    bool isApplicable(double orderValue) const; // kiểm tra xem mã giảm giá có áp dụng được cho đơn hàng hay không
+
+    double calculateDiscount(double orderValue) const; 
+
+    void increaseUsage(); 
+
+    string getCode() const; 
+};
+
+class Warranty { // định nghĩa bảo hành
+    // làm sau
 };
