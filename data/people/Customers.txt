@@ -1,0 +1,1 @@
+id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address

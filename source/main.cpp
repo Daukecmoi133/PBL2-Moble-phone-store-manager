@@ -25,11 +25,11 @@ class Invoice;
 
 
 
-typedef struct Name {
+struct Name {
     string firstName, middleName, lastName;
 };
 
-typedef struct Calender {
+struct Calender {
     int year, month, day;
     int hour, minute, second;
 
@@ -38,12 +38,16 @@ typedef struct Calender {
     void setTime(int year, int month, int day, int hour, int minute, int second);
 };
 
-
+// =============== FILE MANAGER ==============
 class FileManager { // quản lý file
 public:
     FileManager();
     ~FileManager() = default;
+
+    
 };
+
+
 // ================ PHONE ================
 class Phone { // định nghĩa 1 chiếc điện thoại
 private: 
@@ -198,24 +202,6 @@ public:
     Supplier();
 };
 
-class ImportReceipt {
-private: 
-    string id;
-    Supplier* supplier;
-    Employee* employee;
-    vector<Detail> detail;
-
-public:
-    ImportReceipt();
-
-    // functions
-    void addDetail();
-    void delDetail();
-
-    void calculateSubtotal() const;
-    void calculateTotal() const;
-};
-
 // =============== ACCOUNT & AUTH ==============
 enum class Permission { // định nghĩa các mục cho phép
     PRODUCT_VIEW, 
@@ -233,10 +219,15 @@ enum class Permission { // định nghĩa các mục cho phép
 
     EMPLOYEE_MANAGE
 };
-
+enum class RoleType { // định nghĩa các vai trò
+    ADMIN,
+    SALE_EMPLOYEE,
+    WAREHOUSE_EMPLOYEE,
+    CUSTOMER
+};
 class Role { // định nghĩa vai trò
 private:
-    Name name;
+    RoleType type;
     vector<Permission> permissions;
 
 public:
@@ -274,6 +265,11 @@ enum class DeliveryMethod { // phương thức nhận hàng
     DELEVERY
 };
 
+enum class paymentMethod { // phương thức thanh toán
+    CASH,
+    BANK_TRANSFER,
+    CREDIT_CARD
+};
 class Detail {
 private:
     Phone* phones;
@@ -283,6 +279,24 @@ private:
 public:
     // functions
     double calculateSubtotal() const;
+};
+
+class ImportReceipt {
+private: 
+    string id;
+    Supplier* supplier;
+    Employee* employee;
+    vector<Detail> detail;
+    Calender time;
+public:
+    ImportReceipt();
+
+    // functions
+    void addDetail();
+    void delDetail();
+
+    void calculateSubtotal() const;
+    void calculateTotal() const;
 };
 
 class ShippingInfor { // thông tin giao hàng
@@ -307,6 +321,7 @@ private:
     string id;
     Customer* customer;
     DeliveryMethod method;
+    paymentMethod paymentMethod;
     vector<Detail> detail;
 
     ShippingInfor shippingInfor;
@@ -336,8 +351,9 @@ private:
     string id;
     Customer* customer;
     Employee* employee;
+    paymentMethod paymentMethod;
     vector<Detail> detail;
-
+    Calender time;
 public:
     Invoice();
 
@@ -366,7 +382,7 @@ private:
     Calender endDate;
 
     double minOrderValue; // giá trị đơn hàng tối thiểu để áp dụng mã giảm giá
-    double maxDiscontValue; // giá trị giảm giá tối đa áp dụng cho đơn hàng
+    double maxDiscountValue; // giá trị giảm giá tối đa áp dụng cho đơn hàng
 
     int maxUsage;
     int usedCount;
@@ -391,26 +407,31 @@ class Warranty { // định nghĩa bảo hành
 
 // =============== REPOSITORY ==============
 class PhoneRepository { // định nghĩa kho điện thoại
-private:
 
 };
 
 class CustomerRepository { // định nghĩa kho khách hàng
+
 };
 
 class EmployeeRepository { // định nghĩa kho nhân viên
+
 };
 
 class OrderRepository { // định nghĩa kho đơn hàng
+
 };
 
 class InvoiceRepository { // định nghĩa kho hóa đơn
+
 };
 
 class DiscountCodeRepository { // định nghĩa kho mã giảm giá
+
 };
 
 class WarrantyRepository { // định nghĩa kho bảo hành
+    
 };
 
 // =============== MAIN ==============
