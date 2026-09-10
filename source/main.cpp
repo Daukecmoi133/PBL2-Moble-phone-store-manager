@@ -1,443 +1,111 @@
-#include <bits/stdc++.h>
-#include <chrono>
-#include <ctime>
+#include <iostream>
+#include "PBL2.h"
+#include "../UI/UICommon.h"
 
 using namespace std;
-using namespace chrono;
 
-// KHAI BÁO TRƯỚC
-class Phone;
-enum class Permission;
-class Role;
-class Account;
-class Custumer;
-class Employee;
-class SalesEmployee;
-class WarehouseEmployee;
-class CardItem;
-class Cart;
-enum class OrderStatus;
-enum class DeliveryMethod;
-class OrderDetail;
-class Order;
-class Invoice;
-
-
-
-
-struct Name {
-    string firstName, middleName, lastName;
-};
-
-struct Calender {
-    int year, month, day;
-    int hour, minute, second;
-
-    string getTimeCurrent();
-
-    void setTime(int year, int month, int day, int hour, int minute, int second);
-};
-
-// =============== FILE MANAGER ==============
-class FileManager { // quản lý file
-public:
-    FileManager();
-    ~FileManager() = default;
-
-    
-};
-
-
-// ================ PHONE ================
-class Phone { // định nghĩa 1 chiếc điện thoại
-private: 
-    string id; // mã sản phẩm
-    Name name; // tên sản phẩm
-    string brand; // thương hiệu sản phẩm
-    string manufacturer; // nhà sản xuất
-    string operatingSystem; // hệ điều hành
-    string specifications; // thông số kĩ thuật
-
-    double importPrice; // giá nhập hàng
-    double sellingPrice; // giá bán hàng
-    int quantity; // số lượng tồn kho
-
-public:
-    Phone();
-    ~Phone() = default;
-    // Getter
-    string getID() const;
-    Name getName() const;
-    string getBrand() const;
-    string getManuFacturer() const;
-    string getOperatingSystem() const;
-    string getSpecifications() const;
-    double getImportPrice() const;
-    double getSellingPrice() const;
-    int getQuantity();
-
-    // Setter
-    void setID(string& id);
-    void setName(Name& name);
-    void setBrand(string& brand);
-    void setManuFacturer(string& manuFacturer);
-    void setOperatingSystem(string& operatingSystem);
-    void setSpecifications(string& specifications);
-    void setImportPrice(double importPrice);
-    void setSellingPrice(double sellingPrice);
-
-    // chức năng
-};
-
-//=============== PEOPLE ==================
-
-class People { // định nghĩa người dùng
-private:
-    string id;
-    Name name;
-    string phoneNumber;
-    string email;
-    string address;
-
-public:
-    // getter
-    string getID() const;
-    Name getName() const;
-    string getPhoneNumber() const;
-    string getEmail() const;
-    string getAddress() const;
-
-    // setter
-    void setID(string& id);
-    void setName(Name& name);
-    void setPhoneNumber(string& phoneNumber);
-    void setEmail(string& email);
-    void setAddress(string& address);
-};
-
-// -------- CUSTUMER ------------------------
-
-class Customer : public People { // định nghĩa khách hàng
-private:
-    int points; // điểm tích lũy
-    Account* account;
-
-public:
-    Customer();
-    ~Customer() = default;
-    // functions
-    void addPoints(int points);
-};
-
-class CardItem { // định nghĩa các thành phần của giỏ hàng
-private:
-    Phone* phone;
-    int quantity;
-    double unitPrice;
-
-public:
-    CardItem(Phone* phone, int quantity);
-
-    // getter
-    Phone* getPhone() const;
-    int getQuantity() const;
-
-    // setter
-    void setQuantity(int quantity);
-    
-    // functions
-    void increaseQuantity(int amount);
-};
-
-class Cart { // định nghĩa giỏ hàng
-private:
-    string id;
-    Customer* customer;
-    vector<CardItem> item;
-
-public:
-    Cart();
-    ~Cart() = default;
-    // functions
-    void addItem(Phone* phone, int quantity);
-    bool delItem(string& id);
-    void updateItem(string& id, int quantity);
-
-    double calculationSubtotal() const;
-    
-    void clear();
-    bool isEmpry() const;
-};
-
-// -------- EMPLOYEE ------------------------
-class Employee : public People { //  định nghĩa nhân viên - dùng cho toàn bộ người trong cửa hàng
-private:
-    Account* account;
-public:
-    Employee();
-
-    virtual ~Employee() = default; // Hủy ảo -> tránh leak Memory do đa hình
-
-    // getter
-    virtual string getRole() const = 0;
-};
-class AdminEmployee : public Employee { // định nghĩa lớp con nhân viên quản lý từ lớp cha nhân viên
-public: 
-    string getRole() const override;
-};
-
-class SalesEmployee : public Employee { // định nghĩa lớp con nhân viên sale từ lớp cha nhân viên
-public: 
-    string getRole() const override;
-};
-
-class WarehouseEmployee : public Employee { // định nghĩa lớp con nhân viên kho từ lớp cha nhân viên
-public:
-    string getRole() const override;
-};
-
-// ------------- SUPPLIER ------------------------
-class Supplier : public People { // định nghĩa nhà cung cấp
-public:
-    Supplier();
-};
-
-// =============== ACCOUNT & AUTH ==============
-enum class Permission { // định nghĩa các mục cho phép
-    PRODUCT_VIEW, 
-    PRODUCT_CREATE,
-    PRODUCT_UPDATE,
-    PRODUCT_DELETE,
-
-    ORDER_VIEW,
-    ORDER_CREATE,
-
-    INVOICE_CREATE,
-
-    STOCK_VIEW,
-    STOCK_UPDATE,
-
-    EMPLOYEE_MANAGE
-};
-enum class RoleType { // định nghĩa các vai trò
-    ADMIN,
-    SALE_EMPLOYEE,
-    WAREHOUSE_EMPLOYEE,
-    CUSTOMER
-};
-class Role { // định nghĩa vai trò
-private:
-    RoleType type;
-    vector<Permission> permissions;
-
-public:
-    // functions
-    bool hasPermission(Permission& permission) const;
-    void addPermission(Permission& permission);
-    void delPermission(Permission& permission);
-
-};
-class Account { // định nghĩa tài khoản
-private:
-    string username;
-    string password;
-    Role role;
-
-public:
-    // functions
-    bool authenticate(string& username, string& password) const;
-    bool hasPermission(Permission& permission) const;
-
-};
-
-// =============== ORDER & INVOICE ==============
-enum class OrderStatus { // trạng thái đơn hàng
-    PENDING,
-    CONFIRMED,
-    PREPARING,
-    REALLY,
-    COMPLETED,
-    CANCELLED
-};
-
-enum class DeliveryMethod { // phương thức nhận hàng
-    PICKUP, 
-    DELEVERY
-};
-
-enum class paymentMethod { // phương thức thanh toán
-    CASH,
-    BANK_TRANSFER,
-    CREDIT_CARD
-};
-class Detail {
-private:
-    Phone* phones;
-    int quantity;
-    double unitPrice;
-
-public:
-    // functions
-    double calculateSubtotal() const;
-};
-
-class ImportReceipt {
-private: 
-    string id;
-    Supplier* supplier;
-    Employee* employee;
-    vector<Detail> detail;
-    Calender time;
-public:
-    ImportReceipt();
-
-    // functions
-    void addDetail();
-    void delDetail();
-
-    void calculateSubtotal() const;
-    void calculateTotal() const;
-};
-
-class ShippingInfor { // thông tin giao hàng
-private:
-    string address;
-    string phoneNumber;
-    string receiverName;
-public:
-    // getter
-    string getAddress() const;
-    string getPhoneNumber() const;
-    string getReceiverName() const;
-
-    // setter
-    void setAddress(string& address);
-    void setPhoneNumber(string& phoneNumber);
-    void setReceiverName(string& receiverName);
-};
-
-class Order {
-private:
-    string id;
-    Customer* customer;
-    DeliveryMethod method;
-    paymentMethod paymentMethod;
-    vector<Detail> detail;
-
-    ShippingInfor shippingInfor;
-    OrderStatus status;
-    Calender time;
-
-public:
-    Order();
-
-    // functions
-
-    void addDetail();
-    void delDetail();
-
-    void calculateSubtotal() const;
-    void calculateDiscount() const;
-    void calculateTotal() const;
-
-    void confirm();
-    void cancel();
-
-    OrderStatus getStatus() const;
-};
-
-class Invoice {
-private:
-    string id;
-    Customer* customer;
-    Employee* employee;
-    paymentMethod paymentMethod;
-    vector<Detail> detail;
-    Calender time;
-public:
-    Invoice();
-
-    // functions
-    void addDetail();
-    void delDetail();
-
-    void calculateSubtotal() const;
-    void calculateDiscount() const;
-    void calculateTotal() const;
-};
-
-// =============== DISCOUNT ==============
-enum class DiscountType { // định nghĩa loại giảm giá
-    PERCENTAGE,
-    FIXED_AMOUNT
-};
-
-class DiscountCode { // định nghĩa mã giảm giá
-private: 
-    string code;
-    DiscountType type;
-    double value;
-
-    Calender startDate;
-    Calender endDate;
-
-    double minOrderValue; // giá trị đơn hàng tối thiểu để áp dụng mã giảm giá
-    double maxDiscountValue; // giá trị giảm giá tối đa áp dụng cho đơn hàng
-
-    int maxUsage;
-    int usedCount;
-
-public:
-    DiscountCode();
-
-    bool isValid(Calender& currentTime) const; // kiểm tra xem mã giảm giá có còn hiệu lực hay không
-    bool isApplicable(double orderValue) const; // kiểm tra xem mã giảm giá có áp dụng được cho đơn hàng hay không
-
-    double calculateDiscount(double orderValue) const; 
-
-    void increaseUsage(); 
-
-    string getCode() const; 
-};
-
-// =============== WARRANTY ==============
-class Warranty { // định nghĩa bảo hành
-    // làm sau
-};
-
-// =============== REPOSITORY ==============
-class PhoneRepository { // định nghĩa kho điện thoại
-
-};
-
-class CustomerRepository { // định nghĩa kho khách hàng
-
-};
-
-class EmployeeRepository { // định nghĩa kho nhân viên
-
-};
-
-class OrderRepository { // định nghĩa kho đơn hàng
-
-};
-
-class InvoiceRepository { // định nghĩa kho hóa đơn
-
-};
-
-class DiscountCodeRepository { // định nghĩa kho mã giảm giá
-
-};
-
-class WarrantyRepository { // định nghĩa kho bảo hành
-    
-};
-
-// =============== MAIN ==============
 int main() {
+    // Tối ưu nhập xuất luồng console
     ios_base::sync_with_stdio(false);
     cin.tie(nullptr);
 
+    UICommon::printHeader("HE THONG QUAN LY CUA HANG DIEN THOAI - PBL2");
+    cout << "[+] Khoi tao cac cau truc du lieu tu viet (Custom DSA Templates)...\n";
+
+    // 1. Khoi tao cac Repositories
+    PhoneRepository phoneRepo("data/Device/Products.txt");
+    EmployeeRepository employeeRepo("data/people/Employee.txt");
+    CustomerRepository customerRepo("data/people/Customers.txt");
+    DiscountRepository discountRepo("data/PAY/Discount.txt");
+    OrderRepository orderRepo("data/PAY/Order/");
+
+    // 2. Nap du lieu tu tep tin
+    cout << "[+] Dang nap du lieu tu thu muc data/...\n";
+
+    if (phoneRepo.loadFromFile()) {
+        cout << "  -> Nap thanh cong " << phoneRepo.getAll().getSize() 
+             << " san pham vao Vector, HashTable O(1) va BST O(log N).\n";
+    } else {
+        cout << "  [!] Khong the nap du lieu san pham.\n";
+    }
+
+    if (employeeRepo.loadFromFile()) {
+        cout << "  -> Nap thanh cong " << employeeRepo.getAll().getSize() 
+             << " nhan vien vao Vector va HashTable O(1).\n";
+    } else {
+        cout << "  [!] Khong the nap du lieu nhan vien.\n";
+    }
+
+    if (customerRepo.loadFromFile()) {
+        cout << "  -> Nap thanh cong " << customerRepo.getAll().getSize() 
+             << " khach hang.\n";
+    }
+
+    if (discountRepo.loadFromFile()) {
+        cout << "  -> Nap thanh cong " << discountRepo.getAll().getSize() 
+             << " ma giam gia.\n";
+    }
+
+    // 3. Demo kiem tra tinh dung dan cua cac cau truc du lieu
+    cout << "\n================ KIEM TRA HE THONG CAU TRUC DU LIEU ================\n";
+
+    // A. Kiem tra bang bam HashTable O(1) tim kiem san pham theo ID
+    string testPhoneId = "101";
+    Phone* p = phoneRepo.findById(testPhoneId);
+    if (p) {
+        cout << "[HashTable] Tim kiem san pham ID " << testPhoneId << ":\n";
+        cout << "  - Ten: " << p->getName() << "\n";
+        cout << "  - Hang: " << p->getBrand() << "\n";
+        cout << "  - He dieu hanh: " << p->getOperatingSystem() << "\n";
+        cout << "  - Gia ban: " << StringHelper::formatCurrency(p->getSellingPrice()) << "\n";
+        cout << "  - Ton kho: " << p->getQuantity() << " chiec\n";
+    }
+
+    // B. Kiem tra cay nhi phan tim kiem BST O(log N) loc san pham theo khoang gia
+    double minPrice = 10000000.0;
+    double maxPrice = 20000000.0;
+    Vector<Phone> filtered = phoneRepo.findByPriceRange(minPrice, maxPrice);
+    cout << "\n[BST Tree] Loc san pham trong khoang gia tu " 
+         << StringHelper::formatCurrency(minPrice) << " den " 
+         << StringHelper::formatCurrency(maxPrice) << ":\n";
+    cout << "  -> Tim thay " << filtered.getSize() << " san pham phu hop:\n";
+    UICommon::printPhoneTableHeader();
+    for (int i = 0; i < filtered.getSize(); ++i) {
+        UICommon::printPhoneRow(
+            filtered[i].getID(),
+            filtered[i].getName(),
+            filtered[i].getBrand(),
+            StringHelper::formatCurrency(filtered[i].getSellingPrice()),
+            filtered[i].getQuantity()
+        );
+    }
+    UICommon::printLine(74, '-');
+
+    // C. Kiem tra xac thuc dang nhap qua HashTable
+    cout << "\n[Authentication] Kiem tra xac thuc tai khoan:\n";
+    Employee* admin = employeeRepo.authenticate("admin@", "123456");
+    if (admin) {
+        cout << "  -> Dang nhap thanh cong: " << admin->getFullName() 
+             << " (Vai tro: " << admin->getRole() << ")\n";
+    } else {
+        cout << "  -> Dang nhap that bai!\n";
+    }
+
+    // D. Kiem tra Queue FIFO xu ly don hang
+    cout << "\n[Queue FIFO] Kiem tra hang doi don hang:\n";
+    Order testOrder("ORD-001", "CUST-01", DeliveryMethod::DELIVERY, PaymentMethod::CASH, 
+                    ShippingInfo("Nguyen Van A", "0901234567", "Da Nang"));
+    testOrder.addDetail(OrderDetail("101", "Oppo Reno 16f", 2, 14000000.0));
+    orderRepo.addOrder(testOrder);
+    cout << "  -> So luong don hang trong hang doi cho duyet: " 
+         << orderRepo.getPendingQueue().getSize() << "\n";
+
+    Order processed;
+    if (orderRepo.processNextPendingOrder(processed)) {
+        cout << "  -> Da duyet thanh cong don hang: " << processed.getID() 
+             << " voi tong tien: " << StringHelper::formatCurrency(processed.calculateTotal()) << "\n";
+    }
+
+    cout << "\n================ HE THONG HEADER & DSA DA SAN SANG! ================\n";
     return 0;
 }
