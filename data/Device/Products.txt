@@ -1,3 +1,2 @@
 id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity
-101|Oppo Reno 16f|Oppo|Android - ColorOS16|10.600.000|14.000.000|50
-...
+101|Oppo Reno 16f|Oppo|Android - ColorOS16|10.600.000 đ|14.000.000 đ|42

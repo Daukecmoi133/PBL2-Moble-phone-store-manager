@@ -1,0 +1,5 @@
+id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details
+ORD-001|CUST-001|1|0|1|11/09/2026 22:22:00|0|Nguyen Van B|0912345678|Da Nang|101,Oppo Reno 16f,2,1407
+ORD-001|CUST-001|1|0|0|17/09/2026 13:40:17|0|Nguyen Van B|0912345678|Da Nang|101,Oppo Reno 16f,2,1407
+ORD-001|CUST-001|1|0|0|17/09/2026 13:43:00|0|Nguyen Van B|0912345678|Da Nang|101,Oppo Reno 16f,2,1407
+ORD-001|CUST-001|1|0|0|17/09/2026 16:16:57|0|Nguyen Van B|0912345678|Da Nang|101,Oppo Reno 16f,2,1.4e+07

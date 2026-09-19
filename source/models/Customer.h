@@ -1,3 +1,4 @@
+// ĐỐI TƯỢNG KHÁCH HÀNG
 #ifndef CUSTOMER_H
 #define CUSTOMER_H
 
@@ -10,37 +11,66 @@ private:
     Account account;    // Tài khoản đăng nhập
 
 public:
-    Customer() : People(), points(0), account("", "", RoleType::CUSTOMER) {}
-
+    Customer();
     Customer(std::string id, Name name, std::string phone, std::string email, 
-             std::string address, std::string username, std::string password, int points = 0)
-        : People(id, name, phone, email, address), points(points),
-          account(username, password, RoleType::CUSTOMER) {}
+             std::string address, std::string username, std::string password, int points = 0);
 
-    int getPoints() const { return points; }
-    void setPoints(int p) { points = p; }
+    int getPoints() const;
+    void setPoints(int p);
+    void addPoints(int p);
+    bool deductPoints(int p);
 
-    void addPoints(int p) {
-        if (p > 0) points += p;
-    }
+    Account& getAccount();
+    const Account& getAccount() const;
+    void setAccount(const Account& acc);
 
-    bool deductPoints(int p) {
-        if (p <= points) {
-            points -= p;
-            return true;
-        }
-        return false;
-    }
-
-    Account& getAccount() { return account; }
-    const Account& getAccount() const { return account; }
-    void setAccount(const Account& acc) { account = acc; }
-
-    // Định dạng lưu file Customers.txt: id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address
-    std::string toFileString() const {
-        return id + "|" + name.firstName + "|" + name.middleName + "|" + name.lastName + "|" +
-               phoneNumber + "|" + email + "|" + account.getUsername() + "|******|4|" + address;
-    }
+    // Định dạng lưu file Customers.txt
+    std::string toFileString() const;
 };
+
+// ================= IMPLEMENTATION =================
+
+// Hàm dựng mặc định
+inline Customer::Customer() 
+    : People(), points(0), account("", "", RoleType::CUSTOMER) {}
+
+// Hàm dựng đủ tham số
+inline Customer::Customer(std::string id, Name name, std::string phone, std::string email, 
+                          std::string address, std::string username, std::string password, int points)
+    : People(id, name, phone, email, address), points(points),
+      account(username, password, RoleType::CUSTOMER) {}
+
+// Hàm setter / getter cho điểm tích lũy
+inline int Customer::getPoints() const { return points; }
+inline void Customer::setPoints(int p) { points = p; }
+
+// Hàm tăng điểm tích lũy lên +p
+inline void Customer::addPoints(int p) {
+    if (p > 0) points += p;
+}
+
+// Hàm giảm điểm tích lũy đi -p
+inline bool Customer::deductPoints(int p) {
+    if (p <= points) {
+        points -= p;
+        return true;
+    }
+    return false;
+}
+
+// Hàm trả về tài khoản của khách hàng - cho phép thay đổi tài khoản đã trả về
+inline Account& Customer::getAccount() { return account; }
+
+// Hàm trả về tài khoản của khách hàng - không cho phép thay đổi tài khoản đã trả về
+inline const Account& Customer::getAccount() const { return account; }
+
+// Hàm setter tài khoản của khách hàng
+inline void Customer::setAccount(const Account& acc) { account = acc; }
+
+// Hàm trả về cấu trúc dữ liệu trong file .txt
+inline std::string Customer::toFileString() const {
+    return id + "|" + name.firstName + "|" + name.middleName + "|" + name.lastName + "|" +
+           phoneNumber + "|" + email + "|" + account.getUsername() + "|******|4|" + address;
+}
 
 #endif // CUSTOMER_H

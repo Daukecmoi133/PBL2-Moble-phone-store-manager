@@ -6,22 +6,19 @@
 
 class CustomerUI {
 private:
-    PhoneRepository& phoneRepo;
-    OrderRepository& orderRepo;
-    DiscountRepository& discountRepo;
+    PhoneService& phoneService;
+    OrderService& orderService;
+    DiscountService& discountService;
+    CustomerService& customerService;
     Customer* currentCustomer;
     Cart cart;
 
 public:
-    CustomerUI(PhoneRepository& pRepo, OrderRepository& oRepo, 
-               DiscountRepository& dRepo, Customer* cust = nullptr)
-        : phoneRepo(pRepo), orderRepo(oRepo), discountRepo(dRepo), 
-          currentCustomer(cust), cart(cust ? cust->getID() : "") {}
+    CustomerUI(PhoneService& pService, OrderService& oService, 
+               DiscountService& dService, CustomerService& cService, 
+               Customer* cust = nullptr);
 
-    void setCurrentCustomer(Customer* cust) { 
-        currentCustomer = cust; 
-        if (cust) cart.setCustomerId(cust->getID());
-    }
+    void setCurrentCustomer(Customer* cust);
 
     void showMenu();
     void browseAllPhones();
@@ -32,5 +29,19 @@ public:
     void checkout();
     void viewOrderHistory();
 };
+
+// ================= IMPLEMENTATION =================
+
+inline CustomerUI::CustomerUI(PhoneService& pService, OrderService& oService, 
+                              DiscountService& dService, CustomerService& cService, 
+                              Customer* cust)
+    : phoneService(pService), orderService(oService), discountService(dService), 
+      customerService(cService), currentCustomer(cust), 
+      cart(cust ? cust->getID() : "") {}
+
+inline void CustomerUI::setCurrentCustomer(Customer* cust) { 
+    currentCustomer = cust; 
+    if (cust) cart.setCustomerId(cust->getID());
+}
 
 #endif // CUSTOMERUI_H

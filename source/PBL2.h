@@ -44,4 +44,11 @@
 #include "repositories/DiscountRepository.h"
 #include "repositories/OrderRepository.h"
 
+// ================= TẦNG XỬ LÝ NGHIỆP VỤ VÀ DỮ LIỆU (SERVICES) =================
+#include "services/PhoneService.h"
+#include "services/EmployeeService.h"
+#include "services/CustomerService.h"
+#include "services/DiscountService.h"
+#include "services/OrderService.h"
+
 #endif // PBL2_H

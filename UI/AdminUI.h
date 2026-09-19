@@ -6,20 +6,18 @@
 
 class AdminUI {
 private:
-    PhoneRepository& phoneRepo;
-    EmployeeRepository& employeeRepo;
-    DiscountRepository& discountRepo;
-    OrderRepository& orderRepo;
+    PhoneService& phoneService;
+    EmployeeService& employeeService;
+    DiscountService& discountService;
+    OrderService& orderService;
     AdminEmployee* currentAdmin;
 
 public:
-    AdminUI(PhoneRepository& pRepo, EmployeeRepository& eRepo, 
-            DiscountRepository& dRepo, OrderRepository& oRepo,
-            AdminEmployee* admin = nullptr)
-        : phoneRepo(pRepo), employeeRepo(eRepo), discountRepo(dRepo), 
-          orderRepo(oRepo), currentAdmin(admin) {}
+    AdminUI(PhoneService& pService, EmployeeService& eService, 
+            DiscountService& dService, OrderService& oService,
+            AdminEmployee* admin = nullptr);
 
-    void setCurrentAdmin(AdminEmployee* admin) { currentAdmin = admin; }
+    void setCurrentAdmin(AdminEmployee* admin);
 
     void showMenu();
     void manageProducts();
@@ -32,5 +30,17 @@ public:
     void manageDiscounts();
     void viewRevenueStatistics();
 };
+
+// ================= IMPLEMENTATION =================
+
+inline AdminUI::AdminUI(PhoneService& pService, EmployeeService& eService, 
+                        DiscountService& dService, OrderService& oService,
+                        AdminEmployee* admin)
+    : phoneService(pService), employeeService(eService), discountService(dService), 
+      orderService(oService), currentAdmin(admin) {}
+
+inline void AdminUI::setCurrentAdmin(AdminEmployee* admin) { 
+    currentAdmin = admin; 
+}
 
 #endif // ADMINUI_H

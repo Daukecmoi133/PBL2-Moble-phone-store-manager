@@ -1,3 +1,4 @@
+// ĐỐI TƯƠNG MÃ GIẢM GIÁ
 #ifndef DISCOUNTCODE_H
 #define DISCOUNTCODE_H
 
@@ -19,65 +20,97 @@ private:
     int usedCount;                  // Số lượt đã dùng
 
 public:
-    DiscountCode() 
-        : code(""), type(DiscountType::PERCENTAGE), value(0.0),
-          startDate(), endDate(), minOrderValue(0.0), maxDiscountValue(0.0),
-          maxUsage(100), usedCount(0) {}
-
+    DiscountCode();
     DiscountCode(std::string code, DiscountType type, double value,
                  DateTime start, DateTime end, double minOrder = 0.0, 
-                 double maxDiscount = 0.0, int maxUsage = 100, int usedCount = 0)
-        : code(code), type(type), value(value), startDate(start), endDate(end),
-          minOrderValue(minOrder), maxDiscountValue(maxDiscount),
-          maxUsage(maxUsage), usedCount(usedCount) {}
+                 double maxDiscount = 0.0, int maxUsage = 100, int usedCount = 0);
 
-    std::string getCode() const { return code; }
-    DiscountType getType() const { return type; }
-    double getValue() const { return value; }
-    DateTime getStartDate() const { return startDate; }
-    DateTime getEndDate() const { return endDate; }
-    double getMinOrderValue() const { return minOrderValue; }
-    double getMaxDiscountValue() const { return maxDiscountValue; }
-    int getMaxUsage() const { return maxUsage; }
-    int getUsedCount() const { return usedCount; }
+    std::string getCode() const;
+    DiscountType getType() const;
+    double getValue() const;
+    DateTime getStartDate() const;
+    DateTime getEndDate() const;
+    double getMinOrderValue() const;
+    double getMaxDiscountValue() const;
+    int getMaxUsage() const;
+    int getUsedCount() const;
 
-    void setCode(const std::string& c) { code = c; }
-    void setUsedCount(int u) { usedCount = u; }
+    void setCode(const std::string& c);
+    void setUsedCount(int u);
 
-    bool isValid(const DateTime& currentTime = DateTime::now()) const {
-        if (usedCount >= maxUsage) return false;
-        if (currentTime < startDate || currentTime > endDate) return false;
-        return true;
-    }
-
-    bool isApplicable(double orderValue) const {
-        if (!isValid()) return false;
-        return orderValue >= minOrderValue;
-    }
-
-    double calculateDiscount(double orderValue) const {
-        if (!isApplicable(orderValue)) return 0.0;
-
-        double discount = 0.0;
-        if (type == DiscountType::PERCENTAGE) {
-            discount = orderValue * (value / 100.0);
-            if (maxDiscountValue > 0.0 && discount > maxDiscountValue) {
-                discount = maxDiscountValue;
-            }
-        } else {
-            discount = value;
-            if (discount > orderValue) {
-                discount = orderValue;
-            }
-        }
-        return discount;
-    }
-
-    void increaseUsage() {
-        if (usedCount < maxUsage) {
-            ++usedCount;
-        }
-    }
+    bool isValid(const DateTime& currentTime = DateTime::now()) const;
+    bool isApplicable(double orderValue) const;
+    double calculateDiscount(double orderValue) const;
+    void increaseUsage();
 };
+
+// ================= IMPLEMENTATION =================
+
+// Hàm dựng mặc định
+inline DiscountCode::DiscountCode() 
+    : code(""), type(DiscountType::PERCENTAGE), value(0.0),
+      startDate(), endDate(), minOrderValue(0.0), maxDiscountValue(0.0),
+      maxUsage(100), usedCount(0) {}
+
+//Hàm dựng đủ tham số
+inline DiscountCode::DiscountCode(std::string code, DiscountType type, double value,
+                                  DateTime start, DateTime end, double minOrder, 
+                                  double maxDiscount, int maxUsage, int usedCount)
+    : code(code), type(type), value(value), startDate(start), endDate(end),
+      minOrderValue(minOrder), maxDiscountValue(maxDiscount),
+      maxUsage(maxUsage), usedCount(usedCount) {}
+
+// Hàm getter tất cả thuộc tính của DiscountCode
+inline std::string DiscountCode::getCode() const { return code; }                       // getter mã code
+inline DiscountType DiscountCode::getType() const { return type; }                      // getter phương thức giảm giá
+inline double DiscountCode::getValue() const { return value; }                          // getter giá trị được giảm tùy theo phương thức
+inline DateTime DiscountCode::getStartDate() const { return startDate; }                // getter thời điểm mã có hiệu lực
+inline DateTime DiscountCode::getEndDate() const { return endDate; }                    // getter thời điểm mã hết hiệu lực
+inline double DiscountCode::getMinOrderValue() const { return minOrderValue; }          // getter giá trị đơn hàng nhỏ nhất mã có hiệu lực
+inline double DiscountCode::getMaxDiscountValue() const { return maxDiscountValue; }    // getter giá trị mã giảm tối đa
+inline int DiscountCode::getMaxUsage() const { return maxUsage; }                       // getter số lượng mã được phép sử dụng
+inline int DiscountCode::getUsedCount() const { return usedCount; }                     // getter số lượng mã đã được sử dụng
+
+// setter các thuộc tính
+inline void DiscountCode::setCode(const std::string& c) { code = c; }                   // setter mã code           
+inline void DiscountCode::setUsedCount(int u) { usedCount = u; }  
+                      // setter số lượng mã được phép sử dụng
+// Hàm xác minh mã còn hạn không
+inline bool DiscountCode::isValid(const DateTime& currentTime) const {
+    
+    if (usedCount >= maxUsage) return false;
+    if (currentTime < startDate || currentTime > endDate) return false;
+    return true;
+}
+// Hàm xác minh mã hợp lệ không
+inline bool DiscountCode::isApplicable(double orderValue) const {
+    if (!isValid()) return false;
+    return orderValue >= minOrderValue;
+}
+// Hàm tính giá trị mã có thể giảm
+inline double DiscountCode::calculateDiscount(double orderValue) const {
+     
+    if (!isApplicable(orderValue)) return 0.0;
+    double discount = 0.0;
+    if (type == DiscountType::PERCENTAGE) {
+        discount = orderValue * (value / 100.0);
+        if (maxDiscountValue > 0.0 && discount > maxDiscountValue) {
+            discount = maxDiscountValue;
+        }
+    } else {
+        discount = value;
+        if (discount > orderValue) {
+            discount = orderValue;
+        }
+    }
+    return discount;
+}
+// Hàm tăng số lượng sử dụng khi mã được dùng thành công
+inline void DiscountCode::increaseUsage() {
+    
+    if (usedCount < maxUsage) {
+        ++usedCount;
+    }
+}
 
 #endif // DISCOUNTCODE_H

@@ -15,29 +15,43 @@ private:
     DateTime importTime;
 
 public:
-    ImportReceipt() 
-        : id(""), supplierId(""), employeeId(""), importTime(DateTime::now()) {}
+    ImportReceipt();
+    ImportReceipt(std::string id, std::string supId, std::string empId);
 
-    ImportReceipt(std::string id, std::string supId, std::string empId)
-        : id(id), supplierId(supId), employeeId(empId), importTime(DateTime::now()) {}
+    std::string getID() const;
+    std::string getSupplierId() const;
+    std::string getEmployeeId() const;
+    const Vector<OrderDetail>& getDetails() const;
+    DateTime getImportTime() const;
 
-    std::string getID() const { return id; }
-    std::string getSupplierId() const { return supplierId; }
-    std::string getEmployeeId() const { return employeeId; }
-    const Vector<OrderDetail>& getDetails() const { return details; }
-    DateTime getImportTime() const { return importTime; }
-
-    void addDetail(const OrderDetail& detail) {
-        details.push_back(detail);
-    }
-
-    double calculateTotal() const {
-        double total = 0.0;
-        for (int i = 0; i < details.getSize(); ++i) {
-            total += details[i].getSubtotal();
-        }
-        return total;
-    }
+    void addDetail(const OrderDetail& detail);
+    double calculateTotal() const;
 };
+
+// ================= IMPLEMENTATION =================
+
+inline ImportReceipt::ImportReceipt() 
+    : id(""), supplierId(""), employeeId(""), importTime(DateTime::now()) {}
+
+inline ImportReceipt::ImportReceipt(std::string id, std::string supId, std::string empId)
+    : id(id), supplierId(supId), employeeId(empId), importTime(DateTime::now()) {}
+
+inline std::string ImportReceipt::getID() const { return id; }
+inline std::string ImportReceipt::getSupplierId() const { return supplierId; }
+inline std::string ImportReceipt::getEmployeeId() const { return employeeId; }
+inline const Vector<OrderDetail>& ImportReceipt::getDetails() const { return details; }
+inline DateTime ImportReceipt::getImportTime() const { return importTime; }
+
+inline void ImportReceipt::addDetail(const OrderDetail& detail) {
+    details.push_back(detail);
+}
+
+inline double ImportReceipt::calculateTotal() const {
+    double total = 0.0;
+    for (int i = 0; i < details.getSize(); ++i) {
+        total += details[i].getSubtotal();
+    }
+    return total;
+}
 
 #endif // IMPORTRECEIPT_H

@@ -19,43 +19,63 @@ private:
     double discountAmount;
 
 public:
-    Invoice() 
-        : id(""), orderId(""), customerId(""), employeeId(""),
-          paymentMethod(PaymentMethod::CASH), createTime(DateTime::now()),
-          discountAmount(0.0) {}
-
+    Invoice();
     Invoice(std::string id, std::string orderId, std::string custId, 
             std::string empId, PaymentMethod pay, const Vector<OrderDetail>& dets, 
-            double discount = 0.0)
-        : id(id), orderId(orderId), customerId(custId), employeeId(empId),
-          paymentMethod(pay), details(dets), createTime(DateTime::now()),
-          discountAmount(discount) {}
+            double discount = 0.0);
 
-    std::string getID() const { return id; }
-    std::string getOrderId() const { return orderId; }
-    std::string getCustomerId() const { return customerId; }
-    std::string getEmployeeId() const { return employeeId; }
-    PaymentMethod getPaymentMethod() const { return paymentMethod; }
-    const Vector<OrderDetail>& getDetails() const { return details; }
-    DateTime getCreateTime() const { return createTime; }
-    double getDiscountAmount() const { return discountAmount; }
+    std::string getID() const;
+    std::string getOrderId() const;
+    std::string getCustomerId() const;
+    std::string getEmployeeId() const;
+    PaymentMethod getPaymentMethod() const;
+    const Vector<OrderDetail>& getDetails() const;
+    DateTime getCreateTime() const;
+    double getDiscountAmount() const;
 
-    void addDetail(const OrderDetail& d) {
-        details.push_back(d);
-    }
-
-    double calculateSubtotal() const {
-        double subtotal = 0.0;
-        for (int i = 0; i < details.getSize(); ++i) {
-            subtotal += details[i].getSubtotal();
-        }
-        return subtotal;
-    }
-
-    double calculateTotal() const {
-        double total = calculateSubtotal() - discountAmount;
-        return total > 0.0 ? total : 0.0;
-    }
+    void addDetail(const OrderDetail& d);
+    double calculateSubtotal() const;
+    double calculateTotal() const;
 };
+
+// ================= IMPLEMENTATION =================
+
+inline Invoice::Invoice() 
+    : id(""), orderId(""), customerId(""), employeeId(""),
+      paymentMethod(PaymentMethod::CASH), createTime(DateTime::now()),
+      discountAmount(0.0) {}
+
+inline Invoice::Invoice(std::string id, std::string orderId, std::string custId, 
+                        std::string empId, PaymentMethod pay, const Vector<OrderDetail>& dets, 
+                        double discount)
+    : id(id), orderId(orderId), customerId(custId), employeeId(empId),
+      paymentMethod(pay), details(dets), createTime(DateTime::now()),
+      discountAmount(discount) {}
+
+inline std::string Invoice::getID() const { return id; }
+inline std::string Invoice::getOrderId() const { return orderId; }
+inline std::string Invoice::getCustomerId() const { return customerId; }
+inline std::string Invoice::getEmployeeId() const { return employeeId; }
+inline PaymentMethod Invoice::getPaymentMethod() const { return paymentMethod; }
+inline const Vector<OrderDetail>& Invoice::getDetails() const { return details; }
+inline DateTime Invoice::getCreateTime() const { return createTime; }
+inline double Invoice::getDiscountAmount() const { return discountAmount; }
+
+inline void Invoice::addDetail(const OrderDetail& d) {
+    details.push_back(d);
+}
+
+inline double Invoice::calculateSubtotal() const {
+    double subtotal = 0.0;
+    for (int i = 0; i < details.getSize(); ++i) {
+        subtotal += details[i].getSubtotal();
+    }
+    return subtotal;
+}
+
+inline double Invoice::calculateTotal() const {
+    double total = calculateSubtotal() - discountAmount;
+    return total > 0.0 ? total : 0.0;
+}
 
 #endif // INVOICE_H

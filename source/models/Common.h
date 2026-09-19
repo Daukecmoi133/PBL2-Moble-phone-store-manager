@@ -3,30 +3,45 @@
 
 #include <string>
 
+// Khởi tạo kiểu dữ liệu cho Tên con người
 struct Name {
     std::string firstName;
     std::string middleName;
     std::string lastName;
 
-    Name() : firstName(""), middleName(""), lastName("") {}
-    Name(std::string first, std::string middle, std::string last)
-        : firstName(first), middleName(middle), lastName(last) {}
+    Name();
+    Name(std::string first, std::string middle, std::string last);
 
-    std::string getFullName() const {
-        std::string full = "";
-        if (!firstName.empty()) full += firstName;
-        if (!middleName.empty()) {
-            if (!full.empty()) full += " ";
-            full += middleName;
-        }
-        if (!lastName.empty()) {
-            if (!full.empty()) full += " ";
-            full += lastName;
-        }
-        return full;
-    }
+    std::string getFullName() const;
 };
 
+// ================= IMPLEMENTATION NAME =================
+
+// Hàm dựng
+inline Name::Name() : firstName(""), middleName(""), lastName("") {}
+
+// Hàm dựng đủ đối số
+inline Name::Name(std::string first, std::string middle, std::string last)
+    : firstName(first), middleName(middle), lastName(last) {}
+
+// Hàm trả về chuỗi đầy đủ tên của người
+inline std::string Name::getFullName() const {
+    std::string full = "";
+    if (!firstName.empty()) full += firstName;
+    if (!middleName.empty()) {
+        if (!full.empty()) full += " ";
+        full += middleName;
+    }
+    if (!lastName.empty()) {
+        if (!full.empty()) full += " ";
+        full += lastName;
+    }
+    return full;
+}
+
+// ================= ENUMS & ENUM HELPERS =================
+
+// TÊN ROLE
 enum class RoleType {
     ADMIN,
     SALE_EMPLOYEE,
@@ -34,6 +49,7 @@ enum class RoleType {
     CUSTOMER
 };
 
+// Trả về tên Role dưới giải nghĩa tiếng Việt
 inline std::string roleTypeToString(RoleType role) {
     switch (role) {
         case RoleType::ADMIN: return "Quản trị viên (Admin)";
@@ -44,6 +60,7 @@ inline std::string roleTypeToString(RoleType role) {
     }
 }
 
+// TÊN QUYỀN
 enum class Permission {
     PRODUCT_VIEW, 
     PRODUCT_CREATE,
@@ -62,20 +79,24 @@ enum class Permission {
     EMPLOYEE_CREATE
 };
 
+// TÊN TRẠNG THÁI ĐƠN HÀNG 
 enum class OrderStatus {
     PENDING,        // Đang chờ xử lý
     CONFIRMED,      // Đã xác nhận
     PREPARING,      // Đang chuẩn bị hàng
+    READY_FOR_PICKUP, // Sẵn sàng nhận hàng
     SHIPPING,       // Đang giao hàng
     COMPLETED,      // Hoàn tất
     CANCELLED       // Đã hủy
 };
 
+// Trả về trạng thái đơn hàng với dịch nghĩa tiếng Việt
 inline std::string orderStatusToString(OrderStatus status) {
     switch (status) {
         case OrderStatus::PENDING: return "Chờ xử lý";
         case OrderStatus::CONFIRMED: return "Đã xác nhận";
         case OrderStatus::PREPARING: return "Đang đóng gói";
+        case OrderStatus::READY_FOR_PICKUP: return "Sẵn sàng nhận hàng";
         case OrderStatus::SHIPPING: return "Đang giao hàng";
         case OrderStatus::COMPLETED: return "Hoàn thành";
         case OrderStatus::CANCELLED: return "Đã hủy";
@@ -83,11 +104,13 @@ inline std::string orderStatusToString(OrderStatus status) {
     }
 }
 
+// PHƯƠNG THỨC NHẬN HÀNG
 enum class DeliveryMethod {
     PICKUP,         // Nhận tại cửa hàng
     DELIVERY        // Giao hàng tận nơi
 };
 
+// Chuyển về phương thức nhận hàng với dịch nghĩa tiếng Việt
 inline std::string deliveryMethodToString(DeliveryMethod method) {
     switch (method) {
         case DeliveryMethod::PICKUP: return "Nhận tại cửa hàng";
@@ -96,12 +119,14 @@ inline std::string deliveryMethodToString(DeliveryMethod method) {
     }
 }
 
+// PHƯƠNG THỨC THANH TOÁN
 enum class PaymentMethod {
     CASH,           // Tiền mặt
     BANK_TRANSFER,  // Chuyển khoản ngân hàng
     CREDIT_CARD     // Thẻ tín dụng
 };
 
+// Chuyển về phương thức thanh toán với dịch nghĩa tiếng Việt
 inline std::string paymentMethodToString(PaymentMethod method) {
     switch (method) {
         case PaymentMethod::CASH: return "Tiền mặt";
@@ -111,6 +136,7 @@ inline std::string paymentMethodToString(PaymentMethod method) {
     }
 }
 
+// PHƯƠNG THỨC GIẢM GIÁ
 enum class DiscountType {
     PERCENTAGE,     // Giảm theo %
     FIXED_AMOUNT    // Giảm số tiền cố định

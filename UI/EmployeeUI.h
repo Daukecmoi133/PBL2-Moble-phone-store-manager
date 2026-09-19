@@ -6,15 +6,14 @@
 
 class EmployeeUI {
 private:
-    PhoneRepository& phoneRepo;
-    OrderRepository& orderRepo;
+    PhoneService& phoneService;
+    OrderService& orderService;
     Employee* currentEmployee;
 
 public:
-    EmployeeUI(PhoneRepository& pRepo, OrderRepository& oRepo, Employee* emp = nullptr)
-        : phoneRepo(pRepo), orderRepo(oRepo), currentEmployee(emp) {}
+    EmployeeUI(PhoneService& pService, OrderService& oService, Employee* emp = nullptr);
 
-    void setCurrentEmployee(Employee* emp) { currentEmployee = emp; }
+    void setCurrentEmployee(Employee* emp);
 
     void showMenu();
     void viewInventory();
@@ -22,5 +21,14 @@ public:
     void processOrdersQueue(); // Duyệt đơn hàng bằng Queue FIFO
     void importStock();        // Nhập thêm số lượng tồn kho
 };
+
+// ================= IMPLEMENTATION =================
+
+inline EmployeeUI::EmployeeUI(PhoneService& pService, OrderService& oService, Employee* emp)
+    : phoneService(pService), orderService(oService), currentEmployee(emp) {}
+
+inline void EmployeeUI::setCurrentEmployee(Employee* emp) { 
+    currentEmployee = emp; 
+}
 
 #endif // EMPLOYEEUI_H
