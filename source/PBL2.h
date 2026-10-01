@@ -54,5 +54,9 @@
 #include "services/CustomerService.h"
 #include "services/DiscountService.h"
 #include "services/OrderService.h"
+#include "services/InvoiceService.h"
+#include "services/SupplierService.h"
+#include "services/AuthService.h"
+#include "services/ReportService.h"
 
 #endif // PBL2_H
