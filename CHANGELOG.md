@@ -2,6 +2,18 @@
 
 ---
 
+## [v1.0.0] - 2026-10-02 — GTK UI Layer & Final Integration
+
+### ✨ GTK UI Mới
+- **`GtkAdminUI.h` & `GtkAdminUI.cpp`**: Tạo cửa sổ giao diện đồ họa sử dụng GTK3.
+- **TreeView**: Hiển thị danh sách sản phẩm thực tế lấy từ `PhoneService`.
+- **Button Test**: Nút bấm giả lập luồng tạo đơn và duyệt đơn qua `OrderService`, tự động cập nhật kho hàng trên UI (có popup thông báo).
+- **`main.cpp`**: Entry point mới khởi tạo toàn bộ Repositories, Services và GTK UI.
+- **`Makefile`**: Cấu hình biên dịch chuẩn C++ kết hợp `pkg-config gtk+-3.0`.
+
+---
+
+
 ## [v0.3.0] - 2026-10-02 — Service Layer Complete
 
 ### ✨ Service mới triển khai
