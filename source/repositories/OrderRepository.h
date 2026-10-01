@@ -1,181 +1,198 @@
+// ORDER REPOSITORY - Tầng truy xuất dữ liệu đơn hàng
 #ifndef ORDERREPOSITORY_H
 #define ORDERREPOSITORY_H
 
 #include <iostream>
 #include <fstream>
-#include <sstream>
 #include <string>
 #include "../models/Order.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
 
-// Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu đơn hàng từ/vào tệp tin
+// Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu đơn hàng từ/vào tệp tin.
+// Lưu trữ danh sách Order trên RAM bằng Vector<Order>.
 class OrderRepository {
 private:
-    std::string filePath;
-    Vector<Order> orders;
+    std::string filePath;   // Đường dẫn đến file Orders.txt
+    Vector<Order> orders;   // Danh sách đơn hàng trên RAM
+
+    // Tạo file mới với header nếu file chưa tồn tại
+    bool createEmptyFile() const;
 
 public:
+    // Hàm dựng
     OrderRepository(std::string path = "data/PAY/Order/Orders.txt");
 
+    // Nạp dữ liệu từ file vào RAM
     bool loadFromFile();
+
+    // Ghi toàn bộ danh sách RAM xuống file (ghi đè)
     bool saveToFile() const;
 
+    // Trả về toàn bộ danh sách (chỉ đọc / cho phép sửa)
     const Vector<Order>& getAllOrders() const;
     Vector<Order>& getAllOrders();
 
+    // Tìm theo ID đơn hàng
     Order* findById(const std::string& orderId);
     const Order* findById(const std::string& orderId) const;
 
+    // Lọc đơn hàng theo ID khách hàng
+    Vector<Order> findByCustomerId(const std::string& customerId) const;
+
+    // Lọc đơn hàng theo trạng thái
+    Vector<Order> findByStatus(OrderStatus status) const;
+
+    // Kiểm tra xem có đơn hàng nào chứa sản phẩm với ID tương ứng không
+    bool containsPhone(const std::string& phoneId) const;
+
+    // CRUD: Thêm, cập nhật, xóa
     bool addOrder(const Order& order);
     bool updateOrder(const Order& updatedOrder);
     bool deleteOrder(const std::string& id);
+
+    // Kiểm tra ID có tồn tại không
+    bool existsById(const std::string& id) const;
 };
 
 // ================= IMPLEMENTATION =================
 
+// Tạo file Orders.txt mới với header chuẩn
+inline bool OrderRepository::createEmptyFile() const {
+    std::ofstream newFile(filePath);
+    if (!newFile.is_open()) {
+        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
+        return false;
+    }
+    newFile << "id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details\n";
+    newFile.close();
+    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
+    return true;
+}
+
 inline OrderRepository::OrderRepository(std::string path) : filePath(path) {}
 
+// Nạp dữ liệu từ Orders.txt vào RAM
+// - Gọi Order::fromFileLine() để phân tích mỗi dòng
+// - Nếu file không tồn tại: tự tạo file mới
+// - Nếu một dòng bị lỗi: in cảnh báo, bỏ qua và đọc tiếp
 inline bool OrderRepository::loadFromFile() {
     std::ifstream file(filePath);
     if (!file.is_open()) {
-        return false;
+        std::cerr << "[Canh bao] Khong the mo file: " << filePath
+                  << ". Dang tao file moi..." << std::endl;
+        return createEmptyFile();
     }
 
     orders.clear();
     std::string line;
     bool isHeader = true;
+    int lineNum = 0;
 
     while (std::getline(file, line)) {
+        ++lineNum;
         line = StringHelper::trim(line);
-        if (line.empty() || line == "...") continue;
+        if (line.empty()) continue;
 
         if (isHeader) {
             isHeader = false;
             continue;
         }
 
-        Vector<std::string> parts = StringHelper::split(line, '|');
-        if (parts.getSize() >= 10) {
-            std::string id = StringHelper::trim(parts[0]);
-            std::string customerId = StringHelper::trim(parts[1]);
-            int delivInt = 0;
-            int payInt = 0;
-            int statusInt = 0;
-            try {
-                delivInt = std::stoi(StringHelper::trim(parts[2]));
-                payInt = std::stoi(StringHelper::trim(parts[3]));
-                statusInt = std::stoi(StringHelper::trim(parts[4]));
-            } catch (...) {}
-
-            DeliveryMethod deliv = static_cast<DeliveryMethod>(delivInt);
-            PaymentMethod pay = static_cast<PaymentMethod>(payInt);
-            OrderStatus status = static_cast<OrderStatus>(statusInt);
-
-            DateTime orderTime = DateTime::fromString(StringHelper::trim(parts[5]));
-            double discountAmount = StringHelper::parsePrice(parts[6]);
-            ShippingInfo ship(StringHelper::trim(parts[7]), 
-                              StringHelper::trim(parts[8]), 
-                              StringHelper::trim(parts[9]));
-
-            Order order(id, customerId, deliv, pay, ship);
-            order.setStatus(status);
-            order.setOrderTime(orderTime);
-            order.setDiscountAmount(discountAmount);
-
-            if (parts.getSize() >= 11) {
-                std::string detailsStr = StringHelper::trim(parts[10]);
-                Vector<std::string> itemTokens = StringHelper::split(detailsStr, ';');
-                for (int i = 0; i < itemTokens.getSize(); ++i) {
-                    Vector<std::string> d = StringHelper::split(itemTokens[i], ',');
-                    if (d.getSize() >= 4) {
-                        std::string pId = StringHelper::trim(d[0]);
-                        std::string pName = StringHelper::trim(d[1]);
-                        int qty = 1;
-                        double price = 0.0;
-                        try {
-                            qty = std::stoi(StringHelper::trim(d[2]));
-                            price = StringHelper::parsePrice(d[3]);
-                        } catch (...) {}
-                        order.addDetail(OrderDetail(pId, pName, qty, price));
-                    }
-                }
+        try {
+            Order o = Order::fromFileLine(line);
+            if (!o.getID().empty()) {
+                orders.push_back(o);
             }
-
-            orders.push_back(order);
+        } catch (const std::exception& e) {
+            std::cerr << "[Canh bao] Loi doc dong " << lineNum
+                      << " trong " << filePath << ": " << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "[Canh bao] Loi khong xac dinh tai dong " << lineNum
+                      << " trong " << filePath << std::endl;
         }
     }
     file.close();
     return true;
 }
 
+// Ghi toàn bộ danh sách orders xuống file (dùng Order::toFileString())
 inline bool OrderRepository::saveToFile() const {
     std::ofstream file(filePath);
     if (!file.is_open()) {
+        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
         return false;
     }
-
     file << "id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details\n";
     for (int i = 0; i < orders.getSize(); ++i) {
-        const Order& o = orders[i];
-        file << o.getID() << "|"
-             << o.getCustomerId() << "|"
-             << static_cast<int>(o.getDeliveryMethod()) << "|"
-             << static_cast<int>(o.getPaymentMethod()) << "|"
-             << static_cast<int>(o.getStatus()) << "|"
-             << o.getOrderTime().toString() << "|"
-             << o.getDiscountAmount() << "|"
-             << o.getShippingInfo().getReceiverName() << "|"
-             << o.getShippingInfo().getPhoneNumber() << "|"
-             << o.getShippingInfo().getAddress() << "|";
-
-        const Vector<OrderDetail>& d = o.getDetails();
-        for (int j = 0; j < d.getSize(); ++j) {
-            file << d[j].getPhoneId() << ","
-                 << d[j].getPhoneName() << ","
-                 << d[j].getQuantity() << ","
-                 << d[j].getUnitPrice();
-            if (j < d.getSize() - 1) {
-                file << ";";
-            }
-        }
-        file << "\n";
+        file << orders[i].toFileString() << "\n";
     }
     file.close();
     return true;
 }
 
-inline const Vector<Order>& OrderRepository::getAllOrders() const {
-    return orders;
-}
+inline const Vector<Order>& OrderRepository::getAllOrders() const { return orders; }
+inline Vector<Order>& OrderRepository::getAllOrders() { return orders; }
 
-inline Vector<Order>& OrderRepository::getAllOrders() {
-    return orders;
-}
-
+// Tìm Order theo ID
 inline Order* OrderRepository::findById(const std::string& orderId) {
     for (int i = 0; i < orders.getSize(); ++i) {
-        if (orders[i].getID() == orderId) {
-            return &orders[i];
-        }
+        if (orders[i].getID() == orderId) return &orders[i];
     }
     return nullptr;
 }
 
 inline const Order* OrderRepository::findById(const std::string& orderId) const {
     for (int i = 0; i < orders.getSize(); ++i) {
-        if (orders[i].getID() == orderId) {
-            return &orders[i];
-        }
+        if (orders[i].getID() == orderId) return &orders[i];
     }
     return nullptr;
 }
 
+// Lọc tất cả đơn hàng của một khách hàng
+inline Vector<Order> OrderRepository::findByCustomerId(const std::string& customerId) const {
+    Vector<Order> result;
+    for (int i = 0; i < orders.getSize(); ++i) {
+        if (orders[i].getCustomerId() == customerId) {
+            result.push_back(orders[i]);
+        }
+    }
+    return result;
+}
+
+// Lọc đơn hàng theo trạng thái (ví dụ: PENDING, COMPLETED...)
+inline Vector<Order> OrderRepository::findByStatus(OrderStatus status) const {
+    Vector<Order> result;
+    for (int i = 0; i < orders.getSize(); ++i) {
+        if (orders[i].getStatus() == status) {
+            result.push_back(orders[i]);
+        }
+    }
+    return result;
+}
+
+// Kiểm tra xem một sản phẩm có trong bất kỳ đơn hàng nào không
+inline bool OrderRepository::containsPhone(const std::string& phoneId) const {
+    for (int i = 0; i < orders.getSize(); ++i) {
+        const Vector<OrderDetail>& details = orders[i].getDetails();
+        for (int j = 0; j < details.getSize(); ++j) {
+            if (details[j].getPhoneId() == phoneId) return true;
+        }
+    }
+    return false;
+}
+
+// Thêm đơn hàng mới
 inline bool OrderRepository::addOrder(const Order& order) {
+    if (existsById(order.getID())) {
+        std::cerr << "[Canh bao] ID don hang da ton tai: " << order.getID() << std::endl;
+        return false;
+    }
     orders.push_back(order);
     return saveToFile();
 }
 
+// Cập nhật đơn hàng theo ID
 inline bool OrderRepository::updateOrder(const Order& updatedOrder) {
     for (int i = 0; i < orders.getSize(); ++i) {
         if (orders[i].getID() == updatedOrder.getID()) {
@@ -183,9 +200,11 @@ inline bool OrderRepository::updateOrder(const Order& updatedOrder) {
             return saveToFile();
         }
     }
+    std::cerr << "[Canh bao] Khong tim thay don hang ID: " << updatedOrder.getID() << std::endl;
     return false;
 }
 
+// Xóa đơn hàng theo ID
 inline bool OrderRepository::deleteOrder(const std::string& id) {
     for (int i = 0; i < orders.getSize(); ++i) {
         if (orders[i].getID() == id) {
@@ -193,7 +212,12 @@ inline bool OrderRepository::deleteOrder(const std::string& id) {
             return saveToFile();
         }
     }
+    std::cerr << "[Canh bao] Khong tim thay don hang ID de xoa: " << id << std::endl;
     return false;
+}
+
+inline bool OrderRepository::existsById(const std::string& id) const {
+    return findById(id) != nullptr;
 }
 
 #endif // ORDERREPOSITORY_H

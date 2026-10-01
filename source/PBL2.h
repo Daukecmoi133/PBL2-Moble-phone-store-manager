@@ -38,11 +38,15 @@
 #include "models/DiscountCode.h"
 
 // ================= TẦNG LƯU TRỮ VÀ NẠP TỆP (REPOSITORIES) =================
+#include "repositories/AccountRepository.h"
 #include "repositories/PhoneRepository.h"
-#include "repositories/EmployeeRepository.h"
 #include "repositories/CustomerRepository.h"
+#include "repositories/EmployeeRepository.h"
+#include "repositories/SupplierRepository.h"
 #include "repositories/DiscountRepository.h"
 #include "repositories/OrderRepository.h"
+#include "repositories/InvoiceRepository.h"
+#include "repositories/StockReceiptRepository.h"
 
 // ================= TẦNG XỬ LÝ NGHIỆP VỤ VÀ DỮ LIỆU (SERVICES) =================
 #include "services/PhoneService.h"
