@@ -29,6 +29,10 @@ public:
     virtual RoleType getRoleType() const = 0; // Phương thức thuần ảo trả về loại chức vụ RoleType
 
     virtual std::string toFileString() const; // Hàm chuyển thông tin nhân viên thành định dạng lưu file
+
+    // Đọc và phân tích một dòng từ Employee.txt, tạo đối tượng Employee*
+    // Caller phải tự quản lý vòng đời của con trỏ (delete sau khi dùng)
+    static Employee* fromFileLine(const std::string& line);
 };
 
 // Role ADMIN - Quản trị viên cửa hàng (kế thừa từ Employee)
@@ -93,10 +97,39 @@ inline double Employee::getSalary() const { return salary; }
 inline void Employee::setSalary(double s) { salary = s; }
 
 // Hàm chuyển thông tin nhân viên thành định dạng chuỗi lưu file Employee.txt
+// Format: id|firstName|middleName|lastName|phoneNumber|email|username|password|role|address|salary
 inline std::string Employee::toFileString() const {
     return id + "|" + name.firstName + "|" + name.middleName + "|" + name.lastName + "|" +
-           phoneNumber + "|" + email + "|" + account.getUsername() + "|******|" +
-           std::to_string(static_cast<int>(getRoleType())) + "|" + address;
+           phoneNumber + "|" + email + "|" + account.getUsername() + "|" + account.getPassword() + "|" +
+           std::to_string(static_cast<int>(getRoleType())) + "|" + address + "|" +
+           std::to_string(static_cast<long long>(salary));
+}
+
+// Phân tích dòng dữ liệu từ Employee.txt, trả về con trỏ Employee* đúng kiểu
+// Note: Caller có trách nhiệm gọi delete sau khi sử dụng xong
+inline Employee* Employee::fromFileLine(const std::string& line) {
+    Vector<std::string> parts = StringHelper::split(line, '|');
+    if (parts.getSize() < 10) return nullptr; // Dòng không hợp lệ
+
+    std::string id       = StringHelper::trim(parts[0]);
+    Name name(StringHelper::trim(parts[1]), StringHelper::trim(parts[2]), StringHelper::trim(parts[3]));
+    std::string phone    = StringHelper::trim(parts[4]);
+    std::string email    = StringHelper::trim(parts[5]);
+    std::string username = StringHelper::trim(parts[6]);
+    std::string password = StringHelper::trim(parts[7]);
+    int roleInt          = std::stoi(StringHelper::trim(parts[8]));
+    std::string address  = StringHelper::trim(parts[9]);
+    double salary        = (parts.getSize() >= 11) ? std::stod(StringHelper::trim(parts[10])) : 0.0;
+
+    // Mapper từ số role sang RoleType (1=Admin, 2=Sale, 3=Warehouse)
+    if (roleInt == 1) {
+        return new AdminEmployee(id, name, phone, email, address, username, password, salary);
+    } else if (roleInt == 2) {
+        return new SalesEmployee(id, name, phone, email, address, username, password, salary);
+    } else if (roleInt == 3) {
+        return new WarehouseEmployee(id, name, phone, email, address, username, password, salary);
+    }
+    return nullptr; // Role không xác định
 }
 
 // --- AdminEmployee ---

@@ -87,6 +87,10 @@ public:
     double calculateTotal() const;
     void confirm();
     void cancel();
+
+    // Format: id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details
+    std::string toFileString() const;
+    static Order fromFileLine(const std::string& line);
 };
 
 // ================= IMPLEMENTATION SHIPPINGINFO =================
@@ -177,6 +181,70 @@ inline void Order::confirm() {
 
 inline void Order::cancel() {
     status = OrderStatus::CANCELLED;
+}
+
+// Format: id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details
+// details: phoneId,phoneName,quantity,unitPrice;phoneId,phoneName,...
+inline std::string Order::toFileString() const {
+    std::string line = id + "|" + customerId + "|" +
+        std::to_string(static_cast<int>(deliveryMethod)) + "|" +
+        std::to_string(static_cast<int>(paymentMethod)) + "|" +
+        std::to_string(static_cast<int>(status)) + "|" +
+        orderTime.toString() + "|" +
+        std::to_string(static_cast<long long>(discountAmount)) + "|" +
+        shippingInfo.getReceiverName() + "|" +
+        shippingInfo.getPhoneNumber() + "|" +
+        shippingInfo.getAddress() + "|";
+    for (int i = 0; i < details.getSize(); ++i) {
+        line += details[i].getPhoneId() + "," + details[i].getPhoneName() + "," +
+                std::to_string(details[i].getQuantity()) + "," +
+                std::to_string(static_cast<long long>(details[i].getUnitPrice()));
+        if (i < details.getSize() - 1) line += ";";
+    }
+    return line;
+}
+
+// Phân tích dòng dữ liệu từ Orders.txt thành đối tượng Order
+inline Order Order::fromFileLine(const std::string& line) {
+    Vector<std::string> parts = StringHelper::split(line, '|');
+    if (parts.getSize() < 11) return Order(); // Dòng không hợp lệ
+
+    Order o;
+    o.setID(StringHelper::trim(parts[0]));
+    o.setCustomerId(StringHelper::trim(parts[1]));
+    // deliveryMethod: 0=PICKUP, 1=DELIVERY
+    int deliv = std::stoi(StringHelper::trim(parts[2]));
+    // paymentMethod: 0=CASH, 1=BANK_TRANSFER, 2=CREDIT_CARD
+    int pay   = std::stoi(StringHelper::trim(parts[3]));
+    int stat  = std::stoi(StringHelper::trim(parts[4]));
+    o.setOrderTime(DateTime::fromString(StringHelper::trim(parts[5])));
+    o.setDiscountAmount(std::stod(StringHelper::trim(parts[6])));
+
+    ShippingInfo ship(
+        StringHelper::trim(parts[7]),
+        StringHelper::trim(parts[8]),
+        StringHelper::trim(parts[9])
+    );
+
+    // Parse details: phoneId,phoneName,quantity,unitPrice;...
+    if (!StringHelper::trim(parts[10]).empty()) {
+        Vector<std::string> detailTokens = StringHelper::split(parts[10], ';');
+        for (int i = 0; i < detailTokens.getSize(); ++i) {
+            Vector<std::string> d = StringHelper::split(detailTokens[i], ',');
+            if (d.getSize() >= 4) {
+                OrderDetail od(
+                    StringHelper::trim(d[0]),
+                    StringHelper::trim(d[1]),
+                    std::stoi(StringHelper::trim(d[2])),
+                    std::stod(StringHelper::trim(d[3]))
+                );
+                o.addDetail(od);
+            }
+        }
+    }
+
+    o.setStatus(static_cast<OrderStatus>(stat));
+    return o;
 }
 
 #endif // ORDER_H

@@ -19,6 +19,12 @@ public:
 
     std::string getTaxCode() const; // Hàm trả về mã số thuế
     void setTaxCode(const std::string& code); // Hàm thiết lập mã số thuế
+
+    // Format: id|companyName|taxCode|contactPerson|phoneNumber|email|address
+    std::string toFileString() const;
+
+    // Đọc và phân tích một dòng từ Suppliers.txt
+    static Supplier fromFileLine(const std::string& line);
 };
 
 // ================= IMPLEMENTATION =================
@@ -39,5 +45,31 @@ inline void Supplier::setCompanyName(const std::string& name) { companyName = na
 // Hàm getter / setter cho mã số thuế
 inline std::string Supplier::getTaxCode() const { return taxCode; }
 inline void Supplier::setTaxCode(const std::string& code) { taxCode = code; }
+
+// Format: id|companyName|taxCode|contactPerson|phoneNumber|email|address
+// Note: contactPerson được lưu dưới dạng chuỗi đầy đủ (Fullname), không tách 3 trường
+inline std::string Supplier::toFileString() const {
+    return id + "|" + companyName + "|" + taxCode + "|" + name.getFullName() + "|" +
+           phoneNumber + "|" + email + "|" + address;
+}
+
+// Phân tích dòng dữ liệu từ Suppliers.txt thành đối tượng Supplier
+inline Supplier Supplier::fromFileLine(const std::string& line) {
+    Vector<std::string> parts = StringHelper::split(line, '|');
+    if (parts.getSize() < 7) return Supplier(); // Dòng không hợp lệ
+
+    std::string id          = StringHelper::trim(parts[0]);
+    std::string companyName = StringHelper::trim(parts[1]);
+    std::string taxCode     = StringHelper::trim(parts[2]);
+    // contactPerson lưu dưới dạng fullname: "Nguyen Van Dai"
+    // → đưa toàn bộ vào lastName, giữ rỗng first/middle (to maintain compatibility)
+    std::string fullContact = StringHelper::trim(parts[3]);
+    Name contactName("", "", fullContact); // lưu như lastName để getFullName() trả đúng
+    std::string phone       = StringHelper::trim(parts[4]);
+    std::string email       = StringHelper::trim(parts[5]);
+    std::string address     = StringHelper::trim(parts[6]);
+
+    return Supplier(id, companyName, taxCode, contactName, phone, email, address);
+}
 
 #endif // SUPPLIER_H

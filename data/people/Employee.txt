@@ -1,4 +1,4 @@
-id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address
--1|admin|admin|admin|null|null|admin@|123456|1|null
-1|Trần|Khánh|Duy|0987654321|trankhanhduy123@gmail.com|duykhanh123|duy123|4||Hòa Khánh, Đà Nẵng, Việt Nam
-...
+id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary
+EMP-001|Admin|He|Thong|0900000001|admin@store.com|admin|123456|1|Hai Chau, Da Nang|15000000
+EMP-002|Tran|Khanh|Duy|0987654321|trankhanhduy123@gmail.com|duykhanh|duy123|2|Hoa Khanh, Da Nang|8000000
+EMP-003|Le|Van|Kho|0935123456|vankho@store.com|kho_levan|kho123|3|Lien Chieu, Da Nang|7500000

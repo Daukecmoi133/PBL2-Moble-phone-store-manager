@@ -1,2 +1,4 @@
-id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address
-CUST-001|Nguyen|Van|B|0912345678|nguyenvanb@gmail.com|vanb123|******|4|Da Nang
+id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address
+CUST-001|Nguyen|Van|B|0912345678|nguyenvanb@gmail.com|vanb123|123456|150|Da Nang
+CUST-002|Tran|Thi|Mai|0905111222|maitran@gmail.com|thimai|mai123|80|Thanh Khe, Da Nang
+CUST-003|Le|Hoang|Nam|0988777666|namle@gmail.com|namhoang|nam123|0|Hai Chau, Da Nang

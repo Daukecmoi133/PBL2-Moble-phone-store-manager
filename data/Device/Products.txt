@@ -1,2 +1,8 @@
-id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity
-101|Oppo Reno 16f|Oppo|Android - ColorOS16|10.600.000 đ|14.000.000 đ|42
+id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications
+101|Oppo Reno 16f 5G|Oppo|Android - ColorOS16|10.600.000 đ|14.000.000 đ|42|Oppo Electronics|6.67 inch, 8GB RAM, 256GB, 5000mAh
+102|iPhone 15 Pro Max 256GB|Apple|iOS 17|27.500.000 đ|31.990.000 đ|18|Apple Inc.|6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
+103|Samsung Galaxy S24 Ultra|Samsung|Android 14 - OneUI 6.1|25.000.000 đ|29.990.000 đ|25|Samsung Electronics|6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3
+104|Xiaomi 14 Ultra 512GB|Xiaomi|Android 14 - HyperOS|21.000.000 đ|25.490.000 đ|15|Xiaomi Corporation|6.73 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3
+105|iPhone 13 128GB|Apple|iOS 15|11.200.000 đ|13.890.000 đ|30|Apple Inc.|6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
+106|Samsung Galaxy A55 5G|Samsung|Android 14|7.500.000 đ|9.690.000 đ|50|Samsung Electronics|6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh
+107|Oppo Find X7 Ultra|Oppo|Android 14 - ColorOS14|18.500.000 đ|22.900.000 đ|12|Oppo Electronics|6.82 inch AMOLED, 16GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh

@@ -42,6 +42,10 @@ public:
     bool isApplicable(double orderValue) const;
     double calculateDiscount(double orderValue) const;
     void increaseUsage();
+
+    // Đọc và phân tích một dòng từ Discount.txt
+    // Format: code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount
+    static DiscountCode fromFileLine(const std::string& line);
 };
 
 // ================= IMPLEMENTATION =================
@@ -111,6 +115,26 @@ inline void DiscountCode::increaseUsage() {
     if (usedCount < maxUsage) {
         ++usedCount;
     }
+}
+
+// Phân tích dòng dữ liệu từ Discount.txt thành đối tượng DiscountCode
+// Format: code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount
+inline DiscountCode DiscountCode::fromFileLine(const std::string& line) {
+    Vector<std::string> parts = StringHelper::split(line, '|');
+    if (parts.getSize() < 9) return DiscountCode(); // Dòng không hợp lệ
+
+    std::string code   = StringHelper::trim(parts[0]);
+    int typeInt        = std::stoi(StringHelper::trim(parts[1])); // 0=PERCENTAGE, 1=FIXED_AMOUNT
+    double value       = std::stod(StringHelper::trim(parts[2]));
+    DateTime startDate = DateTime::fromDateString(StringHelper::trim(parts[3]));
+    DateTime endDate   = DateTime::fromDateString(StringHelper::trim(parts[4]));
+    double minOrder    = std::stod(StringHelper::trim(parts[5]));
+    double maxDiscount = std::stod(StringHelper::trim(parts[6]));
+    int maxUsage       = std::stoi(StringHelper::trim(parts[7]));
+    int usedCount      = std::stoi(StringHelper::trim(parts[8]));
+
+    return DiscountCode(code, static_cast<DiscountType>(typeInt), value,
+                        startDate, endDate, minOrder, maxDiscount, maxUsage, usedCount);
 }
 
 #endif // DISCOUNTCODE_H
