@@ -2,6 +2,47 @@
 
 ---
 
+## [v2.1.0] - 2026-10-15 — Khắc phục toàn vẹn dữ liệu & nghiệp vụ (A–G)
+
+### 🐛 Sửa lỗi toàn vẹn dữ liệu & nghiệp vụ theo PBL2_PLAN.md
+- **Đầu việc A (Thống nhất Role nhân viên):** Cập nhật `Employee::toFileString()` ghi mã 1-based (`1=Admin`, `2=Sale`, `3=Warehouse`) khớp `DATA_FORMAT_GUIDE.md` và `Employee::fromFileLine()`; bổ sung xử lý ngoại lệ an toàn `try-catch` cho `std::stoi`/`std::stod`.
+- **Đầu việc B (Toàn vẹn tham chiếu & Dữ liệu mẫu):** Bổ sung các setter còn thiếu (`deliveryMethod`, `paymentMethod`, `shippingInfo`) và gán đầy đủ trong `Order::fromFileLine()`. Kiểm chứng toàn bộ dữ liệu mẫu trong `data/` không trùng khóa chính và khớp khóa ngoại.
+- **Đầu việc C (Giao dịch đơn hàng & Tồn kho):** 
+  - `OrderService::processNextPendingOrder()`: Bỏ qua đơn cũ không còn `PENDING` trong hàng đợi FIFO; kiểm tra tồn kho toàn bộ giỏ hàng trước khi xuất; trừ kho nguyên tử với cơ chế rollback tự động hoàn kho nếu có sản phẩm thất bại giữa chừng hoặc ghi file lỗi.
+  - `OrderService::cancelOrder()`: Ngăn chặn hủy đơn `COMPLETED`; chỉ hoàn kho cho đơn `CONFIRMED` và trừ lại nếu lưu thất bại; chống hủy lặp lại nhiều lần.
+- **Đầu việc D (Nhất quán RAM & File):** `PhoneRepository` và `OrderRepository` lưu snapshot dữ liệu RAM trước khi ghi đĩa; tự động rollback dữ liệu RAM về nguyên trạng nếu `saveToFile()` trả về thất bại.
+- **Đầu việc E (BST và sản phẩm trùng giá):** `PhoneService` triển khai `PhonePriceKey` (Composite Key: `price + id`) cho cây nhị phân tìm kiếm `BST<PhonePriceKey, Phone>`; khắc phục hoàn toàn hiện tượng sản phẩm cùng mức giá bị đè mất khi lọc khoảng giá `filterByPriceRange()`.
+- **Đầu việc F (Bảo vệ toàn vẹn tham chiếu):** Kết nối `ReferenceChecker` vào `PhoneService::deletePhone()`; từ chối xóa sản phẩm nếu đã phát sinh giao dịch trong Đơn hàng, Hóa đơn hoặc Phiếu nhập kho.
+- **Đầu việc G (Validation & Dọn dẹp):** Bổ sung hàm kiểm tra tính hợp lệ của ngày tháng năm và năm nhuận trong `DateTime::fromDateString()`; dọn dẹp enum rỗng trong `ErrorMessage.h`; thêm header guard cho `CardService.h` và `InventoryService.h`.
+- **Giao diện & Nạp dữ liệu:** Cập nhật `main.cpp` gọi `loadFromFile()` trên toàn bộ Repositories và kết nối `ReferenceChecker` vào `PhoneService` khi khởi động ứng dụng GTK4.
+
+---
+
+## [v2.0.0] - 2026-10-03 — GTK 4 Admin UI (Production)
+
+### ✨ Giao diện quản trị GTK 4 hoàn chỉnh
+- **`UI/AdminApp.h` & `UI/AdminApp.cpp`**: Lớp `AdminApp` dùng `GtkApplication` + `GtkApplicationWindow`.
+- **`GtkHeaderBar`** với `GtkStackSwitcher` (tab Sản phẩm / Đơn hàng), nút Refresh, Toggle Theme (sáng/tối), About.
+- **`GtkColumnView` + `GListStore` + `GtkSignalListItemFactory`**: bảng điện thoại (ID, Tên, Hãng, Đơn giá, Số lượng); tiền tệ có dấu phân cách hàng nghìn.
+- **Tìm kiếm** theo tên, thống kê số sản phẩm / tổng tồn kho.
+- **Action Panel** (`GtkGrid` + `GtkLabel` + `GtkEntry`): Thêm / Sửa / Xóa sản phẩm và Tạo đơn hàng mới qua `PhoneService` / `OrderService`.
+- **Validate đầu vào** (bỏ trống tên, nhập chữ vào ô số, số âm...) và thông báo bằng `GtkAlertDialog` cho cả lỗi lẫn thành công.
+- **Data binding**: bảng tự refresh ngay sau mọi thao tác thành công.
+- **CSS (`GtkCssProvider`)**: tiêu đề in đậm, màu cảnh báo, viền form bo góc.
+
+### 🔧 Build & Hệ thống
+- **`main.cpp`**: Entry point GTK4 — khởi tạo Repositories → Services → `AdminApp` → `g_application_run`.
+- **`Makefile`**: `g++ -std=c++17`, `pkg-config gtk4`, auto-dependency (`-MMD -MP`), targets `all`, `run`, `clean`, `info`.
+
+### 🐛 Sửa lỗi
+- Bỏ pseudo-class `:invalid` không tồn tại trong GTK4 CSS (gây `Theme parser error`).
+- Sửa compound-literal / cast `gpointer → GObject*` khi biên dịch C++17.
+
+### 🗑️ Loại bỏ
+- `UI/GtkAdminUI.*` (GTK3) và `main_gtk4.cpp` — thay thế hoàn toàn bởi `AdminApp` và `main.cpp`.
+
+---
+
 ## [v1.0.0] - 2026-10-02 — GTK UI Layer & Final Integration
 
 ### ✨ GTK UI Mới

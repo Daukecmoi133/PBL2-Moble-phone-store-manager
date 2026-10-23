@@ -7,26 +7,17 @@
 #include "../repositories/OrderRepository.h"
 #include "../repositories/InvoiceRepository.h"
 #include "../repositories/StockReceiptRepository.h"
+#include "../utils/IdGenerator.h"
 
 
-// Kiểm tra tính hợp lệ của mã ID (chỉ chứa các ký tự chữ cái và số, không rỗng)
-inline bool isValidID(const std::string& id, std::string& errorMessage) {
-    if (id.empty()) {
-        errorMessage = "Mã ID không được để trống!";
+inline bool isValidID(const std::string& id, const std::string& prefix,
+                      std::string& errorMessage, bool includesDate = false) {
+    if (!IdGenerator::isValidId(id, prefix, includesDate)) {
+        errorMessage = "Mã ID phải đúng định dạng " + prefix +
+                       (includesDate ? "-ddmmyyyy-000001." : "-000001.");
         return false;
     }
-    for (char c : id) {
-        if (!std::isalnum(static_cast<unsigned char>(c)) && c != '-' && c != '_') {
-            errorMessage = "Mã ID chỉ được chứa chữ cái, số và dấu gạch ngang!";
-            return false;
-        }
-    }
     return true;
-}
-
-inline bool isValidID(const std::string& id) {
-    std::string err;
-    return isValidID(id, err);
 }
 
 // Lớp kiểm tra ràng buộc toàn vẹn tham chiếu (Reference Integrity Checker)

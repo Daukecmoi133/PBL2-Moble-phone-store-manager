@@ -1,1 +1,10 @@
-Đây là thư mục chứa dữ liệu người dùng
+PEOPLE DATA
+
+Customers.txt chua Customer va Account khach hang.
+Employee.txt chua cac loai Employee va Account nhan vien.
+Suppliers.txt chua nha cung cap va nguoi lien he.
+
+Moi file entity co mot dong header va cac cot phan cach bang '|'. Format chi
+tiet, role code va quy tac du lieu demo nam trong ../DATA_FORMAT_GUIDE.md.
+Tat ca tai khoan trong bo data nay la tai khoan demo plaintext; khong dung mat
+khau that.

@@ -15,6 +15,7 @@ private:
   std::string manufacturer;    // Nhà sản xuất
   std::string operatingSystem; // Hệ điều hành
   std::string specifications;  // Thông số kỹ thuật tóm tắt
+  std::string detailedSpecifications; // Thông số kỹ thuật chi tiết từ file riêng
   double importPrice;          // Giá nhập hàng
   double sellingPrice;         // Giá bán lẻ
   int quantity;                // Số lượng tồn kho
@@ -33,6 +34,7 @@ public:
   std::string getManufacturer() const;    // Hàm trả về nhà sản xuất
   std::string getOperatingSystem() const; // Hàm trả về hệ điều hành
   std::string getSpecifications() const;  // Hàm trả về thông số kỹ thuật
+  std::string getDetailedSpecifications() const;
   double getImportPrice() const;          // Hàm trả về giá nhập
   double getSellingPrice() const;         // Hàm trả về giá bán lẻ
   int getQuantity() const;                // Hàm trả về số lượng tồn kho
@@ -46,6 +48,7 @@ public:
   void setOperatingSystem(const std::string &os); // Hàm thiết lập hệ điều hành
   void setSpecifications(
       const std::string &specs);      // Hàm thiết lập thông số kỹ thuật
+  void setDetailedSpecifications(const std::string &specs);
   void setImportPrice(double price);  // Hàm thiết lập giá nhập
   void setSellingPrice(double price); // Hàm thiết lập giá bán
   void setQuantity(int qty);          // Hàm thiết lập số lượng tồn kho
@@ -68,15 +71,16 @@ public:
 // Hàm dựng mặc định
 inline Phone::Phone()
     : id(""), name(""), brand(""), manufacturer(""), operatingSystem(""),
-      specifications(""), importPrice(0.0), sellingPrice(0.0), quantity(0) {}
+      specifications(""), detailedSpecifications(""), importPrice(0.0),
+      sellingPrice(0.0), quantity(0) {}
 
 // Hàm dựng đủ tham số
 inline Phone::Phone(std::string id, std::string name, std::string brand,
                     std::string os, double importPrice, double sellingPrice,
                     int quantity, std::string manufacturer, std::string specs)
     : id(id), name(name), brand(brand), manufacturer(manufacturer),
-      operatingSystem(os), specifications(specs), importPrice(importPrice),
-      sellingPrice(sellingPrice), quantity(quantity) {}
+      operatingSystem(os), specifications(specs), detailedSpecifications(""),
+      importPrice(importPrice), sellingPrice(sellingPrice), quantity(quantity) {}
 
 // Hàm getter các thuộc tính
 inline std::string Phone::getID() const { return id; }
@@ -85,6 +89,9 @@ inline std::string Phone::getBrand() const { return brand; }
 inline std::string Phone::getManufacturer() const { return manufacturer; }
 inline std::string Phone::getOperatingSystem() const { return operatingSystem; }
 inline std::string Phone::getSpecifications() const { return specifications; }
+inline std::string Phone::getDetailedSpecifications() const {
+  return detailedSpecifications;
+}
 inline double Phone::getImportPrice() const { return importPrice; }
 inline double Phone::getSellingPrice() const { return sellingPrice; }
 inline int Phone::getQuantity() const { return quantity; }
@@ -101,6 +108,9 @@ inline void Phone::setOperatingSystem(const std::string &os) {
 }
 inline void Phone::setSpecifications(const std::string &specs) {
   this->specifications = specs;
+}
+inline void Phone::setDetailedSpecifications(const std::string &specs) {
+  detailedSpecifications = specs;
 }
 inline void Phone::setImportPrice(double price) { this->importPrice = price; }
 inline void Phone::setSellingPrice(double price) { this->sellingPrice = price; }

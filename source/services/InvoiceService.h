@@ -11,8 +11,10 @@
 #include "../core/Vector.h"
 #include "../repositories/InvoiceRepository.h"
 #include "../repositories/OrderRepository.h"
+#include "../utils/IdGenerator.h"
 #include "../utils/StringHelper.h"
 #include "Check.h"
+#include <vector>
 
 // Tầng Service: Nghiệp vụ tạo, tra cứu và quản lý hóa đơn thanh toán.
 // Đảm bảo: một đơn hàng chỉ có một hóa đơn; chỉ tạo được từ đơn CONFIRMED/COMPLETED.
@@ -21,8 +23,7 @@ private:
     InvoiceRepository& invoiceRepo;
     OrderRepository& orderRepo;
 
-    // Tạo ID hóa đơn tự động theo format INV-XXXX
-    std::string generateInvoiceId() const;
+    bool generateInvoiceId(std::string& id, std::string& errorMessage) const;
 
 public:
     InvoiceService(InvoiceRepository& iRepo, OrderRepository& oRepo);
@@ -61,24 +62,20 @@ public:
 
 // ================= IMPLEMENTATION =================
 
-// Tự sinh ID hóa đơn theo format INV-XXXX (số tăng dần)
-inline std::string InvoiceService::generateInvoiceId() const {
-    int maxNum = 0;
+inline bool InvoiceService::generateInvoiceId(std::string& id,
+                                             std::string& errorMessage) const {
+    std::vector<std::string> existingIds;
     const Vector<Invoice>& list = invoiceRepo.getAll();
     for (int i = 0; i < list.getSize(); ++i) {
-        const std::string& id = list[i].getID();
-        // Format: INV-XXXX → lấy phần số sau "INV-"
-        if (id.size() > 4 && id.substr(0, 4) == "INV-") {
-            try {
-                int num = std::stoi(id.substr(4));
-                if (num > maxNum) maxNum = num;
-            } catch (...) {}
-        }
+        existingIds.push_back(list[i].getID());
     }
-    // Tạo ID mới với số tiếp theo, padding 3 chữ số
-    std::string numStr = std::to_string(maxNum + 1);
-    while (numStr.size() < 3) numStr = "0" + numStr;
-    return "INV-" + numStr;
+    const std::string idDate = IdGenerator::currentDateKey();
+    if (idDate.empty()) {
+        errorMessage = "Không thể xác định ngày để sinh mã hóa đơn.";
+        return false;
+    }
+    return IdGenerator::nextId("INV", idDate,
+                               existingIds, id, errorMessage);
 }
 
 inline InvoiceService::InvoiceService(InvoiceRepository& iRepo, OrderRepository& oRepo)
@@ -162,7 +159,8 @@ inline bool InvoiceService::createInvoiceFromOrder(
     }
 
     // Tạo hóa đơn từ đơn hàng
-    std::string invId = generateInvoiceId();
+    std::string invId;
+    if (!generateInvoiceId(invId, errorMessage)) return false;
     Invoice inv(invId,
                 orderId,
                 order->getCustomerId(),

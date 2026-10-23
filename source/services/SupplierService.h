@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 #include "../models/Supplier.h"
 #include "../models/ImportReceipt.h"
 #include "../core/Vector.h"
@@ -24,9 +25,6 @@ private:
     SupplierRepository& supplierRepo;
     StockReceiptRepository& receiptRepo;
     PhoneService* phoneService;   // Dùng để tăng tồn kho khi nhập hàng
-
-    // Tự sinh ID phiếu nhập kho theo format REC-XXXX
-    std::string generateReceiptId() const;
 
     // Validate thông tin nhà cung cấp
     bool validateSupplier(const Supplier& sup, std::string& errorMessage) const;
@@ -66,27 +64,9 @@ public:
 
 // ================= IMPLEMENTATION =================
 
-// Tự sinh ID phiếu nhập theo format REC-XXXX
-inline std::string SupplierService::generateReceiptId() const {
-    int maxNum = 0;
-    const Vector<ImportReceipt>& list = receiptRepo.getAll();
-    for (int i = 0; i < list.getSize(); ++i) {
-        const std::string& id = list[i].getID();
-        if (id.size() > 4 && id.substr(0, 4) == "REC-") {
-            try {
-                int num = std::stoi(id.substr(4));
-                if (num > maxNum) maxNum = num;
-            } catch (...) {}
-        }
-    }
-    std::string numStr = std::to_string(maxNum + 1);
-    while (numStr.size() < 3) numStr = "0" + numStr;
-    return "REC-" + numStr;
-}
-
 // Validate nghiệp vụ nhà cung cấp
 inline bool SupplierService::validateSupplier(const Supplier& sup, std::string& errorMessage) const {
-    if (!isValidID(sup.getID(), errorMessage)) return false;
+    if (!isValidID(sup.getID(), "SUP", errorMessage)) return false;
     if (StringHelper::trim(sup.getCompanyName()).empty()) {
         errorMessage = "Ten cong ty khong duoc de trong!";
         return false;
@@ -117,14 +97,27 @@ inline Vector<Supplier> SupplierService::searchByName(const std::string& keyword
 
 // Thêm nhà cung cấp mới
 inline bool SupplierService::addSupplier(const Supplier& sup, std::string& errorMessage) {
-    if (!validateSupplier(sup, errorMessage)) return false;
+    Supplier supplier = sup;
+    if (supplier.getID().empty()) {
+        std::vector<std::string> existingIds;
+        const Vector<Supplier>& suppliers = supplierRepo.getAll();
+        for (int i = 0; i < suppliers.getSize(); ++i) {
+            existingIds.push_back(suppliers[i].getID());
+        }
+        std::string generatedId;
+        if (!IdGenerator::nextId("SUP", "", existingIds, generatedId, errorMessage)) {
+            return false;
+        }
+        supplier.setID(generatedId);
+    }
+    if (!validateSupplier(supplier, errorMessage)) return false;
 
-    if (supplierRepo.findById(sup.getID()) != nullptr) {
-        errorMessage = "Ma nha cung cap [" + sup.getID() + "] da ton tai!";
+    if (supplierRepo.findById(supplier.getID()) != nullptr) {
+        errorMessage = "Ma nha cung cap [" + supplier.getID() + "] da ton tai!";
         return false;
     }
 
-    if (!supplierRepo.addSupplier(sup)) {
+    if (!supplierRepo.addSupplier(supplier)) {
         errorMessage = "Loi khi luu nha cung cap vao co so du lieu!";
         return false;
     }
@@ -204,14 +197,23 @@ inline Vector<ImportReceipt> SupplierService::getReceiptsBySupplierId(const std:
 // Bước 3: Tăng tồn kho từng sản phẩm
 // Bước 4: Nếu bất kỳ bước nào thất bại → rollback toàn bộ
 inline bool SupplierService::receiveStock(ImportReceipt& receipt, std::string& errorMessage) {
-    // Validate phiếu nhập
-    if (!isValidID(receipt.getID().empty() ? generateReceiptId() : receipt.getID(), errorMessage)) {
-        // Auto-assign ID nếu chưa có
-    }
-
-    // Auto-assign ID nếu rỗng
     if (receipt.getID().empty()) {
-        receipt.setID(generateReceiptId());
+        std::vector<std::string> existingIds;
+        const Vector<ImportReceipt>& receipts = receiptRepo.getAll();
+        for (int i = 0; i < receipts.getSize(); ++i) {
+            existingIds.push_back(receipts[i].getID());
+        }
+        std::string generatedId;
+        const std::string idDate = IdGenerator::currentDateKey();
+        if (idDate.empty() ||
+            !IdGenerator::nextId("IMP", idDate,
+                                 existingIds, generatedId, errorMessage)) {
+            if (errorMessage.empty()) errorMessage = "Không thể xác định ngày để sinh mã phiếu nhập.";
+            return false;
+        }
+        receipt.setID(generatedId);
+    } else if (!isValidID(receipt.getID(), "IMP", errorMessage, true)) {
+        return false;
     }
 
     if (receiptRepo.findById(receipt.getID()) != nullptr) {

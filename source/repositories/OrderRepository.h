@@ -188,16 +188,28 @@ inline bool OrderRepository::addOrder(const Order& order) {
         std::cerr << "[Canh bao] ID don hang da ton tai: " << order.getID() << std::endl;
         return false;
     }
+    // FIX LỖI: Luu snapshot RAM de rollback neu ghi file that bai
+    Vector<Order> backup = orders;
     orders.push_back(order);
-    return saveToFile();
+    if (!saveToFile()) {
+        orders = backup; // Rollback
+        return false;
+    }
+    return true;
 }
 
 // Cập nhật đơn hàng theo ID
 inline bool OrderRepository::updateOrder(const Order& updatedOrder) {
     for (int i = 0; i < orders.getSize(); ++i) {
         if (orders[i].getID() == updatedOrder.getID()) {
+            // FIX LỖI: Luu snapshot RAM de rollback neu ghi file that bai
+            Vector<Order> backup = orders;
             orders[i] = updatedOrder;
-            return saveToFile();
+            if (!saveToFile()) {
+                orders = backup; // Rollback
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay don hang ID: " << updatedOrder.getID() << std::endl;
@@ -208,8 +220,14 @@ inline bool OrderRepository::updateOrder(const Order& updatedOrder) {
 inline bool OrderRepository::deleteOrder(const std::string& id) {
     for (int i = 0; i < orders.getSize(); ++i) {
         if (orders[i].getID() == id) {
+            // FIX LỖI: Luu snapshot RAM de rollback neu ghi file that bai
+            Vector<Order> backup = orders;
             orders.removeAt(i);
-            return saveToFile();
+            if (!saveToFile()) {
+                orders = backup; // Rollback
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay don hang ID de xoa: " << id << std::endl;

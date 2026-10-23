@@ -25,7 +25,7 @@ public:
     void setAccount(const Account& acc);
 
     // Định dạng lưu file Customers.txt
-    // Format: id|firstName|middleName|lastName|phoneNumber|email|username|password|points|address
+    // Format: id|firstName|middleName|lastName|phoneNumber|email|username|password|points|address|accountId
     std::string toFileString() const;
 
     // Đọc và phân tích một dòng từ Customers.txt
@@ -72,11 +72,11 @@ inline const Account& Customer::getAccount() const { return account; }
 inline void Customer::setAccount(const Account& acc) { account = acc; }
 
 // Hàm trả về cấu trúc dữ liệu trong file .txt
-// Format: id|firstName|middleName|lastName|phoneNumber|email|username|password|points|address
+// Format: id|firstName|middleName|lastName|phoneNumber|email|username|password|points|address|accountId
 inline std::string Customer::toFileString() const {
     return id + "|" + name.firstName + "|" + name.middleName + "|" + name.lastName + "|" +
            phoneNumber + "|" + email + "|" + account.getUsername() + "|" + account.getPassword() + "|" +
-           std::to_string(points) + "|" + address;
+           std::to_string(points) + "|" + address + "|" + account.getID();
 }
 
 // Phân tích dòng dữ liệu từ Customers.txt thành đối tượng Customer
@@ -93,7 +93,11 @@ inline Customer Customer::fromFileLine(const std::string& line) {
     int points           = std::stoi(StringHelper::trim(parts[8]));
     std::string address  = StringHelper::trim(parts[9]);
 
-    return Customer(id, name, phone, email, address, username, password, points);
+    Customer customer(id, name, phone, email, address, username, password, points);
+    if (parts.getSize() >= 11) {
+        customer.getAccount().setID(StringHelper::trim(parts[10]));
+    }
+    return customer;
 }
 
 #endif // CUSTOMER_H

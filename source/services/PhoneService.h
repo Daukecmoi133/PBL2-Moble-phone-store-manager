@@ -3,23 +3,50 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 #include "../models/Phone.h"
 #include "../core/Vector.h"
 #include "../core/HashTable.h"
 #include "../core/BST.h"
 #include "../repositories/PhoneRepository.h"
+#include "../utils/IdGenerator.h"
 #include "../utils/StringHelper.h"
+#include "Check.h"
+
+// FIX LỖI: Key tổ hợp (Composite Key) cho BST để hỗ trợ nhiều sản phẩm có cùng giá bán
+struct PhonePriceKey {
+    double price;
+    std::string id;
+
+    bool operator<(const PhonePriceKey& other) const {
+        if (price != other.price) return price < other.price;
+        return id < other.id;
+    }
+    bool operator>(const PhonePriceKey& other) const {
+        if (price != other.price) return price > other.price;
+        return id > other.id;
+    }
+    bool operator<=(const PhonePriceKey& other) const { return !(other < *this); }
+    bool operator>=(const PhonePriceKey& other) const { return !(*this < other); }
+    bool operator==(const PhonePriceKey& other) const {
+        return price == other.price && id == other.id;
+    }
+    bool operator!=(const PhonePriceKey& other) const { return !(*this == other); }
+};
 
 // Tầng Service: Chịu trách nhiệm toàn bộ nghiệp vụ xử lý dữ liệu sản phẩm,
 // cài đặt và vận hành các cấu trúc dữ liệu giải thuật (HashTable O(1), BST O(log N)).
 class PhoneService {
 private:
     PhoneRepository& repo;
-    HashTable<std::string, Phone> idTable; // Bảng băm để tìm kiếm theo ID với O(1)
-    BST<double, Phone> priceTree;          // Cây BST để tìm kiếm/lọc theo khoảng giá O(log N)
+    HashTable<std::string, Phone> idTable;        // Bảng băm để tìm kiếm theo ID với O(1)
+    BST<PhonePriceKey, Phone> priceTree;          // FIX LỖI: Cây BST dùng PhonePriceKey để không mất sản phẩm trùng giá
+    ReferenceChecker* refChecker;                 // FIX LỖI: Ràng buộc toàn vẹn tham chiếu trước khi xóa
 
 public:
-    PhoneService(PhoneRepository& repository);
+    PhoneService(PhoneRepository& repository, ReferenceChecker* checker = nullptr);
+
+    void setReferenceChecker(ReferenceChecker* checker);
 
     // Tái cấu trúc các chỉ mục DSA (HashTable, BST) từ dữ liệu kho
     void rebuildIndices();
@@ -60,8 +87,13 @@ public:
 
 // ================= IMPLEMENTATION =================
 
-inline PhoneService::PhoneService(PhoneRepository& repository) : repo(repository) {
+inline PhoneService::PhoneService(PhoneRepository& repository, ReferenceChecker* checker) 
+    : repo(repository), refChecker(checker) {
     rebuildIndices();
+}
+
+inline void PhoneService::setReferenceChecker(ReferenceChecker* checker) {
+    refChecker = checker;
 }
 
 inline void PhoneService::rebuildIndices() {
@@ -70,7 +102,8 @@ inline void PhoneService::rebuildIndices() {
     const Vector<Phone>& list = repo.getAll();
     for (int i = 0; i < list.getSize(); ++i) {
         idTable.insert(list[i].getID(), list[i]);
-        priceTree.insert(list[i].getSellingPrice(), list[i]);
+        // FIX LỖI: Chèn vào BST với Composite Key (price, id)
+        priceTree.insert(PhonePriceKey{list[i].getSellingPrice(), list[i].getID()}, list[i]);
     }
 }
 
@@ -83,7 +116,11 @@ inline Phone* PhoneService::getPhoneById(const std::string& id) {
 }
 
 inline Vector<Phone> PhoneService::filterByPriceRange(double minPrice, double maxPrice) const {
-    return priceTree.findRange(minPrice, maxPrice);
+    if (minPrice > maxPrice) return Vector<Phone>();
+    // FIX LỖI: Biên min lấy từ id rỗng "", biên max lấy từ chuỗi ký tự kết thúc
+    PhonePriceKey minKey{minPrice, ""};
+    PhonePriceKey maxKey{maxPrice, "\x7F\x7F\x7F\x7F\x7F\x7F\x7F\x7F"};
+    return priceTree.findRange(minKey, maxKey);
 }
 
 inline Vector<Phone> PhoneService::searchByName(const std::string& keyword) const {
@@ -109,35 +146,47 @@ inline Vector<Phone> PhoneService::searchByBrand(const std::string& brand) const
 }
 
 inline bool PhoneService::addPhone(const Phone& phone, std::string& errorMessage) {
-    if (phone.getID().empty()) {
-        errorMessage = "Mã sản phẩm không được để trống!";
+    Phone newPhone = phone;
+    if (newPhone.getID().empty()) {
+        std::vector<std::string> existingIds;
+        const Vector<Phone>& phones = repo.getAll();
+        for (int i = 0; i < phones.getSize(); ++i) {
+            existingIds.push_back(phones[i].getID());
+        }
+        std::string generatedId;
+        if (!IdGenerator::nextId("PHN", "", existingIds, generatedId, errorMessage)) {
+            return false;
+        }
+        newPhone.setID(generatedId);
+    } else if (!IdGenerator::isValidId(newPhone.getID(), "PHN")) {
+        errorMessage = "Mã sản phẩm phải đúng định dạng PHN-000001.";
         return false;
     }
-    if (idTable.contains(phone.getID())) {
-        errorMessage = "Mã sản phẩm [" + phone.getID() + "] đã tồn tại trong hệ thống!";
+    if (idTable.contains(newPhone.getID())) {
+        errorMessage = "Mã sản phẩm [" + newPhone.getID() + "] đã tồn tại trong hệ thống!";
         return false;
     }
-    if (phone.getName().empty()) {
+    if (newPhone.getName().empty()) {
         errorMessage = "Tên sản phẩm không được để trống!";
         return false;
     }
-    if (phone.getSellingPrice() <= 0) {
+    if (newPhone.getSellingPrice() <= 0) {
         errorMessage = "Giá bán phải lớn hơn 0!";
         return false;
     }
-    if (phone.getQuantity() < 0) {
+    if (newPhone.getQuantity() < 0) {
         errorMessage = "Số lượng tồn kho không được âm!";
         return false;
     }
 
-    if (!repo.addPhone(phone)) {
+    if (!repo.addPhone(newPhone)) {
         errorMessage = "Lỗi khi lưu sản phẩm vào cơ sở dữ liệu!";
         return false;
     }
 
     // Cập nhật cấu trúc dữ liệu bộ nhớ
-    idTable.insert(phone.getID(), phone);
-    priceTree.insert(phone.getSellingPrice(), phone);
+    idTable.insert(newPhone.getID(), newPhone);
+    priceTree.insert(PhonePriceKey{newPhone.getSellingPrice(), newPhone.getID()}, newPhone);
     return true;
 }
 
@@ -180,6 +229,12 @@ inline bool PhoneService::deletePhone(const std::string& id, std::string& errorM
         return false;
     }
 
+    // FIX LỖI: Kiểm tra toàn vẹn tham chiếu, ngăn xóa sản phẩm đã có đơn hàng/hóa đơn/phiếu nhập
+    if (refChecker != nullptr && refChecker->isPhoneReferenced(id)) {
+        errorMessage = "Không thể xóa sản phẩm [" + id + "] vì đã phát sinh giao dịch trong Đơn hàng, Hóa đơn hoặc Phiếu nhập!";
+        return false;
+    }
+
     if (!repo.deletePhone(id)) {
         errorMessage = "Lỗi khi xóa sản phẩm khỏi cơ sở dữ liệu!";
         return false;
@@ -207,7 +262,8 @@ inline bool PhoneService::updateStock(const std::string& id, int quantityDelta, 
         return false;
     }
 
-    int newQty = p->getQuantity() + quantityDelta;
+    int oldQty = p->getQuantity();
+    int newQty = oldQty + quantityDelta;
     if (newQty < 0) {
         errorMessage = "Số lượng tồn kho không đủ để xuất (hiện có: " 
                        + std::to_string(p->getQuantity()) + ")!";
@@ -215,7 +271,13 @@ inline bool PhoneService::updateStock(const std::string& id, int quantityDelta, 
     }
 
     p->setQuantity(newQty);
-    repo.updatePhone(*p);
+    // FIX LỖI: Kiểm tra kết quả ghi đĩa của repository, rollback nếu lưu thất bại
+    if (!repo.updatePhone(*p)) {
+        p->setQuantity(oldQty); // Rollback RAM
+        errorMessage = "Lỗi khi cập nhật số lượng tồn kho vào cơ sở dữ liệu!";
+        return false;
+    }
+
     rebuildIndices();
     return true;
 }

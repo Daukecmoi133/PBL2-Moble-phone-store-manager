@@ -14,14 +14,18 @@
 class PhoneRepository {
 private:
     std::string filePath;    // Đường dẫn đến file Products.txt
+    std::string specificationsFilePath;
     Vector<Phone> phones;    // Danh sách sản phẩm trên RAM
 
     // Tạo file mới với header nếu file chưa tồn tại
     bool createEmptyFile() const;
+    void loadDetailedSpecifications();
 
 public:
     // Hàm dựng: nhận đường dẫn file (mặc định là path chuẩn)
-    PhoneRepository(std::string path = "data/Device/Products.txt");
+    PhoneRepository(
+        std::string path = "data/Device/Products.txt",
+        std::string specsPath = "data/Device/Thongsokythuat.txt");
 
     // Nạp dữ liệu từ file vào RAM. Tự tạo file mới nếu file chưa tồn tại.
     bool loadFromFile();
@@ -67,7 +71,8 @@ inline bool PhoneRepository::createEmptyFile() const {
     return true;
 }
 
-inline PhoneRepository::PhoneRepository(std::string path) : filePath(path) {}
+inline PhoneRepository::PhoneRepository(std::string path, std::string specsPath)
+    : filePath(path), specificationsFilePath(specsPath) {}
 
 // Nạp dữ liệu từ Products.txt vào RAM
 // - Nếu file không tồn tại: tự tạo file mới và trả về true (danh sách rỗng)
@@ -109,7 +114,87 @@ inline bool PhoneRepository::loadFromFile() {
         }
     }
     file.close();
+    loadDetailedSpecifications();
     return true;
+}
+
+// Ghep moi khoi thong so voi san pham co ID tuong ung.
+// Noi dung chi tiet duoc giu trong Phone rieng, khong ghi de cot specifications
+// ngan trong Products.txt.
+inline void PhoneRepository::loadDetailedSpecifications() {
+    std::ifstream file(specificationsFilePath);
+    if (!file.is_open()) {
+        std::cerr << "[Canh bao] Khong the mo file thong so ky thuat: "
+                  << specificationsFilePath << std::endl;
+        return;
+    }
+
+    Phone* currentPhone = nullptr;
+    std::string details;
+    std::string line;
+    int lineNum = 0;
+
+    auto saveCurrentDetails = [&]() {
+        if (currentPhone != nullptr) {
+            while (!details.empty() &&
+                   (details.back() == '\n' || details.back() == '\r')) {
+                details.pop_back();
+            }
+            currentPhone->setDetailedSpecifications(details);
+        }
+        details.clear();
+    };
+
+    while (std::getline(file, line)) {
+        ++lineNum;
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+
+        const std::string trimmedLine = StringHelper::trim(line);
+        if (trimmedLine.empty()) {
+            if (currentPhone != nullptr) {
+                details += '\n';
+            }
+            continue;
+        }
+
+        const std::size_t separator = trimmedLine.find('|');
+        const std::string candidateId =
+            StringHelper::trim(trimmedLine.substr(0, separator));
+        Phone* matchedPhone = nullptr;
+
+        if (separator != std::string::npos) {
+            matchedPhone = findById(candidateId);
+        } else if (separator == std::string::npos) {
+            matchedPhone = findById(trimmedLine);
+        }
+        const bool hasIdMarker =
+            separator != std::string::npos &&
+            StringHelper::trim(trimmedLine.substr(separator + 1)).empty();
+
+        if (hasIdMarker || matchedPhone != nullptr) {
+            saveCurrentDetails();
+            currentPhone = matchedPhone;
+            if (currentPhone == nullptr) {
+                std::cerr << "[Canh bao] Khong tim thay san pham ID "
+                          << candidateId << " cho thong so tai dong "
+                          << lineNum << " trong " << specificationsFilePath
+                          << std::endl;
+            } else if (separator != std::string::npos && !hasIdMarker) {
+                details += trimmedLine.substr(separator + 1);
+                details += '\n';
+            }
+            continue;
+        }
+
+        if (currentPhone != nullptr) {
+            details += line;
+            details += '\n';
+        }
+    }
+
+    saveCurrentDetails();
 }
 
 // Ghi toàn bộ danh sách phones xuống file (ghi đè)
@@ -174,16 +259,33 @@ inline bool PhoneRepository::addPhone(const Phone& phone) {
         std::cerr << "[Canh bao] ID da ton tai: " << phone.getID() << std::endl;
         return false;
     }
+    // FIX LỖI: Luu snapshot RAM de rollback neu ghi file that bai
+    Vector<Phone> backup = phones;
     phones.push_back(phone);
-    return saveToFile();
+    if (!saveToFile()) {
+        phones = backup; // Rollback
+        return false;
+    }
+    return true;
 }
 
 // Cập nhật thông tin sản phẩm và lưu ngay
 inline bool PhoneRepository::updatePhone(const Phone& updatedPhone) {
     for (int i = 0; i < phones.getSize(); ++i) {
         if (phones[i].getID() == updatedPhone.getID()) {
-            phones[i] = updatedPhone;
-            return saveToFile();
+            // FIX LỖI: Luu snapshot RAM de rollback neu ghi file that bai
+            Vector<Phone> backup = phones;
+            Phone replacement = updatedPhone;
+            if (replacement.getDetailedSpecifications().empty()) {
+                replacement.setDetailedSpecifications(
+                    phones[i].getDetailedSpecifications());
+            }
+            phones[i] = replacement;
+            if (!saveToFile()) {
+                phones = backup; // Rollback
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay ID de cap nhat: " << updatedPhone.getID() << std::endl;
@@ -194,8 +296,14 @@ inline bool PhoneRepository::updatePhone(const Phone& updatedPhone) {
 inline bool PhoneRepository::deletePhone(const std::string& id) {
     for (int i = 0; i < phones.getSize(); ++i) {
         if (phones[i].getID() == id) {
+            // FIX LỖI: Luu snapshot RAM de rollback neu ghi file that bai
+            Vector<Phone> backup = phones;
             phones.removeAt(i);
-            return saveToFile();
+            if (!saveToFile()) {
+                phones = backup; // Rollback
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay ID de xoa: " << id << std::endl;

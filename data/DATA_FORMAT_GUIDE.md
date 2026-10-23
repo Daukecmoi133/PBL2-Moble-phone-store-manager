@@ -1,206 +1,296 @@
-# TÀI LIỆU HƯỚNG DẪN ĐỊNH DẠNG DỮ LIỆU (DATA FORMAT SPECIFICATION)
-## DỰ ÁN PBL2: HỆ THỐNG QUẢN LÝ CỬA HÀNG ĐIỆN THOẠI (DUT)
+# Data dictionary - Phone Store PBL2
 
-Tài liệu này quy chuẩn cấu trúc lưu trữ và quy tắc định dạng cho toàn bộ các tệp tin dữ liệu text (`.txt`) trong thư mục `data/`.
+Tai lieu nay mo ta cac file mau trong `data/`, schema ma code hien tai dang doc,
+cac quan he giua du lieu va nhung gioi han can biet khi nhap them du lieu.
 
-> **Quy ước chung:** Mỗi file có dòng đầu là **Header** (tên cột), các dòng tiếp theo là dữ liệu. Dùng ký tự `|` làm phân cách cột chính. Dùng `;` để phân cách nhiều item trong cùng 1 cột. Dùng `,` để phân cách các trường bên trong mỗi item.
+> **Day la du lieu DEMO tong hop.** Ten, so dien thoai, ma so thue, dia chi va
+> giao dich chi phuc vu hoc tap/kiem thu; khong dung lam du lieu khach hang hay
+> giao dich that. Tai khoan va mat khau duoi day la credential demo plaintext,
+> khong dung lai o bat ky he thong nao khac.
 
----
+## 1. Quy tac chung khi nhap file
 
-### 1. Dữ liệu Sản phẩm: `data/Device/Products.txt`
-- **Dòng 1 (Header):**
-  `id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications`
-- **Quy cách các trường:**
-  1. `id`: Mã sản phẩm (chuỗi chữ số hoặc mã duy nhất, ví dụ: `101`, `102`).
-  2. `phoneName`: Tên sản phẩm đầy đủ (ví dụ: `iPhone 15 Pro Max 256GB`).
-  3. `brand`: Hãng (ví dụ: `Apple`, `Samsung`, `Oppo`, `Xiaomi`).
-  4. `operatingSystem`: Hệ điều hành (ví dụ: `iOS 17`, `Android 14 - One UI 6`).
-  5. `importPrice`: Giá nhập (ví dụ: `28.000.000 đ` hoặc `28000000`).
-  6. `sellingPrice`: Giá bán lẻ (ví dụ: `32.500.000 đ`).
-  7. `quantity`: Số lượng tồn kho (số nguyên không âm).
-  8. `manufacturer`: Nhà sản xuất đầy đủ (ví dụ: `Apple Inc.`).
-  9. `specifications`: Thông số kỹ thuật tóm tắt (ví dụ: `6.7 inch, 8GB RAM, 256GB`).
-- **Mẫu dữ liệu:**
-  ```text
-  id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications
-  101|Oppo Reno 16f 5G|Oppo|Android - ColorOS16|10.600.000 đ|14.000.000 đ|42|Oppo Electronics|6.67 inch, 8GB RAM, 256GB, 5000mAh
-  102|iPhone 15 Pro Max 256GB|Apple|iOS 17|27.500.000 đ|31.990.000 đ|18|Apple Inc.|6.7 inch OLED, 8GB RAM, 256GB, A17 Pro
-  ```
+- Moi file repository doc co mot dong header o dong dau. Repository hien tai
+  bo qua dong dau tien theo vi tri, khong tu xac nhan ten cot; khong bo header.
+- Text chinh la UTF-8. Moi dong la mot ban ghi; khong chen dong mo ta vao file
+  du lieu co repository doc.
+- Cac cot cap mot tach bang `|`; cac detail tach bang `;`; cac truong detail
+  tach bang `,`. Parser hien tai **khong ho tro escape** cac dau phan cach.
+  Khong dat `|` trong bat ky cot nao, `;` trong detail list, hoac `,` trong
+  phone name/detail text.
+- Gia tien luu la so nguyen VND, khong co dau cham hang nghin, ky hieu `d`/`đ`,
+  dau phay thap phan hay scientific notation. Vi du: `14000000`.
+- So luong, enum code va diem la so nguyen. Quantity trong san pham khong am;
+  quantity trong order/receipt detail phai lon hon 0.
+- Ngay gio su dung `DD/MM/YYYY HH:MM:SS`; ngay voucher su dung `DD/MM/YYYY`.
+  Ngay phai hop le theo lich. Parser DateTime hien tai chua validate day/month
+  nghiem ngat, nen nguoi nhap phai tu kiem tra du lieu.
+- ID phai duy nhat trong tung loai thuc the. Khong dung lai ID da ton tai.
+- ID dung tien to viet hoa va so thu tu 6 chu so: `ACC`, `CUS`, `EMP`, `PHN`,
+  `SUP`, `WAR` dung dang `PREFIX-000001`; `ORD`, `INV`, `IMP`, `WREQ`, `DUS`
+  dung dang `PREFIX-ddmmyyyy-000001`. Counter duoc luu tai
+  `system/id_counters.txt`, khong giam counter khi xoa ban ghi.
+- Khoa ngoai phai tham chieu ID day du theo cung dinh dang. ID DiscountCode la
+  `code` nghiep vu; khong dung ID so rieng de tra cuu ma giam gia.
+- Repository co the bo qua dong parse loi, nhung khong tao bao cao loi co cau
+  truc va co the khong phat hien FK sai. Phai chay checklist quan he o muc 11.
+- Khong ghi credential that. Account hien duoc luu plaintext; day la gioi han
+  cua project, khong phai cach luu mat khau cho san pham that.
 
----
+## 2. Danh muc file va cach code su dung
 
-### 2. Dữ liệu Khách hàng: `data/people/Customers.txt`
-- **Dòng 1 (Header):**
-  `id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address`
-- **Quy cách các trường:**
-  1. `id`: Mã khách hàng (ví dụ: `CUST-001`).
-  2. `firstName`: Họ (ví dụ: `Nguyen`).
-  3. `middleName`: Tên đệm (ví dụ: `Van`).
-  4. `lastName`: Tên chính (ví dụ: `An`).
-  5. `phoneNumber`: Số điện thoại (duy nhất, ví dụ: `0912345678`).
-  6. `Email`: Email liên hệ.
-  7. `username`: Tên tài khoản đăng nhập (duy nhất).
-  8. `password`: Mật khẩu tài khoản.
-  9. `points`: Điểm tích lũy thành viên (số nguyên, ví dụ: `150`). *(Trước đây là 'role', đã đổi)*
-  10. `address`: Địa chỉ cư trú.
-- **Mẫu dữ liệu:**
-  ```text
-  id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address
-  CUST-001|Nguyen|Van|B|0912345678|nguyenvanb@gmail.com|vanb123|123456|150|Da Nang
-  CUST-002|Tran|Thi|Mai|0905111222|maitran@gmail.com|thimai|mai123|80|Thanh Khe, Da Nang
-  ```
+| File | Entity | Repository/reader hien tai | Ghi chu |
+|---|---|---|---|
+| `Device/Products.txt` | Phone | `PhoneRepository` + `Phone::fromFileLine` | Du lieu chinh cua san pham. |
+| `Device/Thongsokythuat.txt` | Phone detail | `PhoneRepository::loadDetailedSpecifications` | Noi dung nhieu dong, ghep vao Phone theo ID. Khong co header cot. |
+| `people/Customers.txt` | Customer + Account | `CustomerRepository` | Account duoc nhung trong customer va co `accountId` rieng. |
+| `people/Employee.txt` | Employee + Account | `EmployeeRepository` | Account duoc nhung trong employee va co `accountId` rieng; role code 1..3. |
+| `people/Suppliers.txt` | Supplier | `SupplierRepository` | Ten nguoi lien he la mot chuoi day du. |
+| `PAY/Discount.txt` | DiscountCode | `DiscountRepository` | Can dung 9 cot; type 0/1. |
+| `PAY/Order/Orders.txt` | Order + OrderDetail | `OrderRepository` | Detail duoc luu nhung trong dong order. |
+| `PAY/Invoices.txt` | Invoice + OrderDetail | `InvoiceRepository` | Mot invoice mau cho moi order da hoan tat. |
+| `Device/StockReceipts.txt` | ImportReceipt + OrderDetail | `StockReceiptRepository` | Detail dung `OrderDetail` de tai su dung truong du lieu. |
+| `Device/ProductImage.txt` | Anh san pham (metadata) | Chua co reader trong source/UI hien tai | Chi la catalog metadata; khong duoc xem la da hien thi tren giao dien. |
 
----
+Gio hang la trang thai phien lam viec trong RAM, khong co file persistence.
+Bao cao doanh thu/ton kho duoc tinh tu entity, khong co file bao cao dau vao.
+Repository khong tu dong nap khi constructor chay; entry point phai goi
+`loadFromFile()` cho tung repository muon su dung.
 
-### 3. Dữ liệu Nhân viên: `data/people/Employee.txt`
-- **Dòng 1 (Header):**
-  `id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary`
-- **Quy cách các trường:**
-  1. `id`: Mã nhân viên (ví dụ: `EMP-001`).
-  2. `firstName`, `middleName`, `lastName`: Họ, tên đệm và tên nhân viên.
-  3. `phoneNumber`: Số điện thoại.
-  4. `Email`: Email làm việc.
-  5. `username`: Tên tài khoản đăng nhập.
-  6. `password`: Mật khẩu tài khoản.
-  7. `role`: Mã chức vụ:
-     - `1`: `RoleType::ADMIN` (Quản trị viên)
-     - `2`: `RoleType::SALE_EMPLOYEE` (Nhân viên bán hàng)
-     - `3`: `RoleType::WAREHOUSE_EMPLOYEE` (Nhân viên kho)
-  8. `address`: Địa chỉ nơi ở.
-  9. `salary`: Mức lương cơ bản (số nguyên, đơn vị VNĐ, ví dụ: `8000000`). *(Cột mới)*
-- **Mẫu dữ liệu:**
-  ```text
-  id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary
-  EMP-001|Admin|He|Thong|0900000001|admin@store.com|admin|123456|1|Hai Chau, Da Nang|15000000
-  EMP-002|Tran|Khanh|Duy|0987654321|trankhanhduy@gmail.com|duykhanh|duy123|2|Hoa Khanh, Da Nang|8000000
-  EMP-003|Le|Van|Kho|0935123456|vankho@store.com|kho_levan|kho123|3|Lien Chieu, Da Nang|7500000
-  ```
+## 3. San pham - `Device/Products.txt`
 
----
+Schema:
 
-### 4. Dữ liệu Mã giảm giá: `data/PAY/Discount.txt`
-- **Dòng 1 (Header):**
-  `code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount`
-- **Quy cách các trường:**
-  1. `code`: Mã voucher (ví dụ: `GIAM10`, `SALE500K`).
-  2. `type`: Loại chiết khấu (`0` = Phần trăm `PERCENTAGE`, `1` = Số tiền cố định `FIXED_AMOUNT`).
-  3. `value`: Giá trị giảm (Ví dụ: `10` nếu 10%, hoặc `500000` nếu 500.000 VNĐ).
-  4. `startDate`: Ngày bắt đầu hiệu lực (`DD/MM/YYYY`).
-  5. `endDate`: Ngày kết thúc hiệu lực (`DD/MM/YYYY`).
-  6. `minOrder`: Giá trị đơn hàng tối thiểu.
-  7. `maxDiscount`: Mức tiền tối đa được giảm (cho loại %; nếu là cố định thì bằng value).
-  8. `maxUsage`: Tổng lượt sử dụng tối đa.
-  9. `usedCount`: Số lượt đã dùng thực tế.
-- **Mẫu dữ liệu:**
-  ```text
-  code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount
-  GIAM10|0|10|01/01/2026|31/12/2026|10000000|1500000|100|2
-  SALE500K|1|500000|01/01/2026|31/12/2026|5000000|500000|50|5
-  FREESHIP|1|50000|01/01/2026|31/12/2026|2000000|50000|200|10
-  VIP20|0|20|01/01/2026|31/12/2026|20000000|3000000|20|0
-  ```
+```text
+id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications
+```
 
----
+- `id`: khoa san pham, duy nhat; vi du `101`.
+- `phoneName`: ten catalog; tranh dau phay vi ten cung duoc lap lai trong detail
+  order/receipt phan cach bang dau phay.
+- `brand`, `operatingSystem`, `manufacturer`: text khong rong.
+- `importPrice`, `sellingPrice`: VND nguyen; gia nhap >= 0, gia ban > 0.
+- `quantity`: ton kho hien tai (so dien thoai vat ly), >= 0.
+- `specifications`: tom tat de hien thi; co the chua dau phay vi cot cap mot tach
+  bang `|`.
 
-### 5. Dữ liệu Đơn hàng: `data/PAY/Order/Orders.txt`
-- **Dòng 1 (Header):**
-  `id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details`
-- **Quy cách các trường:**
-  1. `id`: Mã đơn hàng (ví dụ: `ORD-001`).
-  2. `customerId`: Mã khách hàng (liên kết với `Customers.txt`).
-  3. `deliveryMethod`: Phương thức nhận hàng (`0` = Nhận tại cửa hàng, `1` = Giao tận nơi).
-  4. `paymentMethod`: Phương thức thanh toán (`0` = Tiền mặt, `1` = Chuyển khoản, `2` = Thẻ tín dụng).
-  5. `status`: Trạng thái:
-     - `0`: PENDING | `1`: CONFIRMED | `2`: PREPARING
-     - `3`: READY_FOR_PICKUP | `4`: SHIPPING | `5`: COMPLETED | `6`: CANCELLED
-  6. `orderTime`: Thời điểm tạo đơn (`DD/MM/YYYY HH:MM:SS`).
-  7. `discountAmount`: Số tiền giảm giá.
-  8. `receiverName`: Họ tên người nhận.
-  9. `phone`: Số điện thoại người nhận.
-  10. `address`: Địa chỉ giao hàng.
-  11. `details`: Danh sách mặt hàng, ngăn cách `;`. Mỗi item: `phoneId,phoneName,quantity,unitPrice`.
-- **Mẫu dữ liệu:**
-  ```text
-  id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details
-  ORD-001|CUST-001|1|0|1|11/09/2026 22:22:00|0|Nguyen Van B|0912345678|Hai Chau, Da Nang|101,Oppo Reno 16f 5G,1,14000000
-  ORD-002|CUST-002|1|1|0|15/09/2026 09:30:15|500000|Tran Thi Mai|0905111222|Thanh Khe, Da Nang|102,iPhone 15 Pro Max 256GB,1,31990000
-  ```
+Code chap nhan format cu 7 cot va format 9 cot. Chuan moi cho data demo la 9 cot.
+`Phone::toFileString()` giu tom tat trong Products.txt; thong so chi tiet doc tu
+file rieng. `Phone` hien chua co truong bao hanh, serial/IMEI, active/discontinued,
+thue suat hoac vi tri ke; khong tu y them cot vao file nay vi serializer hien tai
+se lam mat cac cot khong biet khi luu lai.
 
----
+## 4. Thong so chi tiet - `Device/Thongsokythuat.txt`
 
-### 6. Dữ liệu Hóa đơn thanh toán: `data/PAY/Invoices.txt`
-- **Dòng 1 (Header):**
-  `id|orderId|customerId|employeeId|paymentMethod|createTime|discountAmount|details`
-- **Quy cách các trường:**
-  1. `id`: Mã hóa đơn (ví dụ: `INV-001`).
-  2. `orderId`: Mã đơn hàng liên kết.
-  3. `customerId`: Mã khách hàng.
-  4. `employeeId`: Mã nhân viên lập hóa đơn.
-  5. `paymentMethod`: Phương thức (`0`: CASH, `1`: BANK_TRANSFER, `2`: CREDIT_CARD).
-  6. `createTime`: Thời gian xuất hóa đơn (`DD/MM/YYYY HH:MM:SS`).
-  7. `discountAmount`: Số tiền chiết khấu.
-  8. `details`: Chi tiết sản phẩm (`phoneId,phoneName,quantity,unitPrice;...`).
-- **Mẫu dữ liệu:**
-  ```text
-  id|orderId|customerId|employeeId|paymentMethod|createTime|discountAmount|details
-  INV-001|ORD-001|CUST-001|EMP-002|0|11/09/2026 22:30:00|0|101,Oppo Reno 16f 5G,1,14000000
-  INV-002|ORD-004|CUST-001|EMP-002|2|20/09/2026 10:15:00|100000|105,iPhone 13 128GB,1,13890000
-  ```
+Format ma `PhoneRepository::loadDetailedSpecifications()` dang doc:
 
----
+```text
+<productId>|
+<dong mo ta 1>
+<dong mo ta 2>
 
-### 7. Dữ liệu Nhà cung cấp: `data/people/Suppliers.txt`
-- **Dòng 1 (Header):**
-  `id|companyName|taxCode|contactPerson|phoneNumber|email|address`
-- **Quy cách các trường:**
-  1. `id`: Mã nhà cung cấp (ví dụ: `SUP-001`).
-  2. `companyName`: Tên doanh nghiệp.
-  3. `taxCode`: Mã số thuế.
-  4. `contactPerson`: Người đại diện liên hệ (chuỗi đầy đủ, ví dụ: `Nguyen Van Dai`).
-  5. `phoneNumber`: Số điện thoại.
-  6. `email`: Email doanh nghiệp.
-  7. `address`: Địa chỉ trụ sở.
-- **Mẫu dữ liệu:**
-  ```text
-  id|companyName|taxCode|contactPerson|phoneNumber|email|address
-  SUP-001|Cong ty TNHH Apple Viet Nam|0312345678|Nguyen Van Dai|02838222333|contact@apple.vn|Quan 1, TP Ho Chi Minh
-  SUP-002|Cong ty Dien Tu Samsung Vina|0387654321|Park Jin Ho|02838111222|support@samsung.com|TP Thu Duc, TP HCM
-  ```
+<productId-khac>|
+<mo ta>
+```
 
----
+- Moi block bat dau bang ID ton tai trong `Products.txt`, tiep theo la `|`.
+- Cac dong tiep theo thuoc block do cho den marker ID tiep theo.
+- Khong chen header, khong dung marker ID trung, va dung ID san pham duy nhat.
+- Noi dung hien duoc giu trong `Phone::detailedSpecifications`; hien khong duoc
+  ghi nguoc vao Products.txt boi serializer.
+- Data demo co tom tat catalog cho moi phone. Block cua phone 101 co mo ta chi
+  tiet legacy; cac truong chua co nguon xac nhan khong nen duoc dien bang thong
+  so phong doan.
 
-### 8. Dữ liệu Phiếu nhập kho: `data/Device/StockReceipts.txt`
-- **Dòng 1 (Header):**
-  `id|supplierId|employeeId|importTime|details`
-- **Quy cách các trường:**
-  1. `id`: Mã phiếu nhập kho (ví dụ: `REC-001`).
-  2. `supplierId`: Mã nhà cung cấp.
-  3. `employeeId`: Mã nhân viên kho tiếp nhận.
-  4. `importTime`: Thời điểm lập phiếu (`DD/MM/YYYY HH:MM:SS`).
-  5. `details`: Chi tiết hàng nhập (`phoneId,phoneName,quantity,importPrice;...`).
-- **Mẫu dữ liệu:**
-  ```text
-  id|supplierId|employeeId|importTime|details
-  REC-001|SUP-001|EMP-003|10/09/2026 08:30:00|102,iPhone 15 Pro Max 256GB,20,27500000;105,iPhone 13 128GB,35,11200000
-  REC-002|SUP-002|EMP-003|12/09/2026 09:15:00|103,Samsung Galaxy S24 Ultra,25,25000000;106,Samsung Galaxy A55 5G,50,7500000
-  ```
+## 5. Khach hang - `people/Customers.txt`
 
----
+Schema:
 
-## MAPPING BẢNG ENUM → SỐ NGUYÊN
+```text
+id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address|accountId
+```
 
-| Enum | Giá trị | Ý nghĩa |
-|------|---------|---------|
-| `RoleType::ADMIN` | `1` | Quản trị viên |
-| `RoleType::SALE_EMPLOYEE` | `2` | Nhân viên bán hàng |
-| `RoleType::WAREHOUSE_EMPLOYEE` | `3` | Nhân viên kho |
-| `RoleType::CUSTOMER` | `4` | Khách hàng (không lưu trong Employee.txt) |
-| `DeliveryMethod::PICKUP` | `0` | Nhận tại cửa hàng |
-| `DeliveryMethod::DELIVERY` | `1` | Giao tận nơi |
-| `PaymentMethod::CASH` | `0` | Tiền mặt |
-| `PaymentMethod::BANK_TRANSFER` | `1` | Chuyển khoản |
-| `PaymentMethod::CREDIT_CARD` | `2` | Thẻ tín dụng |
-| `DiscountType::PERCENTAGE` | `0` | Giảm theo % |
-| `DiscountType::FIXED_AMOUNT` | `1` | Giảm số tiền cố định |
+`id`, `username` va `phoneNumber` can duy nhat; `points` la so nguyen khong am.
+So dien thoai demo theo quy tac service hien co: 10-11 chu so, bat dau bang 0.
+Email va dia chi la thong tin demo. Mat khau la plaintext chi de test dang nhap.
 
-> **Lưu ý về Role trong Employee.txt:** Các giá trị role trong file là 1-based (1,2,3) khớp với `static_cast<int>(RoleType) + 1` vì enum bắt đầu từ 0. Hàm `fromFileLine()` trong Employee.h xử lý việc chuyển đổi này tự động.
+Khong tach Accounts.txt: model Customer chua Account va serializer/parser doc
+username/password/accountId trong cung dong. `accountId` dung tien to `ACC`.
+
+## 6. Nhan vien - `people/Employee.txt`
+
+Schema:
+
+```text
+id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary|accountId
+```
+
+- Role code parser hien tai: `1=ADMIN`, `2=SALE_EMPLOYEE`,
+  `3=WAREHOUSE_EMPLOYEE`.
+- Salary la VND nguyen, khong am.
+- Data mau gom mot Admin, mot Sales Employee va mot Warehouse Employee.
+- Serializer va parser dung cung role code `1..3`.
+- `accountId` dung tien to `ACC` va duoc luu trong cung ban ghi employee.
+- `active` cua Account chua nam trong schema file, nen trang thai khoa tai khoan
+  khong duoc persistence.
+
+## 7. Nha cung cap - `people/Suppliers.txt`
+
+Schema:
+
+```text
+id|companyName|taxCode|contactPerson|phoneNumber|email|address
+```
+
+Contact person la mot chuoi day du; taxCode va contact data trong bo mau la gia
+lap. Moi supplier duoc dung boi receipt phai ton tai truoc trong file nay.
+
+## 8. Ma giam gia - `PAY/Discount.txt`
+
+Schema:
+
+```text
+code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount
+```
+
+- `type`: `0=PERCENTAGE`, `1=FIXED_AMOUNT`.
+- Percentage `value` la phan tram 0..100; `maxDiscount` la tran giam VND.
+- Fixed amount `value` la VND; `maxDiscount` trong data demo bang value.
+- `minOrder`, `maxDiscount` la VND; `maxUsage > 0`, `0 <= usedCount <= maxUsage`.
+- `endDate` khong nho hon `startDate`.
+- Code mau co hieu luc nam 2026. Ma voucher khong duoc tham chieu truc tiep boi
+  Order model hien tai; chi co `discountAmount`, nen khong the doi soat
+  `usedCount` voi tung order.
+
+## 9. Don hang - `PAY/Order/Orders.txt`
+
+Schema:
+
+```text
+id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details
+```
+
+- `deliveryMethod`: `0=PICKUP`, `1=DELIVERY`.
+- `paymentMethod`: `0=CASH`, `1=BANK_TRANSFER`, `2=CREDIT_CARD`.
+- `status`: `0=PENDING`, `1=CONFIRMED`, `2=PREPARING`,
+  `3=READY_FOR_PICKUP`, `4=SHIPPING`, `5=COMPLETED`, `6=CANCELLED`.
+- `details`: danh sach `phoneId,phoneName,quantity,unitPrice`, ngan cach bang
+  `;`. Unit price la gia ban snapshot tai thoi diem dat hang.
+- Moi customer/phone ID phai co trong file entity tuong ung.
+- Chi don da `COMPLETED` moi co invoice trong bo data demo. Don PENDING khong
+  lam giam so luong ton kho trong phep doi soat demo.
+- Order model hien khong co payment status, voucher code, employee processor
+  hay audit history; khong them cac cot nay neu chua cap nhat model/parser/
+  serializer cung luc.
+
+## 10. Hoa don - `PAY/Invoices.txt`
+
+Schema:
+
+```text
+id|orderId|customerId|employeeId|paymentMethod|createTime|discountAmount|details
+```
+
+Moi `orderId` chi co mot invoice; order, customer, employee phai ton tai. Bo
+data demo tao invoice cho don da hoan tat, paymentMethod khop order, details va
+discount khop order. Hien tai Invoice khong luu payment status/transaction ID,
+thue, dia chi cua cua hang hay chu ky; pham vi do an khong gia lap cac thong tin
+phap ly cua hoa don dien tu.
+
+## 11. Phieu nhap kho - `Device/StockReceipts.txt`
+
+Schema:
+
+```text
+id|supplierId|employeeId|importTime|details
+```
+
+`details` dung cung format detail 4 truong nhu order, nhung truong `unitPrice`
+la gia nhap. Supplier, employee va phone phai ton tai. Bo data demo tinh ton
+kho hien tai tu tong nhap tru don COMPLETED:
+
+| Phone ID | Nhap | Da ban trong don hoan tat | Ton hien tai |
+|---|---:|---:|---:|
+| 101 | 45 | 3 | 42 |
+| 102 | 20 | 2 | 18 |
+| 103 | 25 | 0 | 25 |
+| 104 | 15 | 0 | 15 |
+| 105 | 35 | 5 | 30 |
+| 106 | 50 | 0 | 50 |
+| 107 | 15 | 3 | 12 |
+
+Day la ledger demo don gian, khong co opening balance, adjustment, return,
+damaged stock hay nhieu kho. Neu them cac nghiep vu do, can mo rong entity va
+quy tac doi soat; khong tu sua quantity mau de "can" ma khong co giao dich giai
+thich.
+
+## 12. Anh san pham - `Device/ProductImage.txt`
+
+Schema catalog de danh dau anh:
+
+```text
+productId|imagePath|isPrimary|displayOrder
+```
+
+`imagePath` la duong dan tuong doi voi thu muc `data/`, vi du
+`Device/productImages/oppo_reno_16_f_5g_bac.png`; khong ghi duong dan tuyet doi
+tren may ca nhan. `isPrimary` la 0/1, `displayOrder` bat dau tu 1.
+
+Reader cua ProductImage.txt chua duoc implement trong source/UI. Bo data chi
+tro den asset Oppo dang co; khong tao placeholder gia cho cac san pham khac.
+Khi them anh, chi them duong dan sau khi asset ton tai va duoc phep su dung.
+
+## 13. Du lieu khong tao thanh file rieng
+
+- `Cart`/`CartItem`: tam thoi trong phien, chua co repository persistence.
+- `Account`: nhung trong Customer/Employee.
+- Reports: tinh tu Order/Invoice/Phone.
+- Khong co file payment transaction, stock adjustment, return, warranty,
+  promotion-to-order link, login audit hay backup snapshot trong bo data hien tai.
+
+Khong can tao file rong cho cac entity tren neu chua co code doc/ghi; file khong
+duoc su dung de tao cam giac tinh nang da duoc implement.
+
+## 14. Enum codes
+
+| Enum | Code file | Gia tri |
+|---|---:|---|
+| Employee role | 1 | ADMIN |
+| Employee role | 2 | SALE_EMPLOYEE |
+| Employee role | 3 | WAREHOUSE_EMPLOYEE |
+| DeliveryMethod | 0 | PICKUP |
+| DeliveryMethod | 1 | DELIVERY |
+| PaymentMethod | 0 | CASH |
+| PaymentMethod | 1 | BANK_TRANSFER |
+| PaymentMethod | 2 | CREDIT_CARD |
+| OrderStatus | 0 | PENDING |
+| OrderStatus | 1 | CONFIRMED |
+| OrderStatus | 2 | PREPARING |
+| OrderStatus | 3 | READY_FOR_PICKUP |
+| OrderStatus | 4 | SHIPPING |
+| OrderStatus | 5 | COMPLETED |
+| OrderStatus | 6 | CANCELLED |
+| DiscountType | 0 | PERCENTAGE |
+| DiscountType | 1 | FIXED_AMOUNT |
+
+## 15. Checklist truoc khi commit data
+
+1. Tat ca repository input co header dung chinh xac va dung so cot.
+2. Moi primary ID duy nhat; usernames, email va phone khong bi dung lai khi
+   nghiep vu yeu cau duy nhat.
+3. Moi foreign key ton tai: customer/order, employee/invoice, supplier/receipt,
+   phone trong order/invoice/receipt/spec/image.
+4. Detail quantity > 0; gia khong am; enum nam trong mien; discount khong vuot
+   subtotal; total tinh dung.
+5. Moi invoice khop mot order; invoice detail, customer, method, discount va
+   thoi gian hop ly.
+6. Ton phone bang tong receipt + opening stock + adjustment - completed sales
+   - write-off + returns. Neu chua co cac loai giao dich nay thi ghi ro cong
+   thuc don gian dang ap dung.
+7. Moi image path tro den file that, tuong doi voi data root. Nho rang code hien
+   tai chua load ProductImage.txt.
+8. Tao repository moi, goi loadFromFile(), kiem tra so ban ghi va round-trip
+   serialize/parse tren ban sao thu muc data. Khong chay test ghi tren bo data
+   goc.
+9. Bao cao ro cac loi parser/round-trip con nam trong source; khong coi data
+   sach la bang chung code da persistence dung.

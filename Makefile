@@ -1,32 +1,66 @@
-# Makefile cho dự án PBL2 (Phone Store Manager) sử dụng GTK3
+# Makefile — PBL2 Phone Store Manager (GTK4 + C++17)
+# Targets: all, run, clean, info
 
-# Trình biên dịch
-CXX = g++
+CXX      = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra \
+           $(shell pkg-config --cflags gtk4) \
+           -I. \
+           -Wno-unused-parameter \
+           -Wno-deprecated-declarations \
+           -Wno-pedantic
 
-# Cờ biên dịch: sử dụng pkg-config để lấy cflags cho gtk+-3.0
-CXXFLAGS = -std=c++11 -Wall `pkg-config --cflags gtk+-3.0`
+LDFLAGS  = $(shell pkg-config --libs gtk4)
 
-# Cờ liên kết: sử dụng pkg-config để lấy libs cho gtk+-3.0
-LDFLAGS = `pkg-config --libs gtk+-3.0`
+TARGET   = pbl2_gtk4
 
-# Tên file thực thi
-TARGET = pbl2_app
+SRCS     = main.cpp \
+           source/controllers/AppController.cpp \
+           source/ui/components/UIComponents.cpp \
+           source/ui/screens/LoginScreen.cpp \
+           source/ui/screens/MainShellWindow.cpp \
+           source/ui/screens/CustomerScreens.cpp \
+           source/ui/screens/SalesScreens.cpp \
+           source/ui/screens/WarehouseScreens.cpp \
+           source/ui/screens/AdminScreens.cpp \
+           source/ui/AppRunner.cpp
 
-# Nguồn file (chỉ compile main và Gtk UI, Core sử dụng headers)
-SRCS = main.cpp UI/GtkAdminUI.cpp
-OBJS = $(SRCS:.cpp=.o)
+OBJS     = $(SRCS:.cpp=.o)
+DEPS     = $(OBJS:.o=.d)
 
-# Rule mặc định
+CORE_HEADERS = source/PBL2.h
+
+.PHONY: all run clean info
+
+# Default target
 all: $(TARGET)
+	@echo ""
+	@echo "=== Build thanh cong! Chay: mingw32-make run ==="
 
-# Build file thực thi
+# Link
 $(TARGET): $(OBJS)
-	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
-# Build object files
+# Compile với auto-dependency generation
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+# Include auto-generated dependencies
+-include $(DEPS)
+
+# Chạy ứng dụng
+run: all
+	@echo "[PBL2] Khoi dong ung dung..."
+	./$(TARGET)
 
 # Dọn dẹp
 clean:
-	rm -f $(OBJS) $(TARGET) $(TARGET).exe
+	@echo "[PBL2] Don dep cac tep build..."
+	@powershell -Command "Get-ChildItem -Recurse -Include *.o,*.d,pbl2_gtk4,pbl2_gtk4.exe -ErrorAction SilentlyContinue | Remove-Item -Force"
+	@echo "[PBL2] Da don dep sach!"
+
+# In thông tin môi trường build
+info:
+	@echo "CXX:     $(CXX)"
+	@echo "GTK4:    $(shell pkg-config --modversion gtk4)"
+	@echo "TARGET:  $(TARGET)"
+	@echo "SOURCES: $(SRCS)"

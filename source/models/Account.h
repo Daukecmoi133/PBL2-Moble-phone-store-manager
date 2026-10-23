@@ -25,6 +25,7 @@ public:
 // Lớp Account: Quản lý thông tin đăng nhập và trạng thái tài khoản
 class Account {
 private:
+    std::string id;
     std::string username; // Tên đăng nhập
     std::string password; // Mật khẩu tài khoản
     Role role;            // Đối tượng vai trò và quyền hạn của tài khoản
@@ -32,9 +33,13 @@ private:
 
 public:
     Account(); // Hàm dựng mặc định
-    Account(std::string username, std::string password, RoleType roleType = RoleType::CUSTOMER); // Hàm dựng đủ tham số
+    Account(std::string username, std::string password,
+            RoleType roleType = RoleType::CUSTOMER, std::string id = ""); // Hàm dựng đủ tham số
 
+    std::string getID() const;
+    void setID(const std::string& id);
     std::string getUsername() const; // Hàm trả về tên đăng nhập
+    std::string getPassword() const; // Hàm trả về mật khẩu
     Role getRole() const; // Hàm trả về đối tượng vai trò Role
     RoleType getRoleType() const; // Hàm trả về loại vai trò RoleType
     void setRole(const Role& r); // Hàm thiết lập vai trò
@@ -116,17 +121,25 @@ inline void Role :: delPermission(Permission permission) {
 // ============= IMPLEMENTATION ACCOUNT ===============
 
 // Hàm dựng mặc định
-inline Account :: Account() : username(""), password(""), role(RoleType::CUSTOMER), active(true) {}
+inline Account :: Account() : id(""), username(""), password(""), role(RoleType::CUSTOMER), active(true) {}
 
 // Hàm dựng có đủ tham số
-inline Account :: Account(std::string username, std::string password, RoleType roleType)
-    : username(username), password(password), role(roleType), active(true) {}
+inline Account :: Account(std::string username, std::string password,
+                          RoleType roleType, std::string id)
+    : id(id), username(username), password(password), role(roleType), active(true) {}
+
+inline std::string Account :: getID() const { return id; }
+inline void Account :: setID(const std::string& accountId) { id = accountId; }
 
 inline std::string Account :: getUsername() const { 
     // Hàm trả về Tên đăng nhập của tài khoản
     return username; 
 
 }
+inline std::string Account :: getPassword() const {
+    return password;
+}
+
 inline void Account :: setUsername(const std::string& u) { 
     // Hàm gán Tên người dùng cho tài khoản
     username = u; 

@@ -1,0 +1,436 @@
+SERVICE AUDIT - HAM HIEN CO, HAM CAN BO SUNG, HAM TRUNG LAP
+==========================================================
+
+Pham vi: cac file trong source/services tai thoi diem ra soat.
+Danh dau:
+- ON: co the giu, hanh vi chinh hop ly.
+- SUA: ham co nhung can sua dieu kien, ket qua hoac cach dong bo.
+- THIEU: chua co ham nghiep vu can thiet.
+- TUY CHON: chi them neu pham vi bai tap yeu cau.
+
+Day la danh gia theo source hien tai, khong phai danh sach tinh nang da hoan thanh.
+
+
+1. PHONESERVICE.H
+-----------------
+Hien co: constructor, rebuildIndices, getAllPhones, getPhoneById,
+filterByPriceRange, searchByName, searchByBrand, addPhone, updatePhone,
+deletePhone, hasStock, updateStock.
+
+Constructor / rebuildIndices() - ON, can giu.
+- Khoi tao HashTable theo ID va BST theo gia tu PhoneRepository.
+- Tao service sau khi repository da load du lieu.
+- Sau moi thay doi san pham/gia, index phai dong bo lai.
+- Index HashTable dang giu ban sao Phone; khong duoc xem ban sao nay la nguon du lieu chinh.
+
+getAllPhones() - ON.
+- Chi doc danh sach tu repository.
+- Khong can them ham getAllPhones khac neu UI chi can doc danh sach.
+
+getPhoneById(id, errorMessage) - SUA.
+- Kiem tra ID co dang chu so bang checkIDnum roi tra ket qua tu idTable.
+- Check ID chu so la rang buoc dang co cua ham, can xac nhan ID san pham co bat buoc chi gom chu so khong.
+- Neu ID hop le nhung khong tim thay, hien ham tra nullptr ma khong dien loi "khong tim thay".
+- Can thong nhat errorMessage cho ca ID sai dinh dang va ID khong ton tai.
+- Neu service can tra error, khong nen chi tra nullptr voi errorMessage cu tu lan goi truoc.
+
+filterByPriceRange(minPrice, maxPrice, errorMessage) - SUA nhe.
+- Neu bien gia am, ham hien tai doi bien am thanh 0 va dien thong bao; tiep tuc tim kiem.
+- Tu choi khi minPrice > maxPrice.
+- Can thong nhat hanh vi: gia am la input sai thi tu choi, hay chap nhan va chuan hoa ve 0.
+- Can xoa/reset errorMessage khi thao tac hop le; hien tai thanh cong/khong co ket qua khong ro qua errorMessage.
+- Can kiem tra gia tri NaN/vo cuc neu dau vao co the den tu tinh toan.
+
+searchByName(keyword) - SUA neu can normalization ten.
+- Tim chuoi con khong phan biet hoa thuong tren ten dang luu.
+- Chua bo dau cach va chuan hoa ca ten san pham lan keyword; "iPhone 18" va "iphone18" khong nhat thiet match.
+- Neu yeu cau tim khong phu thuoc khoang trang, can dung cung mot ham normalize cho luc nap/luu/tim; giu ten hien thi rieng, khong lam mat ten goc.
+- Keyword rong hien co the match tat ca ten; can quy dinh ro co cho phep khong.
+
+searchByBrand(brand) - ON, can quy dinh input rong.
+- Tim chuoi con khong phan biet hoa thuong.
+- Quy dinh keyword rong tra tat ca hay khong tra ket qua.
+
+addPhone(phone, errorMessage) - SUA.
+- Hien dang tu choi ID trung, ten rong, gia ban <= 0, quantity < 0; sau khi repo luu thanh cong thi them vao index.
+- THIEU: ID rong/dinh dang; gia nhap am; validate du lieu khac theo yeu cau.
+- Can tra loi ro neu them thanh cong va clear errorMessage cu.
+- Kiem tra ID trung phai dung cung chuan ID voi du lieu da nap.
+- Neu repo.addPhone() that bai, repo co the da them phone vao RAM truoc khi save file that bai; khi do index va repository lech nhau. Can sua repository de giao dich add/save nguyen tu hoac rollback.
+
+addPhone(phone) - ON ve tien ich, nhung nguy co mat loi.
+- Goi overload co errorMessage roi chi tra bool.
+- Chi giu neu caller khong can hien thi ly do; UI nghiep vu nen dung overload co errorMessage.
+
+updatePhone(phone, errorMessage) - SUA.
+- Hien tai kiem tra sellingPrice > 0, quantity >= 0; repository update thanh cong thi rebuild index.
+- THIEU: kiem tra ID ton tai truoc; ten khong rong; importPrice khong am; ID co hop le va co duoc phep doi hay khong.
+- Neu ID khong ton tai, can loi "khong tim thay", khong dung chung loi ghi file.
+- Repository co the cap nhat vector trong RAM roi moi save file; save that bai co the de index cu va du lieu repo moi lech nhau. Can rollback/atomic save.
+
+updatePhone(phone) - ON ve tien ich, nhung nguy co mat loi.
+- Goi overload co errorMessage va bo thong tin loi.
+- UI nghiep vu nen dung overload co errorMessage.
+
+deletePhone(id, errorMessage) - ON ve rule tham chieu, SUA ve input/loi luu.
+- Tu choi neu khong tim thay trong idTable hoac ReferenceChecker bao phone da duoc tham chieu boi Order/Invoice/StockReceipt.
+- Xoa trong repo roi rebuild index neu thanh cong.
+- THIEU: validate ID/dinh dang va thong diep rieng cho ID sai.
+- Neu save file that bai, repository co the da xoa khoi RAM; service tra false nhung index chua rebuild. Can rollback/atomic save.
+- Can xac nhan ReferenceChecker duoc khoi tao voi dung cac repository va co tinh ca lich su da huy.
+
+deletePhone(id) - ON ve tien ich, nhung nguy co mat loi.
+- Goi overload co errorMessage va bo thong tin loi.
+
+hasStock(id, requestedQuantity, errorMessage) - SUA.
+- Tu choi requestedQuantity <= 0 hoac > INT_MAX; tra false neu khong tim thay; neu tim thay thi so sanh ton kho.
+- LOI: neu ton kho khong du, errorMessage van ghi "Thanh cong".
+- Can phan biet khong du ton kho voi input sai va san pham khong ton tai.
+- Loai bo/giu gioi han INT_MAX phai thong nhat voi kieu quantity cua Phone.
+
+updateStock(id, quantityDelta, errorMessage) - SUA, uu tien cao.
+- Tu choi delta vuot mien int; tim san pham; khong cho ton kho moi am; goi repository; rebuild index sau khi luu thanh cong.
+- Can kiem tra ton kho moi khong vuot INT_MAX. Hien tai phep cong tao ket qua long long nhung gan vao int co the tran.
+- Neu repo.updatePhone() that bai, object Phone trong HashTable copy da bi setQuantity truoc khi repo duoc cap nhat; can dam bao index va repository khong bi lech.
+- Repository co the da sua RAM truoc khi save file that bai; can rollback/atomic save.
+- Can quy uoc delta = 0: tu choi hay chap nhan.
+- Can dien errorMessage ro rang cho thanh cong/that bai.
+
+updateStock(id, quantityDelta) - ON ve tien ich, nhung nguy co mat loi.
+- Goi overload co errorMessage va bo thong tin loi; chi dung khi caller chap nhan khong biet nguyen nhan that bai.
+
+Ham can them cho PhoneService:
+- validatePhone(phone): dung chung mot bo rule cho add/update.
+- getPhoneById(id) overload khong error chi neu can cho caller don gian; khong tao overload trung lap neu khong co use case.
+- Chua can them getPhoneNameFormat neu normalization chi dung cho search; ten hien thi phai giu ten goc va co getter rieng chi khi model thuc su luu them normalized name.
+
+
+2. CUSTOMERSERVICE.H
+--------------------
+Hien co: constructor, rebuildIndices, getAllCustomers, authenticate,
+getCustomerByUsername, getCustomerByPhone, getCustomerById,
+registerCustomer (2 overload), updateCustomer (2 overload).
+
+Constructor / rebuildIndices() - SUA nhe.
+- Tao index username va phone tu repository.
+- Bo qua duplicate key sau khi gap key dau tien.
+- Chua bo qua username/phone rong khi nap; phone rong co the bi dua vao index va tra ve mot khach hang khi tim phone rong.
+- Du lieu trung trong file duoc xu ly am tham; can bao loi/log hoac quy dinh giu ban ghi nao.
+- Index luu ban sao Customer, khong phai Customer trong repository.
+
+getAllCustomers() - ON.
+- Chi doc danh sach tu repository.
+
+authenticate(username, password) - SUA nhe.
+- Tim username trong index, sau do goi Account::authenticate; sai/inactive/khong ton tai thi nullptr.
+- Can tu choi username/password rong som va thong nhat message/error result neu UI can phan biet.
+- Password khong duoc dua vao log/thong diep.
+- Dang lap lai mot phan trach nhiem voi EmployeeService::authenticate; neu co AuthService thi AuthService nen dieu phoi, khong copy credential logic.
+
+getCustomerByUsername(username) - ON, can chuan hoa input neu username khong phan biet hoa thuong.
+- Tra con tro den ban sao trong usernameTable, khong phai object repository.
+- Sua object qua con tro nay khong tu dong luu file; con tro co the khong con dung sau rebuildIndices().
+
+getCustomerByPhone(phone) - SUA nhe.
+- Tra theo phone index.
+- Khong nen index/tim phone rong.
+- Neu phone duoc chuan hoa (bo dau cach, ma quoc gia), can dung cung quy tac luc register/update/search.
+- Con tro tra ve la ban sao trong index, khong tu dong persist.
+
+getCustomerById(id) - ON.
+- Tra tu repository; khong co thi nullptr.
+- Khac voi lookup username/phone: con tro nay tro den repository, can thong nhat lifetime/API.
+
+registerCustomer(customer, errorMessage) - SUA.
+- Hien tai kiem tra username khong rong, username khong trung, phone neu khong rong thi khong trung; repo luu xong moi chen index.
+- THIEU: customer ID rong/trung; password rong/chinh sach password; validate name/phone/email; points >= 0.
+- Can chuan hoa username/phone truoc khi so trung neu muon nhan cac cach viet tuong duong.
+- Neu repo.addCustomer() that bai sau khi da them RAM, service khong cap nhat index nhung repository co the da thay doi; can atomic save/rollback.
+- Can reset errorMessage khi thanh cong.
+
+registerCustomer(customer) - ON ve tien ich, nhung mat thong tin loi.
+- Goi overload co errorMessage va bo thong diep.
+- UI dang ky nen dung overload co errorMessage.
+
+updateCustomer(updatedCustomer, errorMessage) - SUA, uu tien cao.
+- Hien tai chi goi repo.updateCustomer(); neu thanh cong thi rebuild index.
+- THIEU: kiem tra customer ton tai; username/phone moi khong duoc trung voi nguoi khac; validate cac truong va khong cho doi ID neu ID la khoa.
+- Rebuild chi khi save thanh cong; neu repository sua RAM truoc khi save that bai thi index cu va vector moi lech nhau.
+- Customer lookup username/phone tra ban sao; can xem lai kha nang client sua object sai noi tru.
+
+updateCustomer(updatedCustomer) - ON ve tien ich, nhung mat thong tin loi.
+- Goi overload co errorMessage va bo thong diep.
+
+Ham can them cho CustomerService:
+- deleteCustomer(id, errorMessage) va overload don gian; repository da co delete.
+- validateCustomer va kiem tra trung username/phone khi update.
+- Chuc nang diem (add/deduct points) chi them neu co rule tich diem/doi diem; khong can service rieng neu scope nho.
+- reset/change password, deactivate/activate chi them neu bai tap co yeu cau quan tri tai khoan.
+
+
+3. EMPLOYEESERVICE.H
+--------------------
+Hien co: constructor, rebuildIndices, getAllEmployees, authenticate,
+getEmployeeByUsername, getEmployeeById, addEmployee (2 overload),
+deleteEmployee (2 overload).
+
+Constructor / rebuildIndices() - ON, can giu.
+- Tao index username va ID tu cac Employee* khong null.
+- Index giu pointer do EmployeeRepository so huu.
+- Phai rebuild sau thay doi username/ID va sau xoa; khong dung pointer sau khi repo da delete object.
+- Can bo qua key rong/phat hien duplicate thay vi de index co key rong hoac overwrite.
+
+getAllEmployees() - SUA API.
+- Tra const Vector<Employee*>&, nhung const vector khong lam object Employee tro toi thanh const; caller van co the sua employee qua pointer.
+- Neu ham chi doc, tra const Employee* hoac DTO/read-only view; khong expose mutable entity tu service.
+
+authenticate(username, password) - ON co ban, SUA nhe.
+- Kiem tra index, Employee* va Account::authenticate; inactive/sai thong tin thi nullptr.
+- Can tu choi input rong va khong tiet lo chi tiet credential.
+- Trung lap trach nhiem voi CustomerService::authenticate; AuthService co the dieu phoi chung.
+
+getEmployeeByUsername(username) - ON, can gioi han mutable access.
+- Tra pointer Employee* trong repository.
+- Caller sua object qua pointer se khong tu dong validate/save; phai thong qua updateEmployee.
+
+getEmployeeById(id) - ON, can gioi han mutable access.
+- Nhu tren; pointer mat hieu luc sau khi repository xoa object.
+
+addEmployee(employee, errorMessage) - SUA, uu tien cao.
+- Hien tai tu choi nullptr, username rong/trung, ID trung; neu repo add thanh cong thi cap nhat index.
+- THIEU: ID rong; validate role hop le, salary >= 0, phone/email/name; username normalize; trung phone/email neu policy yeu cau.
+- Ownership raw pointer chua ro tai call site; can quy dinh repo co nhan quyen so huu pointer hay khong. Khong delete emp neu service bao that bai neu caller van dang so huu.
+- Neu repo da push pointer nhung save file that bai, service khong cap nhat index nhung repo co the da so huu object; can atomic save/rollback va ownership ro.
+
+addEmployee(employee) - ON ve tien ich, nhung mat thong tin loi.
+- Goi overload co errorMessage va bo thong diep.
+
+deleteEmployee(id, errorMessage) - SUA.
+- Kiem tra ID co trong index, repo xoa, sau do rebuild index.
+- Can kiem tra ket qua save/rollback: EmployeeRepository xoa va delete object truoc khi save; neu save that bai service tra false nhung repo/index co the khong con dong bo.
+- THIEU: quy tac khong xoa admin cuoi cung/tai khoan dang dung neu nghiep vu yeu cau; kiem tra tham chieu lich su neu can giu audit.
+
+deleteEmployee(id) - ON ve tien ich, nhung mat thong tin loi.
+- Goi overload co errorMessage va bo thong diep.
+
+Ham can them cho EmployeeService:
+- updateEmployee(employee, errorMessage) va overload don gian; validate unique username va cac truong, persist, rebuild index.
+- activate/deactivate/reset password chi khi co yeu cau.
+- Phan quyen cho thao tac them/sua/xoa nen duoc enforcement o authorization boundary; hien cac ham khong nhan actor/permission.
+
+
+4. ORDERSERVICE.H
+-----------------
+Hien co: loadPendingQueue, constructor, setPhoneService, getPendingQueue,
+getAllOrders, getOrderById, getOrdersByCustomer, createOrder (2 overload),
+processNextPendingOrder (2 overload), cancelOrder, calculateTotalRevenue.
+
+loadPendingQueue() / constructor - ON co ban, SUA de chong queue stale.
+- Nap cac don PENDING theo thu tu repository.
+- Don co the bi huy sau khi nap ma van con trong queue; khi dequeue phai doc lai status va bo qua don khong con PENDING.
+- Tranh nap queue hai lan neu co reload/reinitialize.
+
+setPhoneService(phoneService) - THUA/NGUY CO neu constructor luon truyen dependency.
+- Pointer nullable cho phep tao OrderService khong co kiem tra/tru kho, nhung service van co the confirm don.
+- Neu quy trinh don hang bat buoc inventory, nhan PhoneService/InventoryService reference bat buoc trong constructor va bo setPhoneService.
+- Chi giu nullable neu co use case ro rang cho don khong co hang hoa.
+
+getPendingQueue() - NEN BO HOAC SUA API.
+- Tra Queue<Order>& mutable, ben ngoai co the push/pop/sua status, pha FIFO va lam queue khac repository.
+- Thay bang pending count/read-only list hoac chi expose process/cancel methods.
+
+getAllOrders() - ON.
+- Chi doc danh sach tu repository.
+
+getOrderById(orderId) - ON co ban.
+- Tra con tro mutable den repository; caller co the doi status/detail ma khong qua business rule/save.
+- Nen tra const view cho doc; moi thay doi di qua OrderService.
+
+getOrdersByCustomer(customerId) - ON co ban.
+- Loc tuyen tinh theo customerId, O(n).
+- Can validate customerId/kiem tra customer ton tai neu service co dependency.
+
+createOrder(order, errorMessage) - SUA, uu tien rat cao.
+- Hien tai kiem tra ID rong, details khong rong; neu co PhoneService thi check stock; luu repo va dua PENDING vao queue.
+- THIEU: ID trung; customer ton tai; phone ID ton tai; quantity > 0; unitPrice hop le; discount khong am/khong vuot subtotal; status ban dau hop le; detail trung lap.
+- Neu phoneService == nullptr, don hien duoc tao khong kiem tra ton kho.
+- Kiem tra ton kho luc tao khong reserve stock; nhieu don PENDING co the cung dat cung mot so hang. Phai chon ro: reserve khi tao hoac check lai khi duyet.
+- Chi push queue khi luu don thanh cong la dung; nhung repository co the thay doi RAM truoc khi save file that bai, can rollback.
+
+createOrder(order) - ON ve tien ich, nhung mat thong tin loi.
+- Goi overload co errorMessage va bo thong diep.
+
+processNextPendingOrder(order, errorMessage) - SUA NGHIEM TRONG, UU TIEN CAO NHAT.
+- Muc tieu la xu ly don dau FIFO con PENDING, kiem tra va tru kho, chuyen CONFIRMED, persist.
+- Hien pop queue truoc khi tim don; khong kiem tra lai status/stock; bo qua ket qua updateStock va orderRepo.updateOrder; van co the tra true khi cac thao tac nay that bai.
+- Khong co rollback neu tru kho mot phan cho don nhieu san pham.
+- Neu phoneService nullptr, don van duoc confirm ma khong tru kho.
+- Can chi confirm sau khi tat ca stock updates va save order thanh cong; loi phai khong mat don khoi queue hoac phai co retry/requeue rule.
+- Phai co giao dich/rollback cho nhieu detail de kho va don khong lech.
+
+processNextPendingOrder(order) - ON ve tien ich, nhung mat thong tin loi.
+- Goi overload co errorMessage va bo thong diep.
+
+cancelOrder(orderId, errorMessage) - SUA NGHIEM TRONG.
+- Hien tai chi tu choi khong tim thay/da CANCELLED; moi trang thai khac deu co the huy.
+- Hoan kho neu CONFIRMED va phoneService co; nhung bo qua ket qua updateStock va orderRepo.updateOrder.
+- Don PENDING da huy co the van o queue; khi xu ly queue phai bo qua status khong con PENDING.
+- Can quy dinh trang thai duoc phep huy; khong huy COMPLETED; hoan kho dung mot lan va chi persist CANCELLED khi hoan kho thanh cong.
+- Can co rollback neu hoan nhieu mat hang va mot cap nhat that bai.
+
+calculateTotalRevenue() - SUA theo policy, hoac CHUYEN sang ReportService.
+- Hien cong don CONFIRMED va COMPLETED.
+- Chua loc theo ngay/phuong thuc thanh toan; CONFIRMED co the chua thanh toan.
+- Chot dinh nghia doanh thu (paid/completed hay confirmed) va loai CANCELLED/refund.
+- Neu co ReportService, chuyen logic tong hop bao cao vao do, tranh hai noi tinh doanh thu.
+
+Ham can them cho OrderService:
+- updateOrderStatus(orderId, nextStatus, errorMessage) hoac cac ham hanh dong cu the: confirm, prepare, ready, ship, complete.
+- Kiem tra state transition hop le; khong cho set status tuy y tu UI.
+- find/list/filter theo status/date neu UI nghiep vu can.
+- Kiem tra ID trung, customer va detail.
+- Khong can ham CRUD chung neu cac hanh dong domain cu the da bao phu du.
+
+
+5. DISCOUNTSERVICE.H
+--------------------
+Trang thai hien tai: file rong, chua co class/hams de danh gia. DiscountRepository va DiscountCode co ton tai.
+
+Ham can co neu voucher nam trong pham vi:
+- rebuildIndices/getAllDiscounts/getDiscountByCode.
+- validateDiscount(code, orderTotal, errorMessage): ma ton tai, trong thoi han, con luot, dat don toi thieu, orderTotal hop le.
+- calculateDiscountAmount(code, orderTotal): tinh phan tram/fixed amount va khong vuot tong don; khong thay doi usedCount.
+- applyDiscount/consumeUsage: chi tang usedCount khi don ap dung voucher duoc commit; neu don huy/checkout that bai can rule hoan luot.
+- addDiscount/updateDiscount/deleteDiscount: unique code va validate value/date/minimum/maxUsage/usedCount.
+- Khong de UI truc tiep sua usedCount trong DiscountCode.
+
+
+6. AUTHSERVICE.H
+----------------
+Hien co duy nhat khai bao login(username, password); chua co implementation.
+
+login() - THIEU implementation va thieu ket qua huu ich.
+- Can tim customer/employee, xac thuc tai khoan active va tra ve danh tinh/role (khong chi bool) de UI phan biet nguoi dang nhap.
+- Username/password rong phai that bai; khong phan biet thong diep chi tiet de tranh tiet lo tai khoan.
+- Can quy dinh username trung giua customer va employee.
+- CustomerService va EmployeeService da co authenticate; AuthService nen dieu phoi hai ham nay, khong copy logic.
+- Phan quyen la viec khac dang nhap; can AuthorizationService hoac check permission tai business operation.
+
+
+7. INVENTORYSERVICE.H
+--------------------
+Trang thai hien tai: file rong, chua co ham.
+
+Co can khong?
+- TUY CHON. PhoneService da co hasStock/updateStock, nen khong them InventoryService chi de lap lai hai ham nay.
+- Neu tach ton kho, chuyen moi quy tac stock change ve InventoryService va de PhoneService quan ly thong tin/catalog san pham; OrderService va ImportReceiptService deu goi mot dau moi.
+
+Ham can co neu tach:
+- checkAvailable(phoneId, quantity).
+- increase/decrease/reserve/release stock voi ly do/nguon tham chieu.
+- change nhieu mat hang theo giao dich/rollback.
+- inventory movement history neu bai tap yeu cau audit.
+- Ton kho khong am, khong tran int; loi persist phai rollback.
+
+
+8. CARDSERVICE.H
+----------------
+Trang thai hien tai: file rong, chua co ham. Model hien co la Cart/CartItem.
+
+Ten CardService khong khop model Cart; xac nhan day la gio hang hay loyalty card, sau do doi ten cho dung.
+
+Neu day la CartService:
+- TUY CHON theo yeu cau: Cart hien co the chi la object trong RAM, nen chua chac can CartRepository.
+- Ham nen co: addItem, removeItem, updateQuantity, clearCart, getCart, calculateTotal, validateForCheckout.
+- Moi item phai co phone ton tai, quantity > 0; kiem tra ton kho luc checkout.
+- Chot ro gia duoc dong bang luc them vao gio hay lay gia moi luc checkout.
+- CartItem hien giu ban sao Phone va unitPrice; co nguy co gia/ton kho cu khi catalog thay doi.
+- Checkout nen chuyen sang OrderService, khong de Card/Cart service tu ghi OrderRepository.
+
+
+9. INVOICESERVICE.H
+-------------------
+Trang thai hien tai: file rong; model Invoice va InvoiceRepository.h co, nhung
+InvoiceRepository hien chi khai bao containsPhone(), chua co CRUD/persistence hoa don.
+
+Ham can co neu hoa don nam trong pham vi:
+- createInvoiceFromOrder(orderId, employeeId): chi voi don du dieu kien; khong tao hoa don trung neu policy one invoice per order.
+- getInvoiceById/getInvoiceByOrderId/list invoices.
+- calculate total dung snapshot chi tiet va discount cua order; khong tu tinh lai gia khac order.
+- recordPayment/markPaid va void/refund neu payment workflow duoc yeu cau.
+- Validate employee/customer/order ton tai va payment method hop le.
+- Khong tinh doanh thu lai trong InvoiceService neu ReportService la noi tong hop.
+
+
+10. SUPPLIERSERVICE.H VA IMPORT RECEIPT
+---------------------------------------
+SupplierService.h hien rong; chua co SupplierRepository trong danh sach repository hien tai.
+ImportReceiptService.h chua co trong thu muc services; ImportReceipt model da co.
+stockReceiptRepo.h co ton tai nhung hien chi khai bao containsPhone(), chua co CRUD/
+persistence phieu nhap.
+
+SupplierService can bo sung neu quan ly nha cung cap:
+- getAll/getById/add/update/delete/search.
+- Ma nha cung cap duy nhat; companyName khong rong; taxCode duy nhat neu bat buoc.
+- Khong xoa supplier dang duoc tham chieu boi phieu nhap.
+- Them SupplierRepository neu supplier can duoc persist; service khong tu doc/ghi file.
+
+ImportReceiptService can tao neu nhap hang nam trong pham vi:
+- create/receive receipt, getById/list/search.
+- Validate supplier va employee ton tai; chi role duoc phep nhap kho.
+- Moi detail co product ID hop le, quantity > 0, import unit price >= 0.
+- Luu phieu nhap va tang ton kho phai la mot giao dich; neu mot detail loi thi khong duoc nhap mot phan.
+- Model ImportReceipt dang dung OrderDetail (unitPrice co the bi hieu la gia ban); nen co ImportReceiptDetail rieng de ro import cost.
+- Mo rong StockReceiptRepository hoac doi ten ImportReceiptRepository cho thong nhat
+  voi ImportReceipt model; repository hien tai chua cung cap CRUD/persistence.
+
+
+11. REPORTSERVICE.H
+-------------------
+Trang thai hien tai: file rong, chua co ham. Chi them neu de bai co thong ke/bao cao.
+
+Ham co the can:
+- revenueByPeriod(from, to), orderCountByStatus, bestSellingProducts, stockSummary.
+- Chi doc du lieu; validate khoang thoi gian; dinh nghia ro order status/payment nao duoc tinh.
+- Tranh lap calculateTotalRevenue() voi OrderService; nen chuyen bao cao tong hop ve ReportService.
+
+
+12. SERVICE / HELPER CAN DON DEP, KHONG PHAI THEM NGHIEP VU
+-----------------------------------------------------------
+- Check.h chua inline checkIDnum va ReferenceChecker::isPhoneReferenced trong header. Neu header duoc include tu nhieu translation unit, co nguy co multiple definition; chuyen implementation sang .cpp hoac inline.
+- checkIDnum can co unit test cho chuoi rong, chuoi chi so, chuoi co chu cai va dau cach; thong diep hien tai "ID phai chua so" co the hieu la bat buoc chua so thay vi chi gom so.
+- ErrorMessage.h dang co enum PhoneServiceError rong/chua hoan chinh; hoac hoan thien kieu error co gia tri, hoac xoa file neu chua su dung.
+- Khong de Service expose mutable pointer/reference/Queue neu caller co the thay doi du lieu bo qua validate va save.
+- Mọi ham bool co errorMessage phai dat thong diep ro o ca thanh cong va that bai; overload khong error chi giu neu co caller thuc su can.
+
+
+13. TONG KET UU TIEN
+--------------------
+P0 - Sua bug co the lam sai du lieu:
+1. OrderService::processNextPendingOrder: kiem tra lai ton kho, kiem tra ket qua ghi/tru kho, rollback va khong mat don khoi queue.
+2. OrderService::cancelOrder: kiem tra trang thai, ket qua hoan kho/ghi don, tranh huy don COMPLETED va xu ly don con trong queue.
+3. PhoneService::hasStock: thong diep sai khi khong du kho.
+4. PhoneService::updateStock: chan tran so luong va dam bao repository/index dong bo neu save that bai.
+5. Xac minh hanh vi fail-save cua cac Repository: hien nhieu ham sua Vector/ban ghi truoc khi ghi file; can rollback/atomic save.
+
+P1 - Hoan thien service dang co:
+1. PhoneService add/update validate ID va cac truong con thieu; search normalization neu yeu cau.
+2. CustomerService update uniqueness/validation va deleteCustomer.
+3. EmployeeService updateEmployee, ID rong, validation va ownership pointer.
+4. OrderService kiem tra duplicate order ID/customer/detail va state transition.
+5. Them DiscountService neu voucher la yeu cau cua project.
+
+P2 - Chi them theo yeu cau nghiep vu:
+1. AuthService implementation; khong lap lai authentication.
+2. CartService (doi ten CardService neu dung cho Cart).
+3. InvoiceService + repository.
+4. SupplierRepository/Service va ImportReceiptRepository/Service.
+5. InventoryService chi khi chuyen ownership stock khoi PhoneService.
+6. ReportService chi khi co report; chuyen calculateTotalRevenue khoi OrderService neu lam.
+
+Khong nen them:
+- Service rieng cho Name, People, Account, Role, OrderDetail, ShippingInfo, CartItem.
+- Service CRUD chung chung chi goi Repository ma khong co rule nghiep vu.
+- InventoryService song song voi PhoneService cung cung cap updateStock ma khong co mot noi lam nguon chinh.
+- AuthService lap lai password logic cua CustomerService/EmployeeService.
+- ReportService va OrderService cung tu duy tri mot cong thuc doanh thu khac nhau.

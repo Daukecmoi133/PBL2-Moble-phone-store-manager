@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 #include "../models/Customer.h"
 #include "../core/Vector.h"
 #include "../core/HashTable.h"
@@ -124,16 +125,45 @@ inline Customer* CustomerService::getCustomerById(const std::string& id) {
 }
 
 inline bool CustomerService::registerCustomer(const Customer& cust, std::string& errorMessage) {
-    if (!isValidID(cust.getID(), errorMessage)) {
+    Customer registered = cust;
+    if (registered.getID().empty()) {
+        std::vector<std::string> existingIds;
+        const Vector<Customer>& customers = repo.getAll();
+        for (int i = 0; i < customers.getSize(); ++i) {
+            existingIds.push_back(customers[i].getID());
+        }
+        std::string generatedId;
+        if (!IdGenerator::nextId("CUS", "", existingIds, generatedId, errorMessage)) {
+            return false;
+        }
+        registered.setID(generatedId);
+    } else if (!isValidID(registered.getID(), "CUS", errorMessage)) {
         return false;
     }
 
-    if (repo.findById(cust.getID()) != nullptr) {
-        errorMessage = "Mã khách hàng [" + cust.getID() + "] đã tồn tại!";
+    if (registered.getAccount().getID().empty()) {
+        std::vector<std::string> accountIds;
+        const Vector<Customer>& customers = repo.getAll();
+        for (int i = 0; i < customers.getSize(); ++i) {
+            accountIds.push_back(customers[i].getAccount().getID());
+        }
+        std::string generatedAccountId;
+        if (!IdGenerator::nextId("ACC", "", accountIds,
+                                 generatedAccountId, errorMessage)) {
+            return false;
+        }
+        registered.getAccount().setID(generatedAccountId);
+    } else if (!IdGenerator::isValidId(registered.getAccount().getID(), "ACC")) {
+        errorMessage = "Mã tài khoản phải đúng định dạng ACC-000001.";
         return false;
     }
 
-    std::string uname = StringHelper::trim(cust.getAccount().getUsername());
+    if (repo.findById(registered.getID()) != nullptr) {
+        errorMessage = "Mã khách hàng [" + registered.getID() + "] đã tồn tại!";
+        return false;
+    }
+
+    std::string uname = StringHelper::trim(registered.getAccount().getUsername());
     if (uname.empty()) {
         errorMessage = "Tên đăng nhập không được để trống!";
         return false;
@@ -144,13 +174,13 @@ inline bool CustomerService::registerCustomer(const Customer& cust, std::string&
         return false;
     }
 
-    std::string phone = StringHelper::trim(cust.getPhoneNumber());
+    std::string phone = StringHelper::trim(registered.getPhoneNumber());
     if (!phone.empty() && phoneTable.contains(phone)) {
         errorMessage = "Số điện thoại [" + phone + "] đã được đăng ký bởi khách hàng khác!";
         return false;
     }
 
-    if (!repo.addCustomer(cust)) {
+    if (!repo.addCustomer(registered)) {
         errorMessage = "Lỗi khi lưu thông tin khách hàng vào cơ sở dữ liệu!";
         return false;
     }
@@ -316,4 +346,3 @@ inline bool CustomerService::validatePhone(const std::string& phone, std::string
 }
 
 #endif // CUSTOMERSERVICE_H
-

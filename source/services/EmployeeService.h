@@ -3,10 +3,12 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 #include "../models/Employee.h"
 #include "../core/Vector.h"
 #include "../core/HashTable.h"
 #include "../repositories/EmployeeRepository.h"
+#include "../utils/IdGenerator.h"
 #include "../utils/StringHelper.h"
 
 // Tầng Service: Chịu trách nhiệm toàn bộ nghiệp vụ nhân sự và xác thực tài khoản
@@ -87,6 +89,41 @@ inline bool EmployeeService::addEmployee(Employee* emp, std::string& errorMessag
     std::string uname = emp->getAccount().getUsername();
     if (uname.empty()) {
         errorMessage = "Tên đăng nhập không được để trống!";
+        return false;
+    }
+
+    if (emp->getID().empty()) {
+        std::vector<std::string> existingIds;
+        const Vector<Employee*>& employees = repo.getAll();
+        for (int i = 0; i < employees.getSize(); ++i) {
+            if (employees[i] != nullptr) existingIds.push_back(employees[i]->getID());
+        }
+        std::string generatedId;
+        if (!IdGenerator::nextId("EMP", "", existingIds, generatedId, errorMessage)) {
+            return false;
+        }
+        emp->setID(generatedId);
+    } else if (!IdGenerator::isValidId(emp->getID(), "EMP")) {
+        errorMessage = "Mã nhân viên phải đúng định dạng EMP-000001.";
+        return false;
+    }
+
+    if (emp->getAccount().getID().empty()) {
+        std::vector<std::string> accountIds;
+        const Vector<Employee*>& employees = repo.getAll();
+        for (int i = 0; i < employees.getSize(); ++i) {
+            if (employees[i] != nullptr) {
+                accountIds.push_back(employees[i]->getAccount().getID());
+            }
+        }
+        std::string generatedAccountId;
+        if (!IdGenerator::nextId("ACC", "", accountIds,
+                                 generatedAccountId, errorMessage)) {
+            return false;
+        }
+        emp->getAccount().setID(generatedAccountId);
+    } else if (!IdGenerator::isValidId(emp->getAccount().getID(), "ACC")) {
+        errorMessage = "Mã tài khoản phải đúng định dạng ACC-000001.";
         return false;
     }
 

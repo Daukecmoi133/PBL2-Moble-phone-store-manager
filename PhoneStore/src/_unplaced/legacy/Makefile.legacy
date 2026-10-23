@@ -1,0 +1,61 @@
+# Makefile — PBL2 Phone Store Manager (GTK4 + C++17)
+# Targets: all, run, clean
+
+CXX      = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra \
+           $(shell pkg-config --cflags gtk4) \
+           -I. \
+           -Wno-unused-parameter \
+           -Wno-deprecated-declarations \
+           -Wno-pedantic
+
+LDFLAGS  = $(shell pkg-config --libs gtk4)
+
+TARGET   = pbl2_gtk4
+
+SRCS     = main.cpp \
+           UI/AdminApp.cpp
+
+OBJS     = $(SRCS:.cpp=.o)
+DEPS     = $(OBJS:.o=.d)
+
+# ── Phụ thuộc header-only của Core (không cần compile riêng)
+CORE_HEADERS = source/PBL2.h
+
+.PHONY: all run clean info
+
+# Default target
+all: $(TARGET)
+	@echo ""
+	@echo "=== Build thanh cong! Chay: make run ==="
+
+# Link
+$(TARGET): $(OBJS)
+	$(CXX) -o $@ $^ $(LDFLAGS)
+
+# Compile với auto-dependency generation
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+# Include auto-generated dependencies
+-include $(DEPS)
+
+# Chạy ứng dụng
+run: all
+	@echo "[PBL2] Khởi động ứng dụng..."
+	./$(TARGET)
+
+# Dọn dẹp
+clean:
+	@echo "[PBL2] Don dep..."
+	rm -f $(OBJS) $(DEPS) $(TARGET) $(TARGET).exe
+	@echo "[PBL2] Sach!"
+
+# In thông tin môi trường build
+info:
+	@echo "CXX:     $(CXX)"
+	@echo "GTK4:    $(shell pkg-config --modversion gtk4)"
+	@echo "CFLAGS:  $(shell pkg-config --cflags gtk4)"
+	@echo "LIBS:    $(shell pkg-config --libs gtk4)"
+	@echo "TARGET:  $(TARGET)"
+	@echo "SOURCES: $(SRCS)"

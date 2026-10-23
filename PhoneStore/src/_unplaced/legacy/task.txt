@@ -1,0 +1,11 @@
+Tôi cần bạn đọc hết file dự án và hiểu về nó
+Tôi yêu cầu bạn làm điều sau:
+- Hoàn thiện những lỗi còn thiếu/thừa với hệ thống quản lí cửa hàng điện thoại cơ bản(trình độ sinh viên năm 2 - chỉ đang học tập trung về OOP và mô hình E/R)
+    + Tạo ra hướng để nhập dữ liệu từ foulder data, thiếu file nào thì tạo file mới + 1 mẫu để định dạng form dữ liệu
+    + Xử lí các file repository và service hợp với file nhập dữ liệu và các class thực thể 
+    + Nếu các thực thể có lỗi về dữ liệu hay thiếu chức năng thì thêm mới cho hợp lí
+    + Hãy chỉnh xửa lại các file liên quan nếu cần thiết
+- Bổ sung thêm những tính năng còn thiếu (có phác họa sơ ở file busRule trong foulder source\services - có thể thêm mới nếu chỉnh sửa đó không có trong file)
+- Từ thư viện GTK, hãy tạo ra giao diện cho hệ thống quản lí trong foulder /UI : hệ thống giao diện đơn giản để test các chức năng
+
+-> Những thay đổi của bạn hãy note hết vào 1 file chung nào đó (bạn có thể tự tạo ra)

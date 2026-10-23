@@ -81,6 +81,10 @@ public:
     void setStatus(OrderStatus s);
     void setDiscountAmount(double d);
     void setOrderTime(const DateTime& dt);
+    // FIX LỖI: Bổ sung các setter còn thiếu để khôi phục toàn vẹn dữ liệu từ file
+    void setDeliveryMethod(DeliveryMethod m);
+    void setPaymentMethod(PaymentMethod p);
+    void setShippingInfo(const ShippingInfo& s);
 
     void addDetail(const OrderDetail& detail);
     double calculateSubtotal() const;
@@ -157,6 +161,10 @@ inline void Order::setCustomerId(const std::string& custId) { customerId = custI
 inline void Order::setStatus(OrderStatus s) { status = s; }
 inline void Order::setDiscountAmount(double d) { discountAmount = d; }
 inline void Order::setOrderTime(const DateTime& dt) { orderTime = dt; }
+// FIX LỖI: Triển khai các setter deliveryMethod, paymentMethod, shippingInfo
+inline void Order::setDeliveryMethod(DeliveryMethod m) { deliveryMethod = m; }
+inline void Order::setPaymentMethod(PaymentMethod p) { paymentMethod = p; }
+inline void Order::setShippingInfo(const ShippingInfo& s) { shippingInfo = s; }
 
 inline void Order::addDetail(const OrderDetail& detail) {
     details.push_back(detail);
@@ -212,19 +220,29 @@ inline Order Order::fromFileLine(const std::string& line) {
     Order o;
     o.setID(StringHelper::trim(parts[0]));
     o.setCustomerId(StringHelper::trim(parts[1]));
-    // deliveryMethod: 0=PICKUP, 1=DELIVERY
-    int deliv = std::stoi(StringHelper::trim(parts[2]));
-    // paymentMethod: 0=CASH, 1=BANK_TRANSFER, 2=CREDIT_CARD
-    int pay   = std::stoi(StringHelper::trim(parts[3]));
-    int stat  = std::stoi(StringHelper::trim(parts[4]));
+    
+    // FIX LỖI: Chuyển đổi và gán đúng các trường deliveryMethod, paymentMethod
+    try {
+        int deliv = std::stoi(StringHelper::trim(parts[2]));
+        int pay   = std::stoi(StringHelper::trim(parts[3]));
+        int stat  = std::stoi(StringHelper::trim(parts[4]));
+        o.setDeliveryMethod(static_cast<DeliveryMethod>(deliv));
+        o.setPaymentMethod(static_cast<PaymentMethod>(pay));
+        o.setStatus(static_cast<OrderStatus>(stat));
+        o.setDiscountAmount(std::stod(StringHelper::trim(parts[6])));
+    } catch (...) {
+        return Order(); // Dữ liệu số không hợp lệ
+    }
+
     o.setOrderTime(DateTime::fromString(StringHelper::trim(parts[5])));
-    o.setDiscountAmount(std::stod(StringHelper::trim(parts[6])));
 
     ShippingInfo ship(
         StringHelper::trim(parts[7]),
         StringHelper::trim(parts[8]),
         StringHelper::trim(parts[9])
     );
+    // FIX LỖI: Gán thông tin giao hàng đã đọc
+    o.setShippingInfo(ship);
 
     // Parse details: phoneId,phoneName,quantity,unitPrice;...
     if (!StringHelper::trim(parts[10]).empty()) {
@@ -232,18 +250,21 @@ inline Order Order::fromFileLine(const std::string& line) {
         for (int i = 0; i < detailTokens.getSize(); ++i) {
             Vector<std::string> d = StringHelper::split(detailTokens[i], ',');
             if (d.getSize() >= 4) {
-                OrderDetail od(
-                    StringHelper::trim(d[0]),
-                    StringHelper::trim(d[1]),
-                    std::stoi(StringHelper::trim(d[2])),
-                    std::stod(StringHelper::trim(d[3]))
-                );
-                o.addDetail(od);
+                try {
+                    OrderDetail od(
+                        StringHelper::trim(d[0]),
+                        StringHelper::trim(d[1]),
+                        std::stoi(StringHelper::trim(d[2])),
+                        std::stod(StringHelper::trim(d[3]))
+                    );
+                    o.addDetail(od);
+                } catch (...) {
+                    // Bỏ qua chi tiết lỗi
+                }
             }
         }
     }
 
-    o.setStatus(static_cast<OrderStatus>(stat));
     return o;
 }
 

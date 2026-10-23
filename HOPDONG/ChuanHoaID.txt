@@ -1,0 +1,183 @@
+# PBL2 — ID CONTRACT V1
+## Quy ước định danh thực thể trong hệ thống quản lý cửa hàng điện thoại
+
+### 1. Quy tắc chung
+
+1. ID có kiểu dữ liệu `std::string`, không dùng số nguyên để lưu toàn bộ ID.
+2. ID gồm tiền tố viết hoa và chuỗi số thứ tự có đúng 6 chữ số.
+3. 
+- Định dạng chuẩn - đối tượng ko có tham số thời gian: `PREFIX-000001`.
+- Định dạng chuẩn - đối tượng có tham số thời gian: `PREFIX-ddmmyyyy-000001`
+4. Tiền tố được quy định cố định theo loại thực thể.
+5. ID phải duy nhất trong phạm vi loại thực thể tương ứng.
+6. ID được sinh tự động, không yêu cầu người dùng nhập khi tạo bản ghi.
+7. ID không được thay đổi khi cập nhật bản ghi.
+8. ID không được tái sử dụng sau khi bản ghi bị xóa.
+9. Ngày tháng, tên, số điện thoại, username, giá tiền và trạng thái không được dùng làm thành phần của ID.
+10. ID của thực thể được tham chiếu phải được lưu đầy đủ, bao gồm cả tiền tố.
+
+Ví dụ hợp lệ: `PHN-000101`.
+
+Ví dụ không hợp lệ: `101`, `phn-000101`, `PHN-101`, `PHN 000101`.
+
+### 2. Danh mục ID chính thức
+
+| Thực thể | Tiền tố | Ví dụ | Ghi chú |
+|---|---|---|---|
+| Account | `ACC` | `ACC-000001` | Tài khoản đăng nhập |
+| Customer | `CUS` | `CUS-000001` | Khách hàng |
+| Employee | `EMP` | `EMP-000001` | Nhân viên |
+| Phone | `PHN` | `PHN-000101` | Sản phẩm/biến thể điện thoại |
+| Supplier | `SUP` | `SUP-000001` | Nhà cung cấp |
+| Order | `ORD` | `ORD-01012026-000001` | Đơn đặt hàng |
+| Invoice | `INV` | `INV-01012026-000001` | Hóa đơn |
+| ImportReceipt | `IMP` | `IMP-01012026-000001` | Phiếu nhập kho |
+| Warranty | `WAR` | `WAR-000001` | Hồ sơ bảo hành |
+| WarrantyRequest | `WREQ` | `WREQ-01012026-000001` | Yêu cầu bảo hành |
+| DiscountUsage | `DUS` | `DUS-01012026-000001` | Lịch sử sử dụng mã giảm giá, nếu được lưu riêng |
+
+Mỗi tiền tố có bộ đếm độc lập. Ví dụ `PHN-000001` và `CUS-000001` không xung đột vì thuộc hai loại thực thể khác nhau.
+
+Không thêm năm vào ID trong phiên bản này. Ngày tạo được lưu ở trường riêng như `createdAt`, tránh phải quản lý bộ đếm riêng cho từng năm.
+
+### 3. Các đối tượng không cần ID độc lập trong V1
+
+| Đối tượng | Khóa nhận diện |
+|---|---|
+| Cart | `customerId`, vì mỗi khách hàng có một giỏ hàng hiện tại |
+| CartItem | `cartId + phoneId`; nếu giỏ hàng không có ID riêng thì dùng `customerId + phoneId` |
+| OrderDetail | `orderId + phoneId` |
+| InvoiceDetail | `invoiceId + phoneId` |
+| ImportDetail | `importReceiptId + phoneId` |
+| ShippingInfo | Thuộc Order; không cần ID riêng |
+| Role | Mã enum cố định |
+| Permission | Mã quyền cố định |
+| PaymentStatus | Enum trạng thái thanh toán |
+| OrderStatus | Enum trạng thái đơn hàng |
+
+Quy tắc cho các dòng chi tiết: một thực thể cha không được có nhiều dòng chi tiết cho cùng một `phoneId`. Nếu thêm cùng sản phẩm nhiều lần, hệ thống phải gộp số lượng.
+
+Không tạo ID độc lập chỉ để tất cả class trông đồng nhất. Nếu source hiện tại đã có ID cho một lớp chi tiết và đang có nghiệp vụ tham chiếu riêng đến nó, cần rà soát trước khi loại bỏ.
+
+### 4. Quy tắc riêng cho DiscountCode
+
+Mã giảm giá có mã nghiệp vụ riêng, ví dụ:
+
+- `WELCOME10`
+- `SUMMER2026`
+- `STUDENT15`
+
+Trong V1, trường `code` là khóa duy nhất để tra cứu DiscountCode. Không bắt buộc thêm `DSC-000001` nếu Model và Repository hiện tại đã dùng `code` làm khóa.
+
+Mã giảm giá đã được sử dụng trong lịch sử không được đổi hoặc xóa theo cách làm mất khả năng tra cứu giao dịch cũ.
+
+### 5. Quy tắc tham chiếu giữa các thực thể
+
+Các khóa ngoại phải lưu toàn bộ ID theo định dạng mới.
+
+Ví dụ:
+
+- Order chứa `customerId = CUS-000001`.
+- OrderDetail chứa `orderId = ORD-01012026-000001` và `phoneId = PHN-000101`.
+- Invoice chứa `orderId = ORD-01012026-000001` nếu hóa đơn được tạo từ đơn hàng.
+- InvoiceDetail chứa `invoiceId = INV-01012026-000001` và `phoneId = PHN-000101`.
+- ImportReceipt chứa `supplierId = SUP-000001`.
+- ImportDetail chứa `importReceiptId = IMP-01012026-000001` và `phoneId = PHN-000101`.
+- Warranty chứa các ID liên quan như `customerId`, `phoneId` và `invoiceId`.
+- WarrantyRequest chứa `warrantyId = WAR-000001`.
+
+Không được lưu một ID tham chiếu theo dạng số cũ trong khi bản ghi chính đã chuyển sang định dạng mới.
+
+### 6. Sinh ID tự động
+
+Tạo một thành phần dùng chung, chẳng hạn `IdGenerator`. Không sinh ID riêng theo cách tùy ý ở từng Service.
+
+`IdGenerator` cần:
+
+1. Quản lý bộ đếm độc lập theo từng tiền tố.
+2. Sinh ID đúng định dạng.
+3. Lưu bộ đếm bền vững qua các lần chạy.
+4. Không tái sử dụng ID đã cấp, kể cả khi bản ghi tương ứng bị xóa.
+5. Kiểm tra tính duy nhất trước khi lưu bản ghi.
+6. Không phụ thuộc vào ID do UI nhập.
+
+Đề xuất lưu bộ đếm trong `data/system/id_counters.txt`, ví dụ:
+
+```text
+ACC|16
+CUS|24
+EMP|8
+PHN|102
+SUP|5
+ORD|01012026|43
+INV|01012026|30
+IMP|01012026|12
+WAR|9
+WREQ|01012026|14
+DUS|01012026|21
+```
+ORD-01012026-000001
+Giá trị phía sau tiền tố là số thứ tự tiếp theo sẽ được cấp. Ví dụ `PHN|102` có nghĩa ID tiếp theo là `PHN-000102`.
+
+Khi khởi tạo hệ thống, cần đối chiếu bộ đếm với dữ liệu hiện có để bảo đảm bộ đếm không nhỏ hơn số thứ tự lớn nhất đã tồn tại. Không chỉ dựa vào bản ghi hiện có lớn nhất vì bản ghi cuối cùng có thể đã bị xóa.
+
+Nếu cấp ID nhưng thao tác lưu bản ghi thất bại, có thể bỏ qua số thứ tự đó. Không lùi bộ đếm để tái sử dụng ID.
+
+### 7. Validation
+
+Không dùng một hàm chỉ kiểm tra ID có phải chuỗi số hay không cho toàn bộ thực thể.
+
+Cần kiểm tra tiền tố và đúng 6 chữ số phía sau.
+
+Ví dụ:
+
+```cpp
+bool isValidId(const std::string& id,
+               const std::string& prefix);
+```
+
+Hàm trên kiểm tra định dạng của ID; việc kiểm tra bản ghi có tồn tại và ID có trùng hay không vẫn thuộc Repository/Service theo trách nhiệm tương ứng.
+
+Quy ước:
+
+- `PHN-000101` hợp lệ với tiền tố `PHN`.
+- `PHN-000101` không hợp lệ với tiền tố `CUS`.
+- `PHN-ABC101` không hợp lệ.
+- `PHN-101` không hợp lệ.
+- Chuỗi rỗng, ID có khoảng trắng thừa hoặc sai chữ hoa/thường đều bị từ chối.
+
+Không tự động chuẩn hóa một ID sai định dạng thành ID hợp lệ trong Service. ID sai phải được báo lỗi rõ ràng.
+
+### 8. Quy tắc khi cập nhật và xóa
+
+- Không cho phép sửa ID trong form cập nhật.
+- Nếu cần hiển thị ID, trường ID phải ở chế độ chỉ đọc.
+- Không thay ID khi đổi tên sản phẩm, giá, tên khách hàng, số điện thoại hoặc username.
+- Khi xóa một thực thể đang được tham chiếu, phải kiểm tra quy tắc nghiệp vụ và lịch sử liên quan.
+- Không tự động xóa các bản ghi chi tiết hoặc lịch sử chỉ vì thực thể cha bị xóa.
+- Khóa ngoại phải được kiểm tra trước khi tạo và khi cập nhật dữ liệu.
+
+### 9. Phạm vi thay đổi code
+
+Khi áp dụng hợp đồng này, rà soát đồng bộ:
+
+- Model và constructor.
+- Repository: thêm, tìm, cập nhật, xóa, kiểm tra tồn tại.
+- Service: validation, sinh ID và thông báo lỗi.
+- Custom HashTable/BST đang được lập chỉ mục theo ID.
+- Các hàm như `checkIDnum()` đang giả định ID chỉ chứa chữ số.
+- Dữ liệu `.txt` hiện tại.
+- Các khóa ngoại trong OrderDetail, InvoiceDetail, ImportDetail, CartItem, Warranty và các bản ghi liên quan.
+- Test cases cho ID sai định dạng, ID trùng, ID không tồn tại và ID tham chiếu không hợp lệ.
+
+### 10. Tiêu chí nghiệm thu
+
+1. Mọi ID chính thức đúng tiền tố và định dạng 6 chữ số.
+2. ID được tự sinh, duy nhất và không bị tái sử dụng sau khi xóa.
+3. Các thao tác tìm kiếm và cập nhật sử dụng ID mới nhất quán.
+4. Không còn hàm nghiệp vụ giả định mọi ID chỉ là chữ số.
+5. Không còn khóa ngoại trỏ đến ID cũ sau khi migration.
+6. Đóng rồi mở lại chương trình không làm mất hoặc tái sử dụng bộ đếm.
+7. Dữ liệu lỗi không được âm thầm làm lệch Repository, index và file lưu trữ.
+8. Các chức năng tạo đơn, tạo hóa đơn, nhập kho và bảo hành vẫn tra cứu đúng các thực thể được tham chiếu.
+

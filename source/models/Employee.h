@@ -4,6 +4,7 @@
 
 #include "People.h"
 #include "Account.h"
+#include "../utils/StringHelper.h"
 
 class Employee : public People {
 protected:
@@ -97,12 +98,22 @@ inline double Employee::getSalary() const { return salary; }
 inline void Employee::setSalary(double s) { salary = s; }
 
 // Hàm chuyển thông tin nhân viên thành định dạng chuỗi lưu file Employee.txt
-// Format: id|firstName|middleName|lastName|phoneNumber|email|username|password|role|address|salary
+// Format: id|firstName|middleName|lastName|phoneNumber|email|username|password|role|address|salary|accountId
 inline std::string Employee::toFileString() const {
+    // FIX LỖI: Chuyển đổi RoleType sang mã file chuẩn (1=Admin, 2=Sale, 3=Warehouse) theo DATA_FORMAT_GUIDE.md
+    int fileRoleCode = 0;
+    if (getRoleType() == RoleType::ADMIN) {
+        fileRoleCode = 1;
+    } else if (getRoleType() == RoleType::SALE_EMPLOYEE) {
+        fileRoleCode = 2;
+    } else if (getRoleType() == RoleType::WAREHOUSE_EMPLOYEE) {
+        fileRoleCode = 3;
+    }
+
     return id + "|" + name.firstName + "|" + name.middleName + "|" + name.lastName + "|" +
            phoneNumber + "|" + email + "|" + account.getUsername() + "|" + account.getPassword() + "|" +
-           std::to_string(static_cast<int>(getRoleType())) + "|" + address + "|" +
-           std::to_string(static_cast<long long>(salary));
+           std::to_string(fileRoleCode) + "|" + address + "|" +
+           std::to_string(static_cast<long long>(salary)) + "|" + account.getID();
 }
 
 // Phân tích dòng dữ liệu từ Employee.txt, trả về con trỏ Employee* đúng kiểu
@@ -117,19 +128,33 @@ inline Employee* Employee::fromFileLine(const std::string& line) {
     std::string email    = StringHelper::trim(parts[5]);
     std::string username = StringHelper::trim(parts[6]);
     std::string password = StringHelper::trim(parts[7]);
-    int roleInt          = std::stoi(StringHelper::trim(parts[8]));
+    
+    // FIX LỖI: Bắt ngoại lệ chuyển đổi kiểu số an toàn, tránh crash ứng dụng khi gặp dữ liệu lỗi
+    int roleInt = 0;
+    double salary = 0.0;
+    try {
+        roleInt = std::stoi(StringHelper::trim(parts[8]));
+        if (parts.getSize() >= 11) {
+            salary = std::stod(StringHelper::trim(parts[10]));
+        }
+    } catch (...) {
+        return nullptr; // Dòng dữ liệu số không hợp lệ
+    }
     std::string address  = StringHelper::trim(parts[9]);
-    double salary        = (parts.getSize() >= 11) ? std::stod(StringHelper::trim(parts[10])) : 0.0;
 
     // Mapper từ số role sang RoleType (1=Admin, 2=Sale, 3=Warehouse)
+    Employee* employee = nullptr;
     if (roleInt == 1) {
-        return new AdminEmployee(id, name, phone, email, address, username, password, salary);
+        employee = new AdminEmployee(id, name, phone, email, address, username, password, salary);
     } else if (roleInt == 2) {
-        return new SalesEmployee(id, name, phone, email, address, username, password, salary);
+        employee = new SalesEmployee(id, name, phone, email, address, username, password, salary);
     } else if (roleInt == 3) {
-        return new WarehouseEmployee(id, name, phone, email, address, username, password, salary);
+        employee = new WarehouseEmployee(id, name, phone, email, address, username, password, salary);
     }
-    return nullptr; // Role không xác định
+    if (employee != nullptr && parts.getSize() >= 12) {
+        employee->getAccount().setID(StringHelper::trim(parts[11]));
+    }
+    return employee; // Role không xác định
 }
 
 // --- AdminEmployee ---
