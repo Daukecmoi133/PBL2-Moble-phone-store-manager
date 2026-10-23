@@ -22,6 +22,12 @@ out.txt
 output_run.txt
 *.log
 
+# Local report drafts and QA feedback
+feedback.txt
+Summary.txt
+summary.txt
+PBL2_Skeleton_Spec.md
+
 # IDE & Editor temporary files
 .vscode/
 .idea/
