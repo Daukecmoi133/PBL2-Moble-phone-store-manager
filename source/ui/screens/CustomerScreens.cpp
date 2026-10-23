@@ -524,8 +524,10 @@ void CustomerScreens::buildCartView() {
     UIComponents::setButtonCursor(btnCheckout);
     gtk_widget_set_margin_top(btnCheckout, 10);
     g_signal_connect_data(btnCheckout, "clicked", G_CALLBACK(+[](GtkButton* b, gpointer d) {
-        (void)b;
         CustomerScreens* self = static_cast<CustomerScreens*>(d);
+        // Chống bấm nhiều lần: vô hiệu hóa nút đặt hàng trong lúc xử lý
+        gtk_widget_set_sensitive(GTK_WIDGET(b), FALSE);
+
         const UserSessionViewModel& curUser = self->controller->getCurrentUser();
 
         CheckoutRequest req;
@@ -538,11 +540,21 @@ void CustomerScreens::buildCartView() {
         req.discountCode = gtk_editable_get_text(GTK_EDITABLE(self->entryCoupon));
 
         std::string orderId;
-        OperationResult res = self->controller->checkout(req, orderId);
+        OperationResult res;
+        try {
+            res = self->controller->checkout(req, orderId);
+        } catch (const std::exception& ex) {
+            res = OperationResult::Fail(std::string("Lỗi đọc/ghi file: ") + ex.what());
+        }
+
+        // Bật lại nút sau khi xử lý xong
+        gtk_widget_set_sensitive(GTK_WIDGET(b), TRUE);
+
         if (res.success) {
             self->shell->updateCartBadge(0);
             self->refreshCart();
             self->refreshOrders();
+            self->refreshProducts();
             UIComponents::showSuccessDialog(self->shell->getWindow(), "Đặt hàng thành công", res.message);
             self->shell->navigateTo("customer_orders");
         } else {

@@ -5,9 +5,12 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
+#include <filesystem>
 #include "../models/Phone.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
+#include "../utils/FileStore.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu sản phẩm từ/vào tệp tin.
 // Lưu trữ danh sách Phone trên RAM bằng Vector<Phone>.
@@ -58,62 +61,47 @@ public:
 
 // ================= IMPLEMENTATION =================
 
-// Tạo file mới với dòng header chuẩn
+// Tạo file mới với dòng header chuẩn bằng FileStore
 inline bool PhoneRepository::createEmptyFile() const {
-    std::ofstream newFile(filePath);
-    if (!newFile.is_open()) {
-        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
-        return false;
+    std::vector<std::string> lines = {
+        "id|phoneName|brand|operatingSystem|importPrice|sellingPrice|manufacturer|specifications|status"
+    };
+    bool ok = FileStore::ghiFileAnToan(filePath, lines);
+    if (ok) {
+        std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
     }
-    newFile << "id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications\n";
-    newFile.close();
-    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
-    return true;
+    return ok;
 }
 
 inline PhoneRepository::PhoneRepository(std::string path, std::string specsPath)
     : filePath(path), specificationsFilePath(specsPath) {}
 
-// Nạp dữ liệu từ Products.txt vào RAM
-// - Nếu file không tồn tại: tự tạo file mới và trả về true (danh sách rỗng)
-// - Nếu một dòng bị lỗi: in cảnh báo, bỏ qua và đọc tiếp
+// Nạp dữ liệu từ Products.txt vào RAM bằng FileStore
 inline bool PhoneRepository::loadFromFile() {
-    std::ifstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Canh bao] Khong the mo file: " << filePath
-                  << ". Dang tao file moi..." << std::endl;
-        return createEmptyFile();
+    phones.clear();
+    auto rows = FileStore::docFile(filePath);
+    if (rows.empty()) {
+        std::error_code ec;
+        if (!std::filesystem::exists(filePath, ec)) {
+            createEmptyFile();
+        }
+        return true;
     }
 
-    phones.clear();
-    std::string line;
-    bool isHeader = true;
-    int lineNum = 0;
-
-    while (std::getline(file, line)) {
-        ++lineNum;
-        line = StringHelper::trim(line);
-        if (line.empty()) continue;
-
-        if (isHeader) {
-            isHeader = false; // Bỏ qua dòng tiêu đề
-            continue;
+    for (size_t i = 0; i < rows.size(); ++i) {
+        if (i == 0 && !rows[i].empty() && rows[i][0] == "id") {
+            continue; // Bỏ qua tiêu đề
         }
-
+        std::string line = FileStore::ghepTruong(rows[i]);
         try {
             Phone p = Phone::fromFileLine(line);
             if (!p.getID().empty()) {
                 phones.push_back(p);
             }
-        } catch (const std::exception& e) {
-            std::cerr << "[Canh bao] Loi doc dong " << lineNum
-                      << " trong " << filePath << ": " << e.what() << std::endl;
         } catch (...) {
-            std::cerr << "[Canh bao] Loi khong xac dinh tai dong " << lineNum
-                      << " trong " << filePath << std::endl;
+            std::cerr << "[Canh bao] Loi doc dong " << (i + 1) << " trong " << filePath << std::endl;
         }
     }
-    file.close();
     loadDetailedSpecifications();
     return true;
 }
@@ -197,20 +185,14 @@ inline void PhoneRepository::loadDetailedSpecifications() {
     saveCurrentDetails();
 }
 
-// Ghi toàn bộ danh sách phones xuống file (ghi đè)
+// Ghi toàn bộ danh sách phones xuống file bằng FileStore (an toàn qua file .tmp)
 inline bool PhoneRepository::saveToFile() const {
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
-        return false;
-    }
-    // Ghi header đúng với định dạng 9 cột
-    file << "id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications\n";
+    std::vector<std::string> lines;
+    lines.push_back("id|phoneName|brand|operatingSystem|importPrice|sellingPrice|manufacturer|specifications|status");
     for (int i = 0; i < phones.getSize(); ++i) {
-        file << phones[i].toFileString() << "\n";
+        lines.push_back(phones[i].toFileString());
     }
-    file.close();
-    return true;
+    return FileStore::ghiFileAnToan(filePath, lines);
 }
 
 inline const Vector<Phone>& PhoneRepository::getAll() const { return phones; }

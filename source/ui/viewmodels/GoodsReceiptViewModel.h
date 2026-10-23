@@ -24,9 +24,10 @@ struct GoodsReceiptSummaryViewModel {
     std::string employeeName;
     std::string importTime;
     double totalAmount;
+    std::string status; // "HoatDong" hoặc "DaHuy"
     std::vector<GoodsReceiptDetailViewModel> details;
 
-    GoodsReceiptSummaryViewModel() : totalAmount(0.0) {}
+    GoodsReceiptSummaryViewModel() : totalAmount(0.0), status("HoatDong") {}
 };
 
 // Form tạo phiếu nhập kho

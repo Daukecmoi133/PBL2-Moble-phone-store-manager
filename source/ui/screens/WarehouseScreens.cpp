@@ -388,12 +388,13 @@ void WarehouseScreens::buildReceiptsView() {
     gtk_box_append(GTK_BOX(content), header);
 
     std::vector<UIComponents::TableColumnSpec> recCols = {
-        {"Mã phiếu", 130, 0.0f, false},
-        {"Nhà cung cấp", 180, 0.0f, false},
-        {"Người nhập", 150, 0.0f, false},
+        {"Mã phiếu", 120, 0.0f, false},
+        {"Nhà cung cấp", 160, 0.0f, false},
+        {"Người nhập", 130, 0.0f, false},
         {"Thời gian", 0, 0.0f, true},
-        {"Tổng tiền nhập", 150, 1.0f, false},
-        {"Thao tác", 90, 0.5f, false}
+        {"Tổng tiền nhập", 140, 1.0f, false},
+        {"Trạng thái", 110, 0.5f, false},
+        {"Thao tác", 160, 0.5f, false}
     };
     gtk_box_append(GTK_BOX(content), UIComponents::createTableHeaderRow(recCols));
 
@@ -434,21 +435,21 @@ void WarehouseScreens::refreshReceipts() {
         // Mã phiếu
         GtkWidget* idLbl = gtk_label_new(r.id.c_str());
         gtk_widget_add_css_class(idLbl, "product-name");
-        gtk_widget_set_size_request(idLbl, 130, -1);
+        gtk_widget_set_size_request(idLbl, 120, -1);
         gtk_label_set_xalign(GTK_LABEL(idLbl), 0.0f);
         gtk_widget_set_valign(idLbl, GTK_ALIGN_CENTER);
         gtk_box_append(GTK_BOX(row), idLbl);
 
         // Nhà cung cấp
         GtkWidget* supLbl = gtk_label_new(r.supplierName.c_str());
-        gtk_widget_set_size_request(supLbl, 180, -1);
+        gtk_widget_set_size_request(supLbl, 160, -1);
         gtk_label_set_xalign(GTK_LABEL(supLbl), 0.0f);
         gtk_widget_set_valign(supLbl, GTK_ALIGN_CENTER);
         gtk_box_append(GTK_BOX(row), supLbl);
 
         // Người nhập
         GtkWidget* empLbl = gtk_label_new(r.employeeName.c_str());
-        gtk_widget_set_size_request(empLbl, 150, -1);
+        gtk_widget_set_size_request(empLbl, 130, -1);
         gtk_label_set_xalign(GTK_LABEL(empLbl), 0.0f);
         gtk_widget_set_valign(empLbl, GTK_ALIGN_CENTER);
         gtk_box_append(GTK_BOX(row), empLbl);
@@ -464,14 +465,32 @@ void WarehouseScreens::refreshReceipts() {
         // Tổng tiền (căn phải)
         GtkWidget* totalLbl = gtk_label_new(UIComponents::formatVND(r.totalAmount).c_str());
         gtk_widget_add_css_class(totalLbl, "product-price");
-        gtk_widget_set_size_request(totalLbl, 150, -1);
+        gtk_widget_set_size_request(totalLbl, 140, -1);
         gtk_label_set_xalign(GTK_LABEL(totalLbl), 1.0f);
         gtk_widget_set_valign(totalLbl, GTK_ALIGN_CENTER);
         gtk_box_append(GTK_BOX(row), totalLbl);
 
+        // Trạng thái badge
+        const bool isCancelled = (r.status == "DaHuy");
+        GtkWidget* stBadge = UIComponents::createStatusBadge(
+            isCancelled ? "Đã hủy" : "Hoạt động",
+            isCancelled ? "status-pill-cancelled" : "status-pill-completed"
+        );
+        GtkWidget* stBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+        gtk_widget_set_size_request(stBox, 110, -1);
+        gtk_widget_set_valign(stBox, GTK_ALIGN_CENTER);
+        gtk_widget_set_halign(stBox, GTK_ALIGN_CENTER);
+        gtk_box_append(GTK_BOX(stBox), stBadge);
+        gtk_box_append(GTK_BOX(row), stBox);
+
         // Thao tác
+        GtkWidget* actionBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+        gtk_widget_set_size_request(actionBox, 160, -1);
+        gtk_widget_set_valign(actionBox, GTK_ALIGN_CENTER);
+        gtk_widget_set_halign(actionBox, GTK_ALIGN_CENTER);
+
         GtkWidget* btnDetail = UIComponents::createTableActionButton("🔍 Xem", "Xem chi tiết mặt hàng và số lượng nhập", "btn-action-edit");
-        gtk_widget_set_size_request(btnDetail, 90, -1);
+        gtk_widget_set_size_request(btnDetail, 70, -1);
 
         struct RecCtx { WarehouseScreens* screens; GoodsReceiptSummaryViewModel item; };
         RecCtx* rCtx = new RecCtx{this, r};
@@ -480,10 +499,49 @@ void WarehouseScreens::refreshReceipts() {
             RecCtx* rc = static_cast<RecCtx*>(d);
             rc->screens->showReceiptDetailModal(rc->item);
         }), rCtx, [](gpointer d, GClosure*) { delete static_cast<RecCtx*>(d); }, (GConnectFlags)0);
+        gtk_box_append(GTK_BOX(actionBox), btnDetail);
 
-        gtk_box_append(GTK_BOX(row), btnDetail);
+        if (!isCancelled) {
+            GtkWidget* btnCancel = UIComponents::createTableActionButton("❌ Hủy", "Hủy phiếu nhập kho này", "btn-action-delete");
+            gtk_widget_set_size_request(btnCancel, 70, -1);
+            RecCtx* cCtx = new RecCtx{this, r};
+            g_signal_connect_data(btnCancel, "clicked", G_CALLBACK(+[](GtkButton*, gpointer d) {
+                RecCtx* rc = static_cast<RecCtx*>(d);
+                rc->screens->confirmCancelReceipt(rc->item.id);
+            }), cCtx, [](gpointer d, GClosure*) { delete static_cast<RecCtx*>(d); }, (GConnectFlags)0);
+            gtk_box_append(GTK_BOX(actionBox), btnCancel);
+        }
+
+        gtk_box_append(GTK_BOX(row), actionBox);
         gtk_box_append(GTK_BOX(receiptsListBox), row);
     }
+}
+
+void WarehouseScreens::confirmCancelReceipt(const std::string& receiptId) {
+    struct CancelCtx { WarehouseScreens* screens; std::string rId; };
+    CancelCtx* ctx = new CancelCtx{this, receiptId};
+
+    UIComponents::showConfirmDialog(
+        shell->getWindow(),
+        "Xác nhận hủy phiếu nhập",
+        "Bạn có chắc chắn muốn hủy phiếu nhập kho [" + receiptId + "] không?\n\n"
+        "Lưu ý: Tồn kho và giá vốn sẽ được tự động tính toán lại. "
+        "Nếu làm tồn kho của sản phẩm bị âm, hệ thống sẽ từ chối thao tác.",
+        +[](gpointer data) {
+            CancelCtx* c = static_cast<CancelCtx*>(data);
+            OperationResult res = c->screens->controller->cancelGoodsReceipt(c->rId);
+            if (res.success) {
+                UIComponents::showToast(c->screens->shell->getWindow(), res.message, "success");
+                c->screens->refreshReceipts();
+                c->screens->refreshInventory();
+                c->screens->refreshDashboard();
+            } else {
+                UIComponents::showToast(c->screens->shell->getWindow(), res.message, "danger");
+            }
+            delete c;
+        },
+        ctx
+    );
 }
 
 void WarehouseScreens::showReceiptDetailModal(const GoodsReceiptSummaryViewModel& receipt) {
@@ -491,7 +549,7 @@ void WarehouseScreens::showReceiptDetailModal(const GoodsReceiptSummaryViewModel
     gtk_window_set_title(GTK_WINDOW(win), ("Chi tiết phiếu nhập — " + receipt.id).c_str());
     gtk_window_set_modal(GTK_WINDOW(win), TRUE);
     gtk_window_set_transient_for(GTK_WINDOW(win), shell->getWindow());
-    gtk_window_set_default_size(GTK_WINDOW(win), 480, 400);
+    gtk_window_set_default_size(GTK_WINDOW(win), 480, 420);
 
     GtkWidget* card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
     gtk_widget_add_css_class(card, "dialog-content");
@@ -522,6 +580,7 @@ void WarehouseScreens::showReceiptDetailModal(const GoodsReceiptSummaryViewModel
     addRow("Nhà cung cấp:", receipt.supplierName);
     addRow("Thủ kho nhập:", receipt.employeeName);
     addRow("Thời gian nhập:", receipt.importTime);
+    addRow("Trạng thái phiếu:", receipt.status == "DaHuy" ? "Đã hủy" : "Hoạt động");
 
     GtkWidget* sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
     gtk_box_append(GTK_BOX(card), sep);
@@ -616,15 +675,24 @@ void WarehouseScreens::buildCreateReceiptView() {
     gtk_widget_set_margin_top(btnSubmitReceipt, 10);
 
     g_signal_connect_data(btnSubmitReceipt, "clicked", G_CALLBACK(+[](GtkButton* b, gpointer d) {
-        (void)b;
         WarehouseScreens* self = static_cast<WarehouseScreens*>(d);
         if (self->draftReceiptItems.empty()) {
             UIComponents::showWarningDialog(self->shell->getWindow(), "Thiếu sản phẩm", "Vui lòng thêm ít nhất 1 sản phẩm vào phiếu nhập!");
             return;
         }
 
+        // Chống bấm nhiều lần: vô hiệu hóa nút trong lúc xử lý
+        gtk_widget_set_sensitive(GTK_WIDGET(b), FALSE);
+
         guint supSel = gtk_drop_down_get_selected(GTK_DROP_DOWN(self->receiptComboSupplier));
-        std::vector<SupplierItemViewModel> sups = self->controller->getSuppliers();
+        std::vector<SupplierItemViewModel> sups;
+        try {
+            sups = self->controller->getSuppliers();
+        } catch (const std::exception& ex) {
+            UIComponents::showErrorDialog(self->shell->getWindow(), "Lỗi đọc file nhà cung cấp", ex.what());
+            gtk_widget_set_sensitive(GTK_WIDGET(b), TRUE);
+            return;
+        }
         std::string supId = (supSel < sups.size()) ? sups[supSel].id : "SUP-000001";
 
         CreateReceiptRequest req;
@@ -632,12 +700,23 @@ void WarehouseScreens::buildCreateReceiptView() {
         req.employeeId = self->controller->getCurrentUser().userId;
         req.items = self->draftReceiptItems;
 
-        OperationResult res = self->controller->createGoodsReceipt(req);
+        OperationResult res;
+        try {
+            res = self->controller->createGoodsReceipt(req);
+        } catch (const std::exception& ex) {
+            res = OperationResult::Fail(std::string("Lỗi đọc/ghi file: ") + ex.what());
+        }
+
+        // Bật lại nút sau khi xử lý xong
+        gtk_widget_set_sensitive(GTK_WIDGET(b), TRUE);
+
         if (res.success) {
             self->draftReceiptItems.clear();
+            // Tải lại dữ liệu tươi mới từ Service
             self->refreshReceipts();
             self->refreshInventory();
             self->refreshLowStock();
+            self->refreshDashboard();
 
             // Xóa draft items trên UI
             GtkWidget* child = gtk_widget_get_first_child(self->receiptDraftItemsBox);
@@ -651,7 +730,7 @@ void WarehouseScreens::buildCreateReceiptView() {
             UIComponents::showSuccessDialog(self->shell->getWindow(), "Thành công", res.message);
             self->shell->navigateTo("warehouse_receipts");
         } else {
-            UIComponents::showErrorDialog(self->shell->getWindow(), "Lỗi", res.message);
+            UIComponents::showErrorDialog(self->shell->getWindow(), "Lỗi tạo phiếu nhập", res.message);
         }
     }), this, nullptr, (GConnectFlags)0);
 

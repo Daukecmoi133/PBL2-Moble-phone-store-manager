@@ -18,16 +18,17 @@
 #include "../ui/viewmodels/StatisticsViewModel.h"
 #include "../ui/viewmodels/AccountViewModel.h"
 
-// Forward declarations of Core Services
 class PhoneService;
 class OrderService;
 class CustomerService;
 class EmployeeService;
-class InvoiceService;
 class SupplierService;
 class DiscountService;
 class ReportService;
 class AuthService;
+
+#include "../services/InventoryService.h"
+#include "../services/InvoiceService.h"
 
 class AppController {
 private:
@@ -41,6 +42,8 @@ private:
     ReportService*   reportService;
     AuthService*     authService;
 
+    InventoryService inventoryService;
+    InvoiceService   internalInvoiceService;
     UserSessionViewModel currentSession;
 
 public:
@@ -107,6 +110,7 @@ public:
                                     const std::vector<CartItemViewModel>& items,
                                     const std::string& discountCode, PaymentMethod payMethod,
                                     double cashGiven, double& outChange, std::string& outInvoiceId);
+    OperationResult cancelInvoice(const std::string& invoiceId);
 
     // === KHÁCH HÀNG ===
     std::vector<CustomerItemViewModel> getCustomers(const std::string& keyword = "");
@@ -130,6 +134,7 @@ public:
     OperationResult deleteSupplier(const std::string& id);
     std::vector<GoodsReceiptSummaryViewModel> getGoodsReceipts();
     OperationResult createGoodsReceipt(const CreateReceiptRequest& req);
+    OperationResult cancelGoodsReceipt(const std::string& receiptId);
 
     // === MÃ GIẢM GIÁ ===
     std::vector<DiscountItemViewModel> getDiscounts();

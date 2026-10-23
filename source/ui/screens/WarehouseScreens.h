@@ -76,6 +76,7 @@ private:
     void buildFulfillmentView();
 
     void showReceiptDetailModal(const GoodsReceiptSummaryViewModel& receipt);
+    void confirmCancelReceipt(const std::string& receiptId);
     void showAddProductToReceiptModal();
 };
 

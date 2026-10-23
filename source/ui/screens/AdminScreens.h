@@ -109,6 +109,8 @@ public:
     void refreshAccounts();
     void refreshOrders();
     void refreshInvoices();
+    void confirmCancelInvoice(const std::string& invoiceId);
+    void showInvoiceDetailModal(const InvoiceItemViewModel& inv);
     void refreshWarrantyMonitor();
     void refreshReports();
     void refreshRealTime();

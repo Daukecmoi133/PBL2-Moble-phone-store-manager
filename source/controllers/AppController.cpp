@@ -69,6 +69,14 @@ bool parseDateDMY(const std::string& s, int& d, int& m, int& y) {
         } \
     } while (0)
 
+#define REQUIRE_ADMIN_OR_SALES_ROLE() \
+    do { \
+        if (!currentSession.isAuthenticated || \
+            !(currentSession.isAdmin() || currentSession.isSales())) { \
+            return OperationResult::Fail("Từ chối truy cập: Thao tác này chỉ dành cho Quản trị viên hoặc Nhân viên bán hàng!"); \
+        } \
+    } while (0)
+
 template <typename Records>
 std::vector<std::string> collectIds(const Records& records) {
     std::vector<std::string> ids;
@@ -98,7 +106,14 @@ AppController::AppController(
     discountService(ds),
     reportService(rs),
     authService(as)
-{}
+{
+    internalInvoiceService.setInventoryService(&inventoryService);
+    if (invoiceService == nullptr) {
+        invoiceService = &internalInvoiceService;
+    } else {
+        invoiceService->setInventoryService(&inventoryService);
+    }
+}
 
 // === XÁC THỰC & PHIÊN LÀM VIỆC ===
 
@@ -384,9 +399,37 @@ OperationResult AppController::updateProfile(const std::string& fullName, const 
 
 std::vector<ProductItemViewModel> AppController::getProducts(const ProductFilterRequest& filter) {
     auto& store = MockDataStore::getInstance();
+    
+    // Lấy dữ liệu thực tế từ InventoryService (đã tính toán tồn kho và giá vốn hiện tại)
+    std::vector<ProductItemViewModel> baseProducts;
+    try {
+        baseProducts = inventoryService.layDanhSachSanPham();
+    } catch (const std::exception& e) {
+        std::cerr << "[PBL2 Lỗi đọc file sản phẩm] " << e.what() << std::endl;
+    }
+    if (baseProducts.empty()) {
+        baseProducts = store.products;
+    }
+
+    // Tính toán lượng tồn giữ chỗ (reservedStock) từ các đơn hàng đang xử lý
+    for (const auto& ord : store.orders) {
+        if (ord.status == OrderStatus::CONFIRMED || ord.status == OrderStatus::PREPARING) {
+            for (const auto& d : ord.details) {
+                for (auto& p : baseProducts) {
+                    if (p.id == d.phoneId) {
+                        p.reservedStock += d.quantity;
+                    }
+                }
+            }
+        }
+    }
+    for (auto& p : baseProducts) {
+        p.calculateStockStatus();
+    }
+
     std::vector<ProductItemViewModel> result;
 
-    for (const auto& p : store.products) {
+    for (const auto& p : baseProducts) {
         // Keyword filter
         if (!filter.keyword.empty()) {
             if (!Utf8Helper::containsCaseInsensitive(p.name, filter.keyword) &&
@@ -434,8 +477,8 @@ std::vector<ProductItemViewModel> AppController::getProducts(const ProductFilter
 }
 
 ProductItemViewModel AppController::getProductById(const std::string& id) {
-    auto& store = MockDataStore::getInstance();
-    for (const auto& p : store.products) {
+    std::vector<ProductItemViewModel> prods = getProducts();
+    for (const auto& p : prods) {
         if (p.id == id) return p;
     }
     return ProductItemViewModel();
@@ -452,9 +495,6 @@ OperationResult AppController::addProduct(const ProductItemViewModel& rawProduct
     if (product.sellingPrice <= 0 || product.importPrice <= 0) {
         return OperationResult::Fail("Giá nhập và giá bán phải lớn hơn 0!");
     }
-    if (product.actualStock < 0) {
-        return OperationResult::Fail("Số lượng tồn kho không được âm!");
-    }
 
     auto& store = MockDataStore::getInstance();
     std::string generatedId;
@@ -467,9 +507,15 @@ OperationResult AppController::addProduct(const ProductItemViewModel& rawProduct
     newItem.id = generatedId;
     newItem.reservedStock = 0;
     newItem.calculateStockStatus();
-    store.products.push_back(newItem);
 
-    return OperationResult::Ok("Thêm sản phẩm '" + product.name + "' thành công!");
+    // Lưu qua InventoryService (kiểm tra không chứa '|')
+    OperationResult op = inventoryService.themSanPham(newItem);
+    if (!op.success) {
+        return op;
+    }
+
+    store.products.push_back(newItem);
+    return OperationResult::Ok("Thêm sản phẩm '" + product.name + "' (" + generatedId + ") thành công!");
 }
 
 OperationResult AppController::updateProduct(const ProductItemViewModel& rawProduct) {
@@ -482,6 +528,12 @@ OperationResult AppController::updateProduct(const ProductItemViewModel& rawProd
     }
     if (product.sellingPrice <= 0) {
         return OperationResult::Fail("Giá bán phải lớn hơn 0!");
+    }
+
+    // Cập nhật qua InventoryService (không cho sửa ID, kiểm tra không chứa '|')
+    OperationResult op = inventoryService.suaSanPham(product);
+    if (!op.success) {
+        return op;
     }
 
     auto& store = MockDataStore::getInstance();
@@ -497,11 +549,11 @@ OperationResult AppController::updateProduct(const ProductItemViewModel& rawProd
             p.specs = product.specs;
             p.imageUrl = product.imageUrl;
             p.calculateStockStatus();
-            return OperationResult::Ok("Cập nhật sản phẩm '" + product.name + "' thành công!");
+            break;
         }
     }
 
-    return OperationResult::Fail("Không tìm thấy sản phẩm có mã '" + product.id + "' để cập nhật!");
+    return OperationResult::Ok("Cập nhật sản phẩm '" + product.name + "' thành công!");
 }
 
 OperationResult AppController::deleteProduct(const std::string& id) {
@@ -509,49 +561,28 @@ OperationResult AppController::deleteProduct(const std::string& id) {
     if (!IdGenerator::isValidId(id, "PHN")) {
         return OperationResult::Fail("Mã sản phẩm không đúng định dạng PHN-000001!");
     }
+
+    // Xóa theo Quy tắc 5 qua InventoryService:
+    // - Nếu đã có giao dịch: chỉ chuyển status thành "NgungBan"
+    // - Nếu chưa có giao dịch: xóa dòng khỏi Product.txt
+    OperationResult op = inventoryService.xoaSanPham(id);
+    if (!op.success) {
+        return op;
+    }
+
     auto& store = MockDataStore::getInstance();
-
-    // Preserve products referenced by transaction and warranty history.
-    for (const auto& ord : store.orders) {
-        for (const auto& d : ord.details) {
-            if (d.phoneId == id) {
-                return OperationResult::Fail("Không thể xóa sản phẩm '" + id +
-                    "' vì đang được tham chiếu trong đơn hàng (" + ord.id + ")!");
-            }
-        }
-    }
-    for (const auto& invoice : store.invoices) {
-        for (const auto& d : invoice.details) {
-            if (d.phoneId == id) {
-                return OperationResult::Fail("Không thể xóa sản phẩm '" + id +
-                    "' vì đang được tham chiếu trong hóa đơn (" + invoice.id + ")!");
-            }
-        }
-    }
-    for (const auto& receipt : store.receipts) {
-        for (const auto& d : receipt.details) {
-            if (d.phoneId == id) {
-                return OperationResult::Fail("Không thể xóa sản phẩm '" + id +
-                    "' vì đang được tham chiếu trong phiếu nhập (" + receipt.id + ")!");
-            }
-        }
-    }
-    for (const auto& warranty : store.warranties) {
-        if (warranty.phoneId == id) {
-            return OperationResult::Fail("Không thể xóa sản phẩm '" + id +
-                "' vì đang được tham chiếu trong yêu cầu bảo hành (" + warranty.id + ")!");
-        }
-    }
-
     for (auto it = store.products.begin(); it != store.products.end(); ++it) {
         if (it->id == id) {
-            std::string name = it->name;
-            store.products.erase(it);
-            return OperationResult::Ok("Đã xóa sản phẩm '" + name + "'!");
+            if (op.message.find("Ngừng bán") != std::string::npos) {
+                it->status = StockDisplayStatus::OUT_OF_STOCK;
+            } else {
+                store.products.erase(it);
+            }
+            break;
         }
     }
 
-    return OperationResult::Fail("Không tìm thấy sản phẩm để xóa!");
+    return op;
 }
 
 // === GIỎ HÀNG & CHECKOUT ===
@@ -609,7 +640,7 @@ OperationResult AppController::addToCart(const std::string& customerId, const st
     }
 
     store.customerCart.recalculate();
-    return OperationResult::Ok("Đã thêm '" + product.name + "' vào giỏ hàng!");
+    return OperationResult::Ok("Đã thêm '" + product.name + "' vào giỏ hàng! (Tồn kho hiện tại: " + std::to_string(product.availableStock) + " máy)");
 }
 
 OperationResult AppController::updateCartQuantity(const std::string& customerId, const std::string& phoneId, int newQuantity) {
@@ -928,13 +959,25 @@ OperationResult AppController::cancelOrder(const std::string& orderId) {
 // === HÓA ĐƠN ===
 
 std::vector<InvoiceItemViewModel> AppController::getAllInvoices() {
-    return MockDataStore::getInstance().invoices;
+    std::vector<InvoiceItemViewModel> list;
+    if (invoiceService != nullptr) {
+        list = invoiceService->danhSachHoaDon();
+    }
+    if (list.empty()) {
+        return MockDataStore::getInstance().invoices;
+    }
+    return list;
 }
 
 InvoiceItemViewModel AppController::getInvoiceById(const std::string& invoiceId) {
+    if (invoiceService != nullptr) {
+        InvoiceItemViewModel inv = invoiceService->layHoaDon(invoiceId);
+        if (!inv.id.empty()) return inv;
+    }
+
     auto& store = MockDataStore::getInstance();
-    for (const auto& inv : store.invoices) {
-        if (inv.id == invoiceId) return inv;
+    for (const auto& i : store.invoices) {
+        if (i.id == invoiceId) return i;
     }
     return InvoiceItemViewModel();
 }
@@ -966,34 +1009,31 @@ OperationResult AppController::createInvoiceForOrder(const std::string& orderId,
         return OperationResult::Fail("Khách hàng của đơn hàng không hợp lệ hoặc không tồn tại!");
     }
 
-    std::string invId;
-    std::string idError;
-    const std::string idDate = IdGenerator::currentDateKey();
-    if (idDate.empty() ||
-        !IdGenerator::nextId("INV", idDate, collectIds(store.invoices), invId, idError)) {
-        return OperationResult::Fail(idError.empty() ? "Không thể xác định ngày để sinh mã hóa đơn." : idError);
+    // Chuẩn bị CreateInvoiceRequest
+    CreateInvoiceRequest req;
+    req.orderId = ord.id;
+    req.customerId = ord.customerId;
+    req.employeeId = employeeId;
+    req.paymentMethod = method;
+    req.discountAmount = static_cast<long long>(std::round(ord.discountAmount));
+
+    for (const auto& d : ord.details) {
+        req.items.push_back(InvoiceDetailInput(
+            d.phoneId,
+            d.quantity,
+            static_cast<long long>(std::round(d.unitPrice))
+        ));
     }
 
-    std::time_t now = std::time(nullptr);
-    std::tm* tm_now = std::localtime(&now);
-    char timeBuf[64];
-    std::strftime(timeBuf, sizeof(timeBuf), "%d/%m/%Y %H:%M", tm_now);
+    std::string invId;
+    OperationResult op = invoiceService ? invoiceService->taoHoaDon(req, invId)
+                                        : internalInvoiceService.taoHoaDon(req, invId);
+    if (!op.success) {
+        return op;
+    }
 
-    InvoiceItemViewModel newInv;
-    newInv.id = invId;
-    newInv.orderId = ord.id;
-    newInv.customerId = ord.customerId;
-    newInv.customerName = ord.customerName;
-    newInv.employeeId = employeeId;
-    newInv.employeeName = "Nhân viên thu ngân";
-    newInv.paymentMethod = method;
-    newInv.paymentMethodText = paymentMethodToString(method);
-    newInv.createTime = timeBuf;
-    newInv.subtotal = ord.subtotal;
-    newInv.discountAmount = ord.discountAmount;
-    newInv.total = ord.total;
-    newInv.details = ord.details;
-
+    InvoiceItemViewModel newInv = invoiceService ? invoiceService->layHoaDon(invId)
+                                                 : internalInvoiceService.layHoaDon(invId);
     store.invoices.insert(store.invoices.begin(), newInv);
     return OperationResult::Ok("Đã xuất hóa đơn thành công! Mã hóa đơn: " + newInv.id);
 }
@@ -1009,8 +1049,9 @@ OperationResult AppController::createPosInvoice(const std::string& customerId, c
     }
 
     auto& store = MockDataStore::getInstance();
-    if (!IdGenerator::isValidId(employeeId, "EMP") ||
-        getEmployeeById(employeeId).id.empty()) {
+    const std::string empId = employeeId.empty() ? currentSession.userId : employeeId;
+    if (!IdGenerator::isValidId(empId, "EMP") ||
+        getEmployeeById(empId).id.empty()) {
         return OperationResult::Fail("Nhân viên lập hóa đơn không hợp lệ hoặc không tồn tại!");
     }
     if (!customerId.empty() && customerId != "WALK-IN" &&
@@ -1019,127 +1060,97 @@ OperationResult AppController::createPosInvoice(const std::string& customerId, c
         return OperationResult::Fail("Khách hàng được tham chiếu không hợp lệ hoặc không tồn tại!");
     }
 
-    // Tính tổng tiền
+    // Tính tổng tiền sơ bộ và kiểm tra mã giảm giá
     double subtotal = 0.0;
     for (const auto& it : items) {
-        if (!IdGenerator::isValidId(it.phoneId, "PHN") || it.quantity <= 0) {
-            return OperationResult::Fail("Chi tiết bán hàng chứa mã sản phẩm hoặc số lượng không hợp lệ!");
-        }
         subtotal += it.subtotal;
-        ProductItemViewModel p = getProductById(it.phoneId);
-        if (p.availableStock < it.quantity) {
-            return OperationResult::Fail("Sản phẩm '" + it.phoneName + "' không đủ tồn kho khả dụng!");
-        }
     }
 
-    // Mã giảm giá
     double discount = 0.0;
     if (!discountCode.empty()) {
         validateDiscount(discountCode, subtotal, discount);
     }
 
-    double total = subtotal - discount;
-    if (total < 0) total = 0;
+    // Chuẩn bị CreateInvoiceRequest
+    CreateInvoiceRequest req;
+    req.customerId = (customerId == "WALK-IN") ? "" : customerId;
+    req.employeeId = empId;
+    req.paymentMethod = payMethod;
+    req.discountAmount = static_cast<long long>(std::round(discount));
 
-    double change = 0.0;
-    if (payMethod == PaymentMethod::CASH) {
-        if (cashGiven < total) {
-            return OperationResult::Fail("Số tiền khách đưa không đủ! Còn thiếu " +
-                                         std::to_string(static_cast<long long>(total - cashGiven)) + " đ");
-        }
-        change = cashGiven - total;
-    }
-
+    // Sinh mã đơn hàng POS
     std::string idError;
     const std::string idDate = IdGenerator::currentDateKey();
     std::string orderId;
-    std::vector<std::string> invoiceIds = collectIds(store.invoices);
     std::vector<std::string> orderIds = collectIds(store.orders);
-    if (idDate.empty() ||
-        !IdGenerator::nextId("ORD", idDate, orderIds, orderId, idError)) {
-        return OperationResult::Fail(idError.empty() ? "Không thể xác định ngày để sinh mã đơn hàng." : idError);
+    if (!idDate.empty() && IdGenerator::nextId("ORD", idDate, orderIds, orderId, idError)) {
+        req.orderId = orderId;
     }
-    std::string invoiceId;
-    if (!IdGenerator::nextId("INV", idDate, invoiceIds, invoiceId, idError)) {
-        return OperationResult::Fail(idError);
-    }
-    outInvoiceId = invoiceId;
-    outChange = change;
 
-    // Trừ kho trực tiếp
     for (const auto& it : items) {
-        for (auto& p : store.products) {
-            if (p.id == it.phoneId) {
-                p.actualStock -= it.quantity;
-                p.calculateStockStatus();
-                break;
-            }
+        req.items.push_back(InvoiceDetailInput(
+            it.phoneId,
+            it.quantity,
+            static_cast<long long>(std::round(it.unitPrice))
+        ));
+    }
+
+    // Kiểm tra tiền mặt khách đưa trước khi thực hiện giao dịch
+    long long tamTinhLL = static_cast<long long>(std::round(subtotal));
+    long long tienSauGiamLL = tamTinhLL - req.discountAmount;
+    if (tienSauGiamLL < 0) tienSauGiamLL = 0;
+    long long tienThueLL = (tienSauGiamLL * 8 + 50) / 100;
+    long long tongThanhToanLL = tienSauGiamLL + tienThueLL;
+
+    if (payMethod == PaymentMethod::CASH) {
+        if (cashGiven < tongThanhToanLL) {
+            return OperationResult::Fail("Số tiền khách đưa không đủ! Cần thanh toán: " +
+                                         std::to_string(tongThanhToanLL) + " đ, còn thiếu: " +
+                                         std::to_string(tongThanhToanLL - static_cast<long long>(cashGiven)) + " đ");
         }
+        outChange = cashGiven - tongThanhToanLL;
     }
 
-    std::time_t now = std::time(nullptr);
-    std::tm* tm_now = std::localtime(&now);
-    char timeBuf[64];
-    std::strftime(timeBuf, sizeof(timeBuf), "%d/%m/%Y %H:%M", tm_now);
-
-    std::string custName = "Khách vãng lai";
-    if (!customerId.empty()) {
-        CustomerItemViewModel c = getCustomerById(customerId);
-        if (!c.fullName.empty()) custName = c.fullName;
+    // Gọi InvoiceService: kiểm tra tồn kho, tính thuế 8%, ghi một lần duy nhất vào file Invoices.txt
+    OperationResult op = invoiceService ? invoiceService->taoHoaDon(req, outInvoiceId)
+                                        : internalInvoiceService.taoHoaDon(req, outInvoiceId);
+    if (!op.success) {
+        return op;
     }
 
-    InvoiceItemViewModel inv;
-    inv.id = invoiceId;
-    inv.orderId = orderId;
-    inv.customerId = customerId == "WALK-IN" ? "" : customerId;
-    inv.customerName = custName;
-    inv.employeeId = employeeId;
-    inv.employeeName = "Nhân viên Bán hàng";
-    inv.paymentMethod = payMethod;
-    inv.paymentMethodText = paymentMethodToString(payMethod);
-    inv.createTime = timeBuf;
-    inv.subtotal = subtotal;
-    inv.discountAmount = discount;
-    inv.total = total;
-
-    for (const auto& it : items) {
-        OrderDetailItemViewModel d;
-        d.phoneId = it.phoneId;
-        d.phoneName = it.phoneName;
-        d.quantity = it.quantity;
-        d.unitPrice = it.unitPrice;
-        d.subtotal = it.subtotal;
-        inv.details.push_back(d);
-    }
-
+    // Đọc lại hóa đơn vừa ghi để đồng bộ RAM
+    InvoiceItemViewModel inv = invoiceService ? invoiceService->layHoaDon(outInvoiceId)
+                                              : internalInvoiceService.layHoaDon(outInvoiceId);
     store.invoices.insert(store.invoices.begin(), inv);
 
     // Cũng tạo 1 bản ghi đơn hàng COMPLETED để đồng bộ thống kê
-    OrderItemViewModel ord;
-    ord.id = orderId;
-    ord.customerId = inv.customerId;
-    ord.customerName = inv.customerName;
-    ord.orderTime = timeBuf;
-    ord.status = OrderStatus::COMPLETED;
-    ord.statusText = "Hoàn thành";
-    ord.deliveryMethod = DeliveryMethod::PICKUP;
-    ord.deliveryMethodText = "Nhận tại quầy";
-    ord.paymentMethod = payMethod;
-    ord.paymentMethodText = paymentMethodToString(payMethod);
-    ord.paymentStatus = PaymentStatus::PAID;
-    ord.paymentStatusText = "Đã thanh toán";
-    ord.subtotal = subtotal;
-    ord.discountAmount = discount;
-    ord.total = total;
-    ord.receiverName = custName;
-    ord.receiverPhone = "-";
-    ord.deliveryAddress = "Tại quầy thu ngân";
-    ord.details = inv.details;
-    store.orders.insert(store.orders.begin(), ord);
+    if (!req.orderId.empty()) {
+        OrderItemViewModel ord;
+        ord.id = req.orderId;
+        ord.customerId = inv.customerId;
+        ord.customerName = inv.customerName;
+        ord.orderTime = inv.createTime;
+        ord.status = OrderStatus::COMPLETED;
+        ord.statusText = "Hoàn thành";
+        ord.deliveryMethod = DeliveryMethod::PICKUP;
+        ord.deliveryMethodText = "Nhận tại quầy";
+        ord.paymentMethod = payMethod;
+        ord.paymentMethodText = paymentMethodToString(payMethod);
+        ord.paymentStatus = PaymentStatus::PAID;
+        ord.paymentStatusText = "Đã thanh toán";
+        ord.subtotal = inv.subtotal;
+        ord.discountAmount = inv.discountAmount;
+        ord.total = inv.total;
+        ord.receiverName = inv.customerName;
+        ord.receiverPhone = "-";
+        ord.deliveryAddress = "Tại quầy thu ngân";
+        ord.details = inv.details;
+        store.orders.insert(store.orders.begin(), ord);
+    }
 
     // Tích điểm nếu có customer
     if (!customerId.empty() && customerId != "WALK-IN") {
-        int points = static_cast<int>(total / 100000.0);
+        int points = static_cast<int>(inv.total / 100000.0);
         for (auto& c : store.customers) {
             if (c.id == customerId) {
                 c.points += points;
@@ -1150,6 +1161,30 @@ OperationResult AppController::createPosInvoice(const std::string& customerId, c
     }
 
     return OperationResult::Ok("Giao dịch thanh toán tại quầy thành công! Mã HĐ: " + outInvoiceId);
+}
+
+OperationResult AppController::cancelInvoice(const std::string& invoiceId) {
+    REQUIRE_ADMIN_OR_SALES_ROLE();
+    if (!IdGenerator::isValidId(invoiceId, "INV", true)) {
+        return OperationResult::Fail("Mã hóa đơn không đúng định dạng INV-ddMMyyyy-000001!");
+    }
+
+    // Gọi InvoiceService hủy hóa đơn (đổi status = DaHuy, tự động hoàn tồn kho)
+    OperationResult op = invoiceService ? invoiceService->huyHoaDon(invoiceId)
+                                        : internalInvoiceService.huyHoaDon(invoiceId);
+    if (!op.success) {
+        return op;
+    }
+
+    auto& store = MockDataStore::getInstance();
+    for (auto& inv : store.invoices) {
+        if (inv.id == invoiceId) {
+            inv.status = "DaHuy";
+            break;
+        }
+    }
+
+    return op;
 }
 
 // === KHÁCH HÀNG ===
@@ -1410,11 +1445,11 @@ OperationResult AppController::deleteEmployee(const std::string& id) {
 // === KHO & NHÀ CUNG CẤP ===
 
 std::vector<ProductItemViewModel> AppController::getInventory(bool lowStockOnly) {
-    auto& store = MockDataStore::getInstance();
-    if (!lowStockOnly) return store.products;
+    std::vector<ProductItemViewModel> prods = getProducts();
+    if (!lowStockOnly) return prods;
 
     std::vector<ProductItemViewModel> lowStock;
-    for (const auto& p : store.products) {
+    for (const auto& p : prods) {
         if (p.status == StockDisplayStatus::LOW_STOCK || p.status == StockDisplayStatus::OUT_OF_STOCK) {
             lowStock.push_back(p);
         }
@@ -1506,7 +1541,16 @@ OperationResult AppController::deleteSupplier(const std::string& id) {
 }
 
 std::vector<GoodsReceiptSummaryViewModel> AppController::getGoodsReceipts() {
-    return MockDataStore::getInstance().receipts;
+    std::vector<GoodsReceiptSummaryViewModel> list;
+    try {
+        list = inventoryService.layDanhSachPhieuNhap();
+    } catch (const std::exception& e) {
+        std::cerr << "[PBL2 Lỗi đọc file phiếu nhập] " << e.what() << std::endl;
+    }
+    if (list.empty()) {
+        return MockDataStore::getInstance().receipts;
+    }
+    return list;
 }
 
 OperationResult AppController::createGoodsReceipt(const CreateReceiptRequest& req) {
@@ -1519,38 +1563,13 @@ OperationResult AppController::createGoodsReceipt(const CreateReceiptRequest& re
     }
 
     auto& store = MockDataStore::getInstance();
-    bool supplierExists = false;
-    for (const auto& supplier : store.suppliers) {
-        if (supplier.id == req.supplierId) {
-            supplierExists = true;
-            break;
-        }
-    }
-    if (!supplierExists) {
-        return OperationResult::Fail("Không tìm thấy nhà cung cấp được tham chiếu!");
-    }
     const std::string employeeId =
         req.employeeId.empty() ? currentSession.userId : req.employeeId;
-    bool employeeExists = false;
-    for (const auto& employee : store.employees) {
-        if (employee.id == employeeId) {
-            employeeExists = true;
-            break;
-        }
-    }
-    if (!IdGenerator::isValidId(employeeId, "EMP") || !employeeExists) {
-        return OperationResult::Fail("Nhân viên lập phiếu nhập không hợp lệ hoặc không tồn tại!");
-    }
-    for (const auto& item : req.items) {
-        if (!IdGenerator::isValidId(item.phoneId, "PHN") || item.quantity <= 0 ||
-            item.importPrice < 0 || getProductById(item.phoneId).id.empty()) {
-            return OperationResult::Fail("Chi tiết phiếu nhập chứa sản phẩm hoặc số lượng không hợp lệ!");
-        }
-    }
+
     std::time_t now = std::time(nullptr);
     std::tm* tm_now = std::localtime(&now);
     char timeBuf[64];
-    std::strftime(timeBuf, sizeof(timeBuf), "%d/%m/%Y %H:%M", tm_now);
+    std::strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%d %H:%M:%S", tm_now);
 
     std::string receiptId;
     std::string idError;
@@ -1560,40 +1579,68 @@ OperationResult AppController::createGoodsReceipt(const CreateReceiptRequest& re
         return OperationResult::Fail(idError.empty() ? "Không thể xác định ngày để sinh mã phiếu nhập." : idError);
     }
 
+    std::vector<InventoryService::ItemInput> serviceItems;
+    for (const auto& itm : req.items) {
+        serviceItems.push_back({itm.phoneId, itm.phoneName, itm.quantity, itm.importPrice});
+    }
+
+    // Ghi qua InventoryService: kiểm tra soLuong > 0, donGia > 0, NCC & SP tồn tại,
+    // ghi an toàn bằng FileStore::ghiFileAnToan và cập nhật cache giá vốn ngay lập tức.
+    OperationResult op = inventoryService.taoPhieuNhap(receiptId, req.supplierId, employeeId, timeBuf, serviceItems);
+    if (!op.success) {
+        return op;
+    }
+
+    // Đồng bộ vào MockDataStore để UI hiển thị nhất quán
     GoodsReceiptSummaryViewModel r;
     r.id = receiptId;
     r.supplierId = req.supplierId;
     r.employeeId = employeeId;
     r.employeeName = currentSession.fullName.empty() ? "Thủ kho" : currentSession.fullName;
     r.importTime = timeBuf;
+    r.status = "HoatDong";
     r.totalAmount = 0.0;
-
     for (const auto& sup : store.suppliers) {
         if (sup.id == req.supplierId) {
             r.supplierName = sup.companyName;
             break;
         }
     }
-
     for (const auto& item : req.items) {
         GoodsReceiptDetailViewModel d = item;
         d.subtotal = item.importPrice * item.quantity;
         r.totalAmount += d.subtotal;
         r.details.push_back(d);
+    }
+    store.receipts.insert(store.receipts.begin(), r);
 
-        // Tăng tồn kho thực tế và cập nhật giá nhập mới
-        for (auto& p : store.products) {
-            if (p.id == item.phoneId) {
-                p.actualStock += item.quantity;
-                p.importPrice = item.importPrice;
-                p.calculateStockStatus();
-                break;
-            }
+    return op;
+}
+
+OperationResult AppController::cancelGoodsReceipt(const std::string& receiptId) {
+    REQUIRE_ADMIN_OR_WAREHOUSE_ROLE();
+    if (!IdGenerator::isValidId(receiptId, "IMP")) {
+        return OperationResult::Fail("Mã phiếu nhập không đúng định dạng IMP-ddMMyyyy-000001!");
+    }
+
+    // Hủy qua InventoryService:
+    // - Đổi status thành DaHuy
+    // - Kiểm tra không làm tồn kho sản phẩm âm
+    // - Tự động quay về giá vốn phiếu HoatDong trước đó
+    OperationResult op = inventoryService.huyPhieuNhap(receiptId);
+    if (!op.success) {
+        return op;
+    }
+
+    auto& store = MockDataStore::getInstance();
+    for (auto& r : store.receipts) {
+        if (r.id == receiptId) {
+            r.status = "DaHuy";
+            break;
         }
     }
 
-    store.receipts.insert(store.receipts.begin(), r);
-    return OperationResult::Ok("Tạo phiếu nhập kho thành công! Mã phiếu: " + r.id);
+    return op;
 }
 
 // === MÃ GIẢM GIÁ ===
@@ -1893,8 +1940,21 @@ DashboardStatsViewModel AppController::getDashboardStats(const std::string& from
 
     stats.estimatedProfit = stats.totalRevenue - totalCostCompleted;
 
-    // Tồn kho
-    for (const auto& p : store.products) {
+    // Doanh thu và lợi nhuận từ InvoiceService (chỉ tính hóa đơn HoatDong)
+    try {
+        if (invoiceService != nullptr) {
+            long long invRev = invoiceService->tongDoanhThu();
+            long long invProf = invoiceService->tongLoiNhuan();
+            if (invRev > 0) {
+                stats.totalRevenue = static_cast<double>(invRev);
+                stats.estimatedProfit = static_cast<double>(invProf);
+            }
+        }
+    } catch (...) {}
+
+    // Tồn kho tính từ InventoryService qua getProducts()
+    std::vector<ProductItemViewModel> allProds = getProducts();
+    for (const auto& p : allProds) {
         stats.totalStockQuantity += p.actualStock;
         stats.totalInventoryValue += (p.importPrice * p.actualStock);
         if (p.status == StockDisplayStatus::LOW_STOCK || p.status == StockDisplayStatus::OUT_OF_STOCK) {

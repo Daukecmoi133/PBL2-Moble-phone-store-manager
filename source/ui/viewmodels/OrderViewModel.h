@@ -23,8 +23,9 @@ struct OrderDetailItemViewModel {
     int quantity;
     double unitPrice;
     double subtotal;
+    double costPrice;
 
-    OrderDetailItemViewModel() : quantity(0), unitPrice(0.0), subtotal(0.0) {}
+    OrderDetailItemViewModel() : quantity(0), unitPrice(0.0), subtotal(0.0), costPrice(0.0) {}
 };
 
 // Trạng thái thanh toán (độc lập với trạng thái đơn hàng theo spec mục 7)

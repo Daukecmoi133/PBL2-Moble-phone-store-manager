@@ -4,11 +4,13 @@
 #define STOCKRECEIPTREPOSITORY_H
 
 #include <iostream>
-#include <fstream>
 #include <string>
+#include <vector>
+#include <filesystem>
 #include "../models/ImportReceipt.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
+#include "../utils/FileStore.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu phiếu nhập kho từ/vào tệp tin.
 // Lưu trữ danh sách ImportReceipt trên RAM bằng Vector<ImportReceipt>.
@@ -58,78 +60,61 @@ public:
 
 // ================= IMPLEMENTATION =================
 
-// Tạo file StockReceipts.txt mới với header chuẩn
+// Tạo file StockReceipts.txt mới với header chuẩn bằng FileStore
 inline bool StockReceiptRepository::createEmptyFile() const {
-    std::ofstream newFile(filePath);
-    if (!newFile.is_open()) {
-        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
-        return false;
+    std::vector<std::string> lines = {
+        "id|supplierId|employeeId|importTime|details|status"
+    };
+    bool ok = FileStore::ghiFileAnToan(filePath, lines);
+    if (ok) {
+        std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
     }
-    newFile << "id|supplierId|employeeId|importTime|details\n";
-    newFile.close();
-    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
-    return true;
+    return ok;
 }
 
 inline StockReceiptRepository::StockReceiptRepository(std::string path) : filePath(path) {}
 
-// Nạp dữ liệu từ StockReceipts.txt vào RAM
-// - Gọi ImportReceipt::fromFileLine() để phân tích mỗi dòng
-// - Nếu file không tồn tại: tự tạo file mới
-// - Nếu một dòng bị lỗi: in cảnh báo, bỏ qua và đọc tiếp
+// Nạp dữ liệu từ StockReceipts.txt vào RAM bằng FileStore
 inline bool StockReceiptRepository::loadFromFile() {
-    std::ifstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Canh bao] Khong the mo file: " << filePath
-                  << ". Dang tao file moi..." << std::endl;
-        return createEmptyFile();
+    receipts.clear();
+    auto rows = FileStore::docFile(filePath);
+    if (rows.empty()) {
+        std::error_code ec;
+        if (!std::filesystem::exists(filePath, ec)) {
+            createEmptyFile();
+        }
+        return true;
     }
 
-    receipts.clear();
-    std::string line;
-    bool isHeader = true;
-    int lineNum = 0;
-
-    while (std::getline(file, line)) {
-        ++lineNum;
-        line = StringHelper::trim(line);
-        if (line.empty()) continue;
-
-        if (isHeader) {
-            isHeader = false;
-            continue;
+    for (size_t i = 0; i < rows.size(); ++i) {
+        if (i == 0 && !rows[i].empty() && rows[i][0] == "id") {
+            continue; // Bỏ qua tiêu đề
         }
-
+        std::string line = FileStore::ghepTruong(rows[i]);
         try {
             ImportReceipt rec = ImportReceipt::fromFileLine(line);
             if (!rec.getID().empty()) {
                 receipts.push_back(rec);
             }
         } catch (const std::exception& e) {
-            std::cerr << "[Canh bao] Loi doc dong " << lineNum
+            std::cerr << "[Canh bao] Loi doc dong " << (i + 1)
                       << " trong " << filePath << ": " << e.what() << std::endl;
         } catch (...) {
-            std::cerr << "[Canh bao] Loi khong xac dinh tai dong " << lineNum
+            std::cerr << "[Canh bao] Loi khong xac dinh tai dong " << (i + 1)
                       << " trong " << filePath << std::endl;
         }
     }
-    file.close();
     return true;
 }
 
-// Ghi toàn bộ danh sách receipts xuống file (dùng ImportReceipt::toFileString())
+// Ghi toàn bộ danh sách receipts xuống file bằng FileStore
 inline bool StockReceiptRepository::saveToFile() const {
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
-        return false;
-    }
-    file << "id|supplierId|employeeId|importTime|details\n";
+    std::vector<std::string> lines;
+    lines.push_back("id|supplierId|employeeId|importTime|details|status");
     for (int i = 0; i < receipts.getSize(); ++i) {
-        file << receipts[i].toFileString() << "\n";
+        lines.push_back(receipts[i].toFileString());
     }
-    file.close();
-    return true;
+    return FileStore::ghiFileAnToan(filePath, lines);
 }
 
 inline const Vector<ImportReceipt>& StockReceiptRepository::getAll() const { return receipts; }

@@ -1,206 +1,115 @@
-// INVOICE SERVICE - Tầng nghiệp vụ quản lý hóa đơn thanh toán
-// InvoiceService tạo hóa đơn từ đơn hàng đã xác nhận, liên kết khách hàng và nhân viên.
-// Business rule: Mỗi đơn hàng chỉ được có tối đa 1 hóa đơn (one invoice per order).
 #ifndef INVOICESERVICE_H
 #define INVOICESERVICE_H
 
-#include <iostream>
 #include <string>
-#include "../models/Invoice.h"
-#include "../models/Order.h"
-#include "../core/Vector.h"
-#include "../repositories/InvoiceRepository.h"
-#include "../repositories/OrderRepository.h"
-#include "../utils/IdGenerator.h"
-#include "../utils/StringHelper.h"
-#include "Check.h"
 #include <vector>
+#include <map>
+#include "../ui/viewmodels/OperationResult.h"
+#include "../ui/viewmodels/InvoiceViewModel.h"
+#include "../models/Common.h"
 
-// Tầng Service: Nghiệp vụ tạo, tra cứu và quản lý hóa đơn thanh toán.
-// Đảm bảo: một đơn hàng chỉ có một hóa đơn; chỉ tạo được từ đơn CONFIRMED/COMPLETED.
-class InvoiceService {
-private:
-    InvoiceRepository& invoiceRepo;
-    OrderRepository& orderRepo;
+class InventoryService; // Forward declaration
 
-    bool generateInvoiceId(std::string& id, std::string& errorMessage) const;
+/**
+ * @struct InvoiceDetailInput
+ * @brief Đầu vào chi tiết từng mặt hàng cần xuất hóa đơn
+ */
+struct InvoiceDetailInput {
+    std::string productId;
+    int quantity;
+    long long unitPrice;
 
-public:
-    InvoiceService(InvoiceRepository& iRepo, OrderRepository& oRepo);
-
-    const Vector<Invoice>& getAll() const;
-
-    Invoice* getById(const std::string& invoiceId);
-    Invoice* getByOrderId(const std::string& orderId);
-
-    // Lọc hóa đơn theo khách hàng / nhân viên
-    Vector<Invoice> getByCustomerId(const std::string& customerId) const;
-    Vector<Invoice> getByEmployeeId(const std::string& employeeId) const;
-
-    // ==== NGHIỆP VỤ CỐT LÕI ====
-
-    // Tạo hóa đơn từ đơn hàng đã xác nhận
-    // Business rules:
-    //   - orderId phải tồn tại và ở trạng thái CONFIRMED/COMPLETED
-    //   - Mỗi orderId chỉ được xuất 1 hóa đơn (one invoice per order)
-    //   - employeeId, paymentMethod phải hợp lệ
-    //   - discountAmount không được âm và không vượt subtotal
-    bool createInvoiceFromOrder(const std::string& orderId,
-                                const std::string& employeeId,
-                                PaymentMethod payMethod,
-                                double discountAmount,
-                                std::string& errorMessage);
-
-    bool createInvoiceFromOrder(const std::string& orderId,
-                                const std::string& employeeId,
-                                PaymentMethod payMethod,
-                                double discountAmount);
-
-    // Xóa hóa đơn (hiếm khi dùng, cần quyền Admin)
-    bool deleteInvoice(const std::string& invoiceId, std::string& errorMessage);
+    InvoiceDetailInput() : quantity(0), unitPrice(0) {}
+    InvoiceDetailInput(std::string pId, int q, long long pr)
+        : productId(pId), quantity(q), unitPrice(pr) {}
 };
 
-// ================= IMPLEMENTATION =================
+/**
+ * @struct CreateInvoiceRequest
+ * @brief Yêu cầu tạo hóa đơn bán hàng
+ */
+struct CreateInvoiceRequest {
+    std::string orderId;
+    std::string customerId;
+    std::string employeeId;
+    PaymentMethod paymentMethod;
+    std::string createTime; // Để trống = thời gian hiện tại yyyy-MM-dd HH:mm:ss
+    long long discountAmount;
+    std::vector<InvoiceDetailInput> items;
 
-inline bool InvoiceService::generateInvoiceId(std::string& id,
-                                             std::string& errorMessage) const {
-    std::vector<std::string> existingIds;
-    const Vector<Invoice>& list = invoiceRepo.getAll();
-    for (int i = 0; i < list.getSize(); ++i) {
-        existingIds.push_back(list[i].getID());
-    }
-    const std::string idDate = IdGenerator::currentDateKey();
-    if (idDate.empty()) {
-        errorMessage = "Không thể xác định ngày để sinh mã hóa đơn.";
-        return false;
-    }
-    return IdGenerator::nextId("INV", idDate,
-                               existingIds, id, errorMessage);
-}
+    CreateInvoiceRequest() : paymentMethod(PaymentMethod::CASH), discountAmount(0) {}
+};
 
-inline InvoiceService::InvoiceService(InvoiceRepository& iRepo, OrderRepository& oRepo)
-    : invoiceRepo(iRepo), orderRepo(oRepo) {}
+/**
+ * @class InvoiceService
+ * @brief Tầng nghiệp vụ xử lý hóa đơn bán hàng tuân thủ quy tắc dữ liệu Invoices.txt và tài chính số nguyên.
+ * 
+ * QUY TẮC TÍNH TIỀN (Số nguyên long long, đơn vị đồng):
+ * 1. tamTinh = tổng (soLuong × donGia) của các dòng D.
+ * 2. Tiền sau giảm = tamTinh − giamGia. Giảm giá không âm và không vượt quá tamTinh.
+ * 3. tienThue = làm tròn (tiền sau giảm × 8 / 100) = (tienSauGiam * 8 + 50) / 100.
+ * 4. tongThanhToan = tiền sau giảm + tienThue.
+ * 5. giaVon dòng D lấy từ InventoryService::giaVonHienTai(productId) tại thời điểm lập hóa đơn và lưu cố định.
+ * 
+ * QUY TẮC GHI & HỦY:
+ * 6. Toàn bộ hóa đơn (dòng H và tất cả dòng D) ghi trong MỘT lần gọi FileStore::ghiFileAnToan.
+ * 7. Kiểm tra tồn kho trước khi ghi bằng InventoryService::kiemTraDuTonKho.
+ * 8. Mã hóa đơn theo định dạng INV-ddMMyyyy-STT, STT tăng theo ngày.
+ * 9. Kiểm tra trường văn bản qua FileStore::kiemTraTruong.
+ * 10-12. Hủy hóa đơn: đổi status thành "DaHuy", không xóa dòng, không cho hủy hóa đơn đã hủy.
+ */
+class InvoiceRepository;
+class OrderRepository;
 
-inline const Vector<Invoice>& InvoiceService::getAll() const {
-    return invoiceRepo.getAll();
-}
+class InvoiceService {
+private:
+    std::string invoicesPath;
+    std::string productsPath;
+    std::string customersPath;
+    std::string employeesPath;
+    InventoryService* inventoryService;
+    bool ownInventoryService;
 
-inline Invoice* InvoiceService::getById(const std::string& invoiceId) {
-    return invoiceRepo.findById(invoiceId);
-}
+    static std::string resolvePath(const std::string& preferred, const std::string& fallback);
 
-inline Invoice* InvoiceService::getByOrderId(const std::string& orderId) {
-    return invoiceRepo.findByOrderId(orderId);
-}
+public:
+    InvoiceService(
+        InventoryService* invService = nullptr,
+        std::string invPath = "",
+        std::string pPath = "",
+        std::string cPath = "",
+        std::string ePath = ""
+    );
+    // Tương thích với main.cpp
+    InvoiceService(InvoiceRepository& iRepo, OrderRepository& oRepo);
+    ~InvoiceService();
 
-inline Vector<Invoice> InvoiceService::getByCustomerId(const std::string& customerId) const {
-    return invoiceRepo.findByCustomerId(customerId);
-}
+    void setInventoryService(InventoryService* invService);
 
-inline Vector<Invoice> InvoiceService::getByEmployeeId(const std::string& employeeId) const {
-    return invoiceRepo.findByEmployeeId(employeeId);
-}
+    // 1. Tạo hóa đơn mới (Quy tắc 1 - 9)
+    OperationResult taoHoaDon(const CreateInvoiceRequest& req, std::string& outInvoiceId);
 
-// Tạo hóa đơn từ đơn hàng đã xác nhận
-// Business rules được kiểm tra theo thứ tự:
-//  1. orderId không rỗng, tồn tại trong hệ thống
-//  2. Trạng thái đơn phải là CONFIRMED hoặc COMPLETED (đã xử lý)
-//  3. Chưa có hóa đơn nào cho orderId này (one invoice per order)
-//  4. employeeId không rỗng
-//  5. discountAmount không âm, không vượt subtotal đơn hàng
-inline bool InvoiceService::createInvoiceFromOrder(
-        const std::string& orderId,
-        const std::string& employeeId,
-        PaymentMethod payMethod,
-        double discountAmount,
-        std::string& errorMessage)
-{
-    // R1: orderId hợp lệ
-    if (orderId.empty()) {
-        errorMessage = "Ma don hang khong duoc de trong!";
-        return false;
-    }
+    // 2. Hủy hóa đơn (Quy tắc 10 - 12)
+    OperationResult huyHoaDon(const std::string& maHD);
 
-    Order* order = orderRepo.findById(orderId);
-    if (order == nullptr) {
-        errorMessage = "Khong tim thay don hang [" + orderId + "]!";
-        return false;
-    }
+    // 3. Lấy thông tin chi tiết một hóa đơn theo mã
+    InvoiceItemViewModel layHoaDon(const std::string& maHD) const;
 
-    // R2: Trạng thái đơn phải phù hợp
-    if (order->getStatus() != OrderStatus::CONFIRMED &&
-        order->getStatus() != OrderStatus::COMPLETED) {
-        errorMessage = "Chi co the xuat hoa don cho don hang da xac nhan hoac hoan tat!";
-        return false;
-    }
+    // 4. Danh sách hóa đơn có bộ lọc theo ngày và từ khóa
+    std::vector<InvoiceItemViewModel> danhSachHoaDon(
+        const std::string& fromDate = "",
+        const std::string& toDate = "",
+        const std::string& keyword = ""
+    ) const;
 
-    // R3: Kiểm tra đơn hàng chưa có hóa đơn
-    if (invoiceRepo.findByOrderId(orderId) != nullptr) {
-        errorMessage = "Don hang [" + orderId + "] da duoc xuat hoa don truoc do!";
-        return false;
-    }
+    // 5. Thống kê: Tổng doanh thu (chỉ tính hóa đơn HoatDong)
+    long long tongDoanhThu(const std::string& fromDate = "", const std::string& toDate = "") const;
 
-    // R4: employeeId không rỗng
-    if (employeeId.empty()) {
-        errorMessage = "Ma nhan vien khong duoc de trong!";
-        return false;
-    }
+    // 6. Thống kê: Lợi nhuận = tiền sau giảm − tổng (soLuong × giaVon) (chỉ tính hóa đơn HoatDong)
+    long long tongLoiNhuan(const std::string& fromDate = "", const std::string& toDate = "") const;
 
-    // R5: discountAmount hợp lệ
-    if (discountAmount < 0) {
-        errorMessage = "So tien chiet khau khong duoc am!";
-        return false;
-    }
-
-    double subtotal = order->calculateTotal();
-    if (discountAmount > subtotal) {
-        errorMessage = "So tien chiet khau khong the vuot gia tri don hang!";
-        return false;
-    }
-
-    // Tạo hóa đơn từ đơn hàng
-    std::string invId;
-    if (!generateInvoiceId(invId, errorMessage)) return false;
-    Invoice inv(invId,
-                orderId,
-                order->getCustomerId(),
-                employeeId,
-                payMethod,
-                order->getDetails(),
-                discountAmount);
-    inv.setCreateTime(DateTime::now());
-
-    if (!invoiceRepo.addInvoice(inv)) {
-        errorMessage = "Loi khi luu hoa don vao co so du lieu!";
-        return false;
-    }
-
-    errorMessage = "Xuat hoa don [" + invId + "] thanh cong!";
-    return true;
-}
-
-inline bool InvoiceService::createInvoiceFromOrder(
-        const std::string& orderId,
-        const std::string& employeeId,
-        PaymentMethod payMethod,
-        double discountAmount)
-{
-    std::string err;
-    return createInvoiceFromOrder(orderId, employeeId, payMethod, discountAmount, err);
-}
-
-// Xóa hóa đơn (tối thiểu, cần xem xét policy nghiệp vụ khi triển khai thực tế)
-inline bool InvoiceService::deleteInvoice(const std::string& invoiceId, std::string& errorMessage) {
-    if (invoiceRepo.findById(invoiceId) == nullptr) {
-        errorMessage = "Khong tim thay hoa don [" + invoiceId + "] de xoa!";
-        return false;
-    }
-    if (!invoiceRepo.deleteInvoice(invoiceId)) {
-        errorMessage = "Loi khi xoa hoa don!";
-        return false;
-    }
-    errorMessage = "Xoa hoa don thanh cong!";
-    return true;
-}
+    // Helper: Sinh mã hóa đơn kế tiếp INV-ddMMyyyy-STT theo ngày
+    std::string sinhMaHoaDon(const std::string& dateKey = "") const;
+};
 
 #endif // INVOICESERVICE_H

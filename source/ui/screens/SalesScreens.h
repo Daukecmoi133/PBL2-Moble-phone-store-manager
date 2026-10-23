@@ -94,6 +94,7 @@ private:
     void showCustomerModal(const CustomerItemViewModel* existingCust = nullptr);
     void showCustomerDetailsModal(const CustomerItemViewModel& cust);
     void showInvoiceDetailModal(const InvoiceItemViewModel& inv);
+    void confirmCancelInvoice(const std::string& invoiceId);
     void showPosProductPickerModal();
 };
 
