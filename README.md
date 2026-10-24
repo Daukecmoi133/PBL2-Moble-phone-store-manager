@@ -45,7 +45,7 @@ Ghi chú cho môi trường Windows:
 - Cài đặt MSYS2 từ trang chủ msys2.org.
 - Chạy lệnh trong MSYS2 UCRT64 shell để cài đặt gói cần thiết:
   ```bash
-  pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-x86_64-make mingw-w64-ucrt-x86_64-gtk4 mingw-w64-ucrt-x86_64-pkgconf
+  pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-gtk4 mingw-w64-x86_64-pkgconf
   ```
 - Thêm đường dẫn `C:\msys64\ucrt64\bin` vào biến môi trường `PATH` của hệ thống để Windows nhận diện `g++`, `mingw32-make`, `pkg-config` và các tệp DLL runtime của GTK4.
 
