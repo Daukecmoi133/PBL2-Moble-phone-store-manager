@@ -52,7 +52,7 @@ Ghi chú cho môi trường Windows:
 ## Tải mã nguồn
 Để lấy toàn bộ mã nguồn về máy cục bộ, mở terminal và thực hiện:
 ```bash
-git clone https://github.com/[Cần tác giả bổ sung: đường_dẫn_repo].git
+git clone https://github.com/Daukecmoi133/PBL2-Moble-phone-store-manager.git
 cd PBL2-Moble-phone-store-manager
 ```
 Hoặc tải tệp nén ZIP từ giao diện web, giải nén và di chuyển con trỏ dòng lệnh vào thư mục chứa mã nguồn:
