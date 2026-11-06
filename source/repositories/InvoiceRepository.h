@@ -8,6 +8,8 @@
 #include "../models/Invoice.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
+#include "../utils/PathHelper.h"
+#include "../utils/FileHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu hóa đơn từ/vào tệp tin.
 // Lưu trữ danh sách Invoice trên RAM bằng Vector<Invoice>.
@@ -28,6 +30,7 @@ public:
 
     // Ghi toàn bộ danh sách RAM xuống file
     bool saveToFile() const;
+    const std::string& getFilePath() const { return filePath; }
 
     // Trả về toàn bộ danh sách
     const Vector<Invoice>& getAll() const;
@@ -63,18 +66,14 @@ public:
 
 // Tạo file Invoices.txt mới với header chuẩn
 inline bool InvoiceRepository::createEmptyFile() const {
-    std::ofstream newFile(filePath);
-    if (!newFile.is_open()) {
-        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
-        return false;
-    }
-    newFile << "id|orderId|customerId|employeeId|paymentMethod|createTime|discountAmount|details\n";
-    newFile.close();
-    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
-    return true;
+    return FileHelper::createEmptyFileWithHeader(
+        filePath,
+        "id|orderId|customerId|employeeId|paymentMethod|createTime|discountAmount|details"
+    );
 }
 
-inline InvoiceRepository::InvoiceRepository(std::string path) : filePath(path) {}
+inline InvoiceRepository::InvoiceRepository(std::string path)
+    : filePath(PathHelper::resolveDataPath(path)) {}
 
 // Nạp dữ liệu từ Invoices.txt vào RAM
 // - Gọi Invoice::fromFileLine() để phân tích mỗi dòng
@@ -120,19 +119,15 @@ inline bool InvoiceRepository::loadFromFile() {
     return true;
 }
 
-// Ghi toàn bộ danh sách invoices xuống file (dùng Invoice::toFileString())
+// Ghi toàn bộ danh sách invoices xuống file (qua Atomic File Write)
 inline bool InvoiceRepository::saveToFile() const {
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
-        return false;
-    }
-    file << "id|orderId|customerId|employeeId|paymentMethod|createTime|discountAmount|details\n";
-    for (int i = 0; i < invoices.getSize(); ++i) {
-        file << invoices[i].toFileString() << "\n";
-    }
-    file.close();
-    return true;
+    return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
+        file << "id|orderId|customerId|employeeId|paymentMethod|createTime|discountAmount|details\n";
+        for (int i = 0; i < invoices.getSize(); ++i) {
+            file << invoices[i].toFileString() << "\n";
+        }
+        return file.good();
+    });
 }
 
 inline const Vector<Invoice>& InvoiceRepository::getAll() const { return invoices; }
@@ -201,34 +196,49 @@ inline bool InvoiceRepository::containsPhone(const std::string& phoneId) const {
     return false;
 }
 
-// Thêm hóa đơn mới
+// Thêm hóa đơn mới (rollback RAM nếu ghi file thất bại)
 inline bool InvoiceRepository::addInvoice(const Invoice& invoice) {
     if (existsById(invoice.getID())) {
         std::cerr << "[Canh bao] ID hoa don da ton tai: " << invoice.getID() << std::endl;
         return false;
     }
+    Vector<Invoice> backup = invoices;
     invoices.push_back(invoice);
-    return saveToFile();
+    if (!saveToFile()) {
+        invoices = backup; // Rollback RAM
+        return false;
+    }
+    return true;
 }
 
-// Cập nhật hóa đơn theo ID
+// Cập nhật hóa đơn theo ID (rollback RAM nếu ghi file thất bại)
 inline bool InvoiceRepository::updateInvoice(const Invoice& updatedInvoice) {
     for (int i = 0; i < invoices.getSize(); ++i) {
         if (invoices[i].getID() == updatedInvoice.getID()) {
+            Vector<Invoice> backup = invoices;
             invoices[i] = updatedInvoice;
-            return saveToFile();
+            if (!saveToFile()) {
+                invoices = backup; // Rollback RAM
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay hoa don ID: " << updatedInvoice.getID() << std::endl;
     return false;
 }
 
-// Xóa hóa đơn theo ID
+// Xóa hóa đơn theo ID (rollback RAM nếu ghi file thất bại)
 inline bool InvoiceRepository::deleteInvoice(const std::string& id) {
     for (int i = 0; i < invoices.getSize(); ++i) {
         if (invoices[i].getID() == id) {
+            Vector<Invoice> backup = invoices;
             invoices.removeAt(i);
-            return saveToFile();
+            if (!saveToFile()) {
+                invoices = backup; // Rollback RAM
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay hoa don ID de xoa: " << id << std::endl;

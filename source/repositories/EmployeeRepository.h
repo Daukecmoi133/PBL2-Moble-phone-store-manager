@@ -8,6 +8,8 @@
 #include "../models/Employee.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
+#include "../utils/PathHelper.h"
+#include "../utils/FileHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu nhân viên từ/vào tệp tin.
 // Do Employee là class trừu tượng có đa hình, lưu trữ bằng Vector<Employee*> (con trỏ).
@@ -39,6 +41,7 @@ public:
 
     // Ghi toàn bộ danh sách RAM xuống file (ghi đè).
     bool saveToFile() const;
+    const std::string& getFilePath() const { return filePath; }
 
     // Trả về toàn bộ danh sách (chỉ đọc / cho phép sửa)
     const Vector<Employee*>& getAll() const;
@@ -79,18 +82,14 @@ inline void EmployeeRepository::clearMemory() {
 
 // Tạo file Employee.txt mới với header chuẩn (11 cột bao gồm salary)
 inline bool EmployeeRepository::createEmptyFile() const {
-    std::ofstream newFile(filePath);
-    if (!newFile.is_open()) {
-        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
-        return false;
-    }
-    newFile << "id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary\n";
-    newFile.close();
-    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
-    return true;
+    return FileHelper::createEmptyFileWithHeader(
+        filePath,
+        "id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary"
+    );
 }
 
-inline EmployeeRepository::EmployeeRepository(std::string path) : filePath(path) {}
+inline EmployeeRepository::EmployeeRepository(std::string path)
+    : filePath(PathHelper::resolveDataPath(path)) {}
 
 inline EmployeeRepository::~EmployeeRepository() {
     clearMemory();
@@ -144,22 +143,18 @@ inline bool EmployeeRepository::loadFromFile() {
     return true;
 }
 
-// Ghi toàn bộ danh sách employees xuống file (ghi đè)
+// Ghi toàn bộ danh sách employees xuống file (ghi đè qua Atomic File Write)
 inline bool EmployeeRepository::saveToFile() const {
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
-        return false;
-    }
-    // Header khớp với định dạng Employee::toFileString() (11 cột, có salary)
-    file << "id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary\n";
-    for (int i = 0; i < employees.getSize(); ++i) {
-        if (employees[i] != nullptr) {
-            file << employees[i]->toFileString() << "\n";
+    return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
+        // Header khớp với định dạng Employee::toFileString() (11 cột, có salary)
+        file << "id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary\n";
+        for (int i = 0; i < employees.getSize(); ++i) {
+            if (employees[i] != nullptr) {
+                file << employees[i]->toFileString() << "\n";
+            }
         }
-    }
-    file.close();
-    return true;
+        return file.good();
+    });
 }
 
 inline const Vector<Employee*>& EmployeeRepository::getAll() const { return employees; }
@@ -208,7 +203,7 @@ inline Vector<Employee*> EmployeeRepository::findByRole(RoleType role) const {
     return result;
 }
 
-// Thêm nhân viên mới (nhận ownership của con trỏ)
+// Thêm nhân viên mới (nhận ownership của con trỏ, rollback RAM nếu ghi file thất bại)
 inline bool EmployeeRepository::addEmployee(Employee* emp) {
     if (emp == nullptr) return false;
     if (existsById(emp->getID())) {
@@ -216,30 +211,45 @@ inline bool EmployeeRepository::addEmployee(Employee* emp) {
         return false;
     }
     employees.push_back(emp);
-    return saveToFile();
+    if (!saveToFile()) {
+        employees.removeAt(employees.getSize() - 1); // Rollback RAM
+        return false;
+    }
+    return true;
 }
 
-// Cập nhật nhân viên: xóa con trỏ cũ, thay bằng con trỏ mới
+// Cập nhật nhân viên: rollback RAM nếu ghi file thất bại, chỉ giải phóng con trỏ cũ khi thành công
 inline bool EmployeeRepository::updateEmployee(Employee* updatedEmp) {
     if (updatedEmp == nullptr) return false;
     for (int i = 0; i < employees.getSize(); ++i) {
         if (employees[i] && employees[i]->getID() == updatedEmp->getID()) {
-            delete employees[i]; // Giải phóng con trỏ cũ
+            Employee* oldEmp = employees[i];
             employees[i] = updatedEmp;
-            return saveToFile();
+            if (!saveToFile()) {
+                employees[i] = oldEmp; // Rollback RAM
+                return false;
+            }
+            delete oldEmp; // Giải phóng con trỏ cũ sau khi lưu file thành công
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay ID de cap nhat: " << updatedEmp->getID() << std::endl;
     return false;
 }
 
-// Xóa nhân viên theo ID (giải phóng bộ nhớ động)
+// Xóa nhân viên theo ID (rollback RAM nếu ghi file thất bại, chỉ giải phóng bộ nhớ khi thành công)
 inline bool EmployeeRepository::deleteEmployee(const std::string& id) {
     for (int i = 0; i < employees.getSize(); ++i) {
         if (employees[i] && employees[i]->getID() == id) {
-            delete employees[i];
+            Employee* target = employees[i];
+            Vector<Employee*> backup = employees;
             employees.removeAt(i);
-            return saveToFile();
+            if (!saveToFile()) {
+                employees = backup; // Rollback RAM
+                return false;
+            }
+            delete target; // Giải phóng bộ nhớ động sau khi lưu file thành công
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay ID de xoa: " << id << std::endl;

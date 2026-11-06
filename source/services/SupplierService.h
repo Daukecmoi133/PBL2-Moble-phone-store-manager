@@ -14,6 +14,7 @@
 #include "../utils/StringHelper.h"
 #include "Check.h"
 #include "PhoneService.h"
+#include "../utils/TransactionCoordinator.h"
 
 // Tầng Service: Nghiệp vụ nhà cung cấp + nhập kho
 // Business rules chính:
@@ -35,6 +36,12 @@ public:
                     PhoneService* pService = nullptr);
 
     void setPhoneService(PhoneService* ps) { phoneService = ps; }
+
+    SupplierRepository& getSupplierRepository() { return supplierRepo; }
+    const SupplierRepository& getSupplierRepository() const { return supplierRepo; }
+    StockReceiptRepository& getReceiptRepository() { return receiptRepo; }
+    const StockReceiptRepository& getReceiptRepository() const { return receiptRepo; }
+    void reload() { supplierRepo.loadFromFile(); receiptRepo.loadFromFile(); }
 
     // ==== SUPPLIER CRUD ====
     const Vector<Supplier>& getAllSuppliers() const;
@@ -256,15 +263,33 @@ inline bool SupplierService::receiveStock(ImportReceipt& receipt, std::string& e
         }
     }
 
+    // GIAO DỊCH NGUYÊN TỬ VỚI FileTransaction
+    FileTransaction tx;
+    tx.addParticipant(receiptRepo.getFilePath());
+    if (phoneService != nullptr) {
+        tx.addParticipant(phoneService->getRepository().getFilePath());
+    }
+    tx.onRollback([this]() {
+        this->receiptRepo.loadFromFile();
+        if (this->phoneService != nullptr) {
+            this->phoneService->reload();
+        }
+    });
+
+    if (!tx.begin()) {
+        errorMessage = "Không thể khởi tạo giao dịch cho nghiệp vụ nhập kho!";
+        return false;
+    }
+
     // BƯỚC 2: Lưu phiếu nhập kho
     if (!receiptRepo.addReceipt(receipt)) {
-        errorMessage = "Loi khi luu phieu nhap kho!";
+        tx.rollback();
+        errorMessage = "Lỗi khi lưu phiếu nhập kho!";
         return false;
     }
 
     // BƯỚC 3: Tăng tồn kho từng sản phẩm
     if (phoneService != nullptr) {
-        Vector<int> successfulIndices; // Theo dõi các sản phẩm đã tăng kho để rollback
         bool allSuccess = true;
         std::string stockErr;
 
@@ -273,27 +298,25 @@ inline bool SupplierService::receiveStock(ImportReceipt& receipt, std::string& e
                                             details[i].getQuantity(),
                                             stockErr)) {
                 allSuccess = false;
-                errorMessage = "Loi khi tang ton kho san pham [" + details[i].getPhoneName() + "]: " + stockErr;
+                errorMessage = "Lỗi khi tăng tồn kho sản phẩm [" + details[i].getPhoneName() + "]: " + stockErr;
                 break;
             }
-            successfulIndices.push_back(i);
         }
 
         // BƯỚC 4: Rollback nếu tăng kho bị lỗi
         if (!allSuccess) {
-            // Hoàn tồn kho đã tăng trước đó
-            for (int j = 0; j < successfulIndices.getSize(); ++j) {
-                int idx = successfulIndices[j];
-                phoneService->updateStock(details[idx].getPhoneId(), -details[idx].getQuantity());
-            }
-            // Xóa phiếu nhập đã lưu
-            receiptRepo.deleteReceipt(receipt.getID());
-            errorMessage += " | Da hoan nguyen giao dich nhap kho.";
+            tx.rollback();
+            errorMessage += " | Đã hoàn nguyên giao dịch nhập kho.";
             return false;
         }
     }
 
-    errorMessage = "Nhap kho thanh cong! Phieu nhap [" + receipt.getID() + "] da duoc ghi nhan.";
+    if (!tx.commit()) {
+        errorMessage = "Lỗi khi hoàn tất giao dịch nhập kho!";
+        return false;
+    }
+
+    errorMessage = "Nhập kho thành công! Phiếu nhập [" + receipt.getID() + "] đã được ghi nhận.";
     return true;
 }
 

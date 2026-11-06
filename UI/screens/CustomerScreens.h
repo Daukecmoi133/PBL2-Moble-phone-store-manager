@@ -40,15 +40,21 @@ private:
 
     // Dynamic containers for refresh
     GtkWidget* productsListBox;
+    GtkWidget* productsCountBadge = nullptr;
+    GtkWidget* brandButtonsBox = nullptr;
     GtkWidget* cartListBox;
     GtkWidget* cartSummaryBox;
     GtkWidget* ordersListBox;
+    GtkWidget* ordersCountBadge = nullptr;
     GtkWidget* warrantyListBox;
+    GtkWidget* warrantyCountBadge = nullptr;
 
     // Search & Filter state
     std::string currentSearchKeyword;
     std::string currentBrandFilter;
     std::string currentSortBy;
+    std::string ordersKeyword;
+    std::string warrantyKeyword;
 
     // Cart / Checkout inputs
     GtkWidget* entryCoupon;

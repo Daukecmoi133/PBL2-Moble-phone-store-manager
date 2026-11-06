@@ -29,6 +29,10 @@ private:
 public:
     DiscountService(DiscountRepository& repository);
 
+    void reload() { repo.loadFromFile(); rebuildIndices(); }
+    DiscountRepository& getRepository() { return repo; }
+    const DiscountRepository& getRepository() const { return repo; }
+
     const Vector<DiscountCode>& getAll() const;
 
     // Tra cứu theo mã code O(1)

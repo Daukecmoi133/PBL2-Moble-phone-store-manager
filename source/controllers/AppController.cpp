@@ -3,6 +3,17 @@
 #include "../../UI/mock/RealTimeManager.h"
 #include "../utils/IdGenerator.h"
 #include "../utils/Utf8Helper.h"
+#include "../utils/PathHelper.h"
+#include "../utils/TransactionCoordinator.h"
+#include "../services/PhoneService.h"
+#include "../services/OrderService.h"
+#include "../services/CustomerService.h"
+#include "../services/EmployeeService.h"
+#include "../services/InvoiceService.h"
+#include "../services/SupplierService.h"
+#include "../services/DiscountService.h"
+#include "../services/ReportService.h"
+#include "../services/AuthService.h"
 #include <algorithm>
 #include <ctime>
 #include <sstream>
@@ -77,7 +88,224 @@ std::vector<std::string> collectIds(const Records& records) {
     return ids;
 }
 
+// ==== Các hàm chuyển đổi Model <-> ViewModel ====
+
+ProductItemViewModel phoneToViewModel(const Phone& p) {
+    ProductItemViewModel vm;
+    vm.id = p.getID();
+    vm.name = p.getName();
+    vm.brand = p.getBrand();
+    vm.os = p.getOperatingSystem();
+    vm.importPrice = p.getImportPrice();
+    vm.sellingPrice = p.getSellingPrice();
+    vm.actualStock = p.getQuantity();
+    vm.reservedStock = 0;
+    vm.manufacturer = p.getManufacturer();
+    vm.specs = p.getSpecifications();
+    if (vm.id == "PHN-000101") {
+        vm.imageUrl = "data/Device/productImages/oppo_reno_16_f_5g_bac.png";
+    }
+    vm.calculateStockStatus();
+    return vm;
 }
+
+CustomerItemViewModel customerToViewModel(const Customer& c) {
+    CustomerItemViewModel vm;
+    vm.id = c.getID();
+    vm.username = c.getAccount().getUsername();
+    vm.firstName = c.getName().firstName;
+    vm.middleName = c.getName().middleName;
+    vm.lastName = c.getName().lastName;
+    vm.fullName = c.getName().getFullName();
+    vm.phone = c.getPhoneNumber();
+    vm.email = c.getEmail();
+    vm.address = c.getAddress();
+    vm.points = c.getPoints();
+    vm.updateTier();
+    return vm;
+}
+
+EmployeeItemViewModel employeeToViewModel(const Employee* e) {
+    EmployeeItemViewModel vm;
+    if (!e) return vm;
+    vm.id = e->getID();
+    vm.firstName = e->getName().firstName;
+    vm.middleName = e->getName().middleName;
+    vm.lastName = e->getName().lastName;
+    vm.fullName = e->getName().getFullName();
+    vm.phone = e->getPhoneNumber();
+    vm.email = e->getEmail();
+    vm.address = e->getAddress();
+    vm.username = e->getAccount().getUsername();
+    vm.role = e->getRoleType();
+    vm.roleName = roleTypeToString(vm.role);
+    vm.salary = e->getSalary();
+    vm.isActive = true;
+    return vm;
+}
+
+SupplierItemViewModel supplierToViewModel(const Supplier& s) {
+    SupplierItemViewModel vm;
+    vm.id = s.getID();
+    vm.companyName = s.getCompanyName();
+    vm.taxCode = s.getTaxCode();
+    vm.contactPerson = s.getFullName();
+    vm.phone = s.getPhoneNumber();
+    vm.email = s.getEmail();
+    vm.address = s.getAddress();
+    return vm;
+}
+
+DiscountItemViewModel discountToViewModel(const DiscountCode& d) {
+    DiscountItemViewModel vm;
+    vm.id = d.getCode();
+    vm.code = d.getCode();
+    vm.typeName = (d.getType() == DiscountType::PERCENTAGE) ? "Giảm phần trăm (%)" : "Số tiền cố định";
+    vm.value = d.getValue();
+    if (d.getType() == DiscountType::PERCENTAGE) {
+        vm.formattedValue = std::to_string(static_cast<int>(d.getValue())) + "%";
+    } else {
+        vm.formattedValue = StringHelper::formatCurrency(d.getValue()) + " đ";
+    }
+    vm.minOrderValue = d.getMinOrderValue();
+    vm.maxDiscountAmount = d.getMaxDiscountValue();
+    vm.expiryDate = d.getEndDate().toDateString();
+    vm.usedCount = d.getUsedCount();
+    vm.maxUsage = d.getMaxUsage();
+    vm.isValid = d.isValid();
+    if (d.getType() == DiscountType::PERCENTAGE) {
+        vm.description = "Giảm " + std::to_string(static_cast<int>(d.getValue())) + "% cho đơn hàng từ " +
+                         StringHelper::formatCurrency(d.getMinOrderValue()) + " đ";
+    } else {
+        vm.description = "Giảm " + StringHelper::formatCurrency(d.getValue()) + " đ cho đơn hàng từ " +
+                         StringHelper::formatCurrency(d.getMinOrderValue()) + " đ";
+    }
+    return vm;
+}
+
+OrderItemViewModel orderToViewModel(const Order& o, const std::vector<CustomerItemViewModel>& customers) {
+    OrderItemViewModel vm;
+    vm.id = o.getID();
+    vm.customerId = o.getCustomerId();
+    vm.customerName = o.getShippingInfo().getReceiverName();
+    if (vm.customerName.empty()) {
+        for (const auto& c : customers) {
+            if (c.id == vm.customerId) {
+                vm.customerName = c.fullName;
+                break;
+            }
+        }
+    }
+    vm.orderTime = o.getOrderTime().toString();
+    vm.status = o.getStatus();
+    vm.statusText = orderStatusToString(o.getStatus());
+    vm.deliveryMethod = o.getDeliveryMethod();
+    vm.deliveryMethodText = deliveryMethodToString(o.getDeliveryMethod());
+    vm.paymentMethod = o.getPaymentMethod();
+    vm.paymentMethodText = paymentMethodToString(o.getPaymentMethod());
+    vm.paymentStatus = (o.getStatus() == OrderStatus::COMPLETED || o.getPaymentMethod() == PaymentMethod::BANK_TRANSFER)
+                       ? PaymentStatus::PAID : PaymentStatus::UNPAID;
+    vm.paymentStatusText = paymentStatusToString(vm.paymentStatus);
+    vm.subtotal = o.calculateSubtotal();
+    vm.discountAmount = o.getDiscountAmount();
+    vm.total = o.calculateTotal();
+    vm.receiverName = o.getShippingInfo().getReceiverName();
+    vm.receiverPhone = o.getShippingInfo().getPhoneNumber();
+    vm.deliveryAddress = o.getShippingInfo().getAddress();
+
+    const Vector<OrderDetail>& details = o.getDetails();
+    for (int i = 0; i < details.getSize(); ++i) {
+        OrderDetailItemViewModel dvm;
+        dvm.phoneId = details[i].getPhoneId();
+        dvm.phoneName = details[i].getPhoneName();
+        dvm.quantity = details[i].getQuantity();
+        dvm.unitPrice = details[i].getUnitPrice();
+        dvm.subtotal = details[i].getSubtotal();
+        vm.details.push_back(dvm);
+    }
+    return vm;
+}
+
+InvoiceItemViewModel invoiceToViewModel(const Invoice& inv,
+                                        const std::vector<CustomerItemViewModel>& customers,
+                                        const std::vector<EmployeeItemViewModel>& employees) {
+    InvoiceItemViewModel vm;
+    vm.id = inv.getID();
+    vm.orderId = inv.getOrderId();
+    vm.customerId = inv.getCustomerId();
+    for (const auto& c : customers) {
+        if (c.id == vm.customerId) {
+            vm.customerName = c.fullName;
+            break;
+        }
+    }
+    if (vm.customerName.empty()) vm.customerName = "Khách hàng " + vm.customerId;
+    vm.employeeId = inv.getEmployeeId();
+    for (const auto& e : employees) {
+        if (e.id == vm.employeeId) {
+            vm.employeeName = e.fullName;
+            break;
+        }
+    }
+    if (vm.employeeName.empty()) vm.employeeName = "Nhân viên " + vm.employeeId;
+    vm.paymentMethod = inv.getPaymentMethod();
+    vm.paymentMethodText = paymentMethodToString(inv.getPaymentMethod());
+    vm.createTime = inv.getCreateTime().toString();
+    vm.subtotal = inv.calculateSubtotal();
+    vm.discountAmount = inv.getDiscountAmount();
+    vm.total = inv.calculateTotal();
+
+    const Vector<OrderDetail>& details = inv.getDetails();
+    for (int i = 0; i < details.getSize(); ++i) {
+        OrderDetailItemViewModel dvm;
+        dvm.phoneId = details[i].getPhoneId();
+        dvm.phoneName = details[i].getPhoneName();
+        dvm.quantity = details[i].getQuantity();
+        dvm.unitPrice = details[i].getUnitPrice();
+        dvm.subtotal = details[i].getSubtotal();
+        vm.details.push_back(dvm);
+    }
+    return vm;
+}
+
+GoodsReceiptSummaryViewModel receiptToViewModel(const ImportReceipt& r,
+                                                const std::vector<SupplierItemViewModel>& suppliers,
+                                                const std::vector<EmployeeItemViewModel>& employees) {
+    GoodsReceiptSummaryViewModel vm;
+    vm.id = r.getID();
+    vm.supplierId = r.getSupplierId();
+    for (const auto& s : suppliers) {
+        if (s.id == vm.supplierId) {
+            vm.supplierName = s.companyName;
+            break;
+        }
+    }
+    if (vm.supplierName.empty()) vm.supplierName = "NCC " + vm.supplierId;
+    vm.employeeId = r.getEmployeeId();
+    for (const auto& e : employees) {
+        if (e.id == vm.employeeId) {
+            vm.employeeName = e.fullName;
+            break;
+        }
+    }
+    if (vm.employeeName.empty()) vm.employeeName = "Nhân viên kho " + vm.employeeId;
+    vm.importTime = r.getImportTime().toString();
+    vm.totalAmount = r.calculateTotal();
+
+    const Vector<OrderDetail>& details = r.getDetails();
+    for (int i = 0; i < details.getSize(); ++i) {
+        GoodsReceiptDetailViewModel dvm;
+        dvm.phoneId = details[i].getPhoneId();
+        dvm.phoneName = details[i].getPhoneName();
+        dvm.quantity = details[i].getQuantity();
+        dvm.importPrice = details[i].getUnitPrice();
+        dvm.subtotal = details[i].getSubtotal();
+        vm.details.push_back(dvm);
+    }
+    return vm;
+}
+
+} // namespace
 
 AppController::AppController(
     PhoneService* ps,
@@ -98,7 +326,78 @@ AppController::AppController(
     discountService(ds),
     reportService(rs),
     authService(as)
-{}
+{
+    // Quét và khôi phục các giao dịch file dở dang nếu xảy ra sự cố trước đó
+    std::string dataDir = PathHelper::resolveDataPath("data");
+    FileTransaction::recoverPendingTransactions(dataDir);
+
+    // Đồng bộ MockDataStore từ các Service chính thức (được nạp từ file)
+    auto& store = MockDataStore::getInstance();
+
+    if (phoneService != nullptr) {
+        store.products.clear();
+        const Vector<Phone>& phones = phoneService->getAllPhones();
+        for (int i = 0; i < phones.getSize(); ++i) {
+            store.products.push_back(phoneToViewModel(phones[i]));
+        }
+    }
+
+    if (customerService != nullptr) {
+        store.customers.clear();
+        const Vector<Customer>& customers = customerService->getAllCustomers();
+        for (int i = 0; i < customers.getSize(); ++i) {
+            store.customers.push_back(customerToViewModel(customers[i]));
+        }
+    }
+
+    if (employeeService != nullptr) {
+        store.employees.clear();
+        const Vector<Employee*>& employees = employeeService->getAllEmployees();
+        for (int i = 0; i < employees.getSize(); ++i) {
+            if (employees[i] != nullptr) {
+                store.employees.push_back(employeeToViewModel(employees[i]));
+            }
+        }
+    }
+
+    if (supplierService != nullptr) {
+        store.suppliers.clear();
+        const Vector<Supplier>& suppliers = supplierService->getAllSuppliers();
+        for (int i = 0; i < suppliers.getSize(); ++i) {
+            store.suppliers.push_back(supplierToViewModel(suppliers[i]));
+        }
+
+        store.receipts.clear();
+        const Vector<ImportReceipt>& receipts = supplierService->getAllReceipts();
+        for (int i = 0; i < receipts.getSize(); ++i) {
+            store.receipts.push_back(receiptToViewModel(receipts[i], store.suppliers, store.employees));
+        }
+    }
+
+    if (discountService != nullptr) {
+        store.discounts.clear();
+        const Vector<DiscountCode>& discounts = discountService->getAll();
+        for (int i = 0; i < discounts.getSize(); ++i) {
+            store.discounts.push_back(discountToViewModel(discounts[i]));
+        }
+    }
+
+    if (orderService != nullptr) {
+        store.orders.clear();
+        const Vector<Order>& orders = orderService->getAllOrders();
+        for (int i = 0; i < orders.getSize(); ++i) {
+            store.orders.push_back(orderToViewModel(orders[i], store.customers));
+        }
+    }
+
+    if (invoiceService != nullptr) {
+        store.invoices.clear();
+        const Vector<Invoice>& invoices = invoiceService->getAll();
+        for (int i = 0; i < invoices.getSize(); ++i) {
+            store.invoices.push_back(invoiceToViewModel(invoices[i], store.customers, store.employees));
+        }
+    }
+}
 
 // === XÁC THỰC & PHIÊN LÀM VIỆC ===
 
@@ -213,6 +512,42 @@ OperationResult AppController::registerCustomer(const std::string& rawUsername, 
     }
 
     auto& store = MockDataStore::getInstance();
+
+    // Lưu xuống file qua CustomerService
+    if (customerService != nullptr) {
+        Vector<std::string> nameParts = StringHelper::split(fullName, ' ');
+        std::string first = "", mid = "", last = "";
+        if (nameParts.getSize() == 1) {
+            first = nameParts[0];
+        } else if (nameParts.getSize() == 2) {
+            first = nameParts[0];
+            last = nameParts[1];
+        } else if (nameParts.getSize() >= 3) {
+            first = nameParts[0];
+            last = nameParts[nameParts.getSize() - 1];
+            for (int i = 1; i < nameParts.getSize() - 1; ++i) {
+                if (!mid.empty()) mid += " ";
+                mid += nameParts[i];
+            }
+        }
+        std::string customerId;
+        std::string accountId;
+        std::string idErr;
+        if (!IdGenerator::nextId("CUS", "", collectIds(store.customers), customerId, idErr)) {
+            return OperationResult::Fail(idErr);
+        }
+        if (!IdGenerator::nextId("ACC", "", collectIds(store.accounts), accountId, idErr)) {
+            return OperationResult::Fail(idErr);
+        }
+        Name name(first, mid, last);
+        Customer cust(customerId, name, phone, email, "", username, password, 0);
+        cust.getAccount().setID(accountId);
+        std::string serviceErr;
+        if (!customerService->registerCustomer(cust, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Đăng ký tài khoản thất bại!");
+        }
+    }
+
     bool ok = store.registerCustomer(username, password, fullName, phone, email);
     if (!ok) {
         return OperationResult::Fail("Tên đăng nhập '" + username + "' đã được sử dụng! Vui lòng chọn tên khác.");
@@ -353,6 +688,49 @@ OperationResult AppController::updateProfile(const std::string& fullName, const 
     currentSession.email = email;
     currentSession.address = address;
 
+    // Cập nhật xuống file qua Service
+    if (currentSession.isCustomer() && customerService != nullptr) {
+        Customer* cust = customerService->getCustomerById(currentSession.userId);
+        if (cust != nullptr) {
+            Vector<std::string> parts = StringHelper::split(fullName, ' ');
+            std::string first = parts.getSize() > 0 ? parts[0] : "";
+            std::string last = parts.getSize() > 1 ? parts[parts.getSize() - 1] : "";
+            std::string mid = "";
+            for (int i = 1; i < parts.getSize() - 1; ++i) {
+                if (!mid.empty()) mid += " ";
+                mid += parts[i];
+            }
+            cust->setName(Name(first, mid, last));
+            cust->setPhoneNumber(phone);
+            cust->setEmail(email);
+            cust->setAddress(address);
+            std::string serviceErr;
+            if (!customerService->updateCustomer(*cust, serviceErr)) {
+                return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu thông tin hồ sơ vào file!");
+            }
+        }
+    } else if (!currentSession.isCustomer() && employeeService != nullptr) {
+        Employee* emp = employeeService->getEmployeeById(currentSession.userId);
+        if (emp != nullptr) {
+            Vector<std::string> parts = StringHelper::split(fullName, ' ');
+            std::string first = parts.getSize() > 0 ? parts[0] : "";
+            std::string last = parts.getSize() > 1 ? parts[parts.getSize() - 1] : "";
+            std::string mid = "";
+            for (int i = 1; i < parts.getSize() - 1; ++i) {
+                if (!mid.empty()) mid += " ";
+                mid += parts[i];
+            }
+            emp->setName(Name(first, mid, last));
+            emp->setPhoneNumber(phone);
+            emp->setEmail(email);
+            emp->setAddress(address);
+            std::string serviceErr;
+            if (!employeeService->updateEmployee(emp, serviceErr)) {
+                return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu thông tin hồ sơ vào file!");
+            }
+        }
+    }
+
     // Cập nhật trong Mock Store
     auto& store = MockDataStore::getInstance();
     if (currentSession.isCustomer()) {
@@ -467,6 +845,18 @@ OperationResult AppController::addProduct(const ProductItemViewModel& rawProduct
     newItem.id = generatedId;
     newItem.reservedStock = 0;
     newItem.calculateStockStatus();
+
+    // Ghi xuống file thông qua PhoneService và PhoneRepository
+    if (phoneService != nullptr) {
+        Phone phone(newItem.id, newItem.name, newItem.brand, newItem.os,
+                    newItem.importPrice, newItem.sellingPrice, newItem.actualStock,
+                    newItem.manufacturer, newItem.specs);
+        std::string serviceErr;
+        if (!phoneService->addPhone(phone, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu sản phẩm vào file dữ liệu!");
+        }
+    }
+
     store.products.push_back(newItem);
 
     return OperationResult::Ok("Thêm sản phẩm '" + product.name + "' thành công!");
@@ -482,6 +872,17 @@ OperationResult AppController::updateProduct(const ProductItemViewModel& rawProd
     }
     if (product.sellingPrice <= 0) {
         return OperationResult::Fail("Giá bán phải lớn hơn 0!");
+    }
+
+    // Cập nhật xuống file qua PhoneService
+    if (phoneService != nullptr) {
+        Phone phone(product.id, product.name, product.brand, product.os,
+                    product.importPrice, product.sellingPrice, product.actualStock,
+                    product.manufacturer, product.specs);
+        std::string serviceErr;
+        if (!phoneService->updatePhone(phone, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật sản phẩm vào file dữ liệu!");
+        }
     }
 
     auto& store = MockDataStore::getInstance();
@@ -540,6 +941,14 @@ OperationResult AppController::deleteProduct(const std::string& id) {
         if (warranty.phoneId == id) {
             return OperationResult::Fail("Không thể xóa sản phẩm '" + id +
                 "' vì đang được tham chiếu trong yêu cầu bảo hành (" + warranty.id + ")!");
+        }
+    }
+
+    // Xóa khỏi file qua PhoneService
+    if (phoneService != nullptr) {
+        std::string serviceErr;
+        if (!phoneService->deletePhone(id, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi xóa sản phẩm khỏi file dữ liệu!");
         }
     }
 
@@ -708,7 +1117,60 @@ OperationResult AppController::checkout(const CheckoutRequest& request, std::str
         return OperationResult::Fail(idError.empty() ? "Không thể xác định ngày để sinh mã đơn hàng." : idError);
     }
 
-    // Giữ chỗ tồn kho (reservedStock += quantity)
+    // Khởi tạo FileTransaction cho checkout
+    FileTransaction tx;
+    if (orderService != nullptr) tx.addParticipant(orderService->getRepository().getFilePath());
+    if (!store.customerCart.appliedDiscountCode.empty() && discountService != nullptr) {
+        tx.addParticipant(discountService->getRepository().getFilePath());
+    }
+    tx.onRollback([this]() {
+        if (this->orderService) this->orderService->reload();
+        if (this->discountService) this->discountService->reload();
+    });
+
+    if (!tx.begin()) {
+        return OperationResult::Fail("Không thể khởi tạo giao dịch lưu trữ đơn hàng!");
+    }
+
+    // Lấy thời gian hiện tại
+    std::time_t now = std::time(nullptr);
+    std::tm* tm_now = std::localtime(&now);
+    char timeBuf[64];
+    std::strftime(timeBuf, sizeof(timeBuf), "%d/%m/%Y %H:%M", tm_now);
+
+    std::string deliveryAddr = (request.deliveryMethod == 0)
+        ? "Cửa hàng PBL2 Store - 54 Nguyễn Lương Bằng, Đà Nẵng"
+        : request.deliveryAddress;
+
+    // Lưu đơn hàng vào file thông qua OrderService
+    if (orderService != nullptr) {
+        DeliveryMethod deliv = (request.deliveryMethod == 0) ? DeliveryMethod::PICKUP : DeliveryMethod::DELIVERY;
+        PaymentMethod pay = (request.paymentMethod == 0) ? PaymentMethod::CASH : PaymentMethod::BANK_TRANSFER;
+        ShippingInfo ship(request.receiverName, request.receiverPhone, deliveryAddr);
+        Order ord(outOrderId, customerId, deliv, pay, ship);
+        ord.setDiscountAmount(store.customerCart.discountAmount);
+        for (const auto& cItem : store.customerCart.items) {
+            ord.addDetail(OrderDetail(cItem.phoneId, cItem.phoneName, cItem.quantity, cItem.unitPrice));
+        }
+        std::string serviceErr;
+        if (!orderService->createOrder(ord, serviceErr)) {
+            tx.rollback();
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu đơn hàng vào file dữ liệu!");
+        }
+        if (!store.customerCart.appliedDiscountCode.empty() && discountService != nullptr) {
+            if (!discountService->consumeUsage(store.customerCart.appliedDiscountCode)) {
+                tx.rollback();
+                return OperationResult::Fail("Lỗi khi áp dụng mã giảm giá!");
+            }
+        }
+    }
+
+    if (!tx.commit()) {
+        return OperationResult::Fail("Lỗi khi hoàn tất lưu trữ đơn hàng!");
+    }
+
+    // Giao dịch file thành công -> cập nhật View cache:
+    // 1. Giữ chỗ tồn kho (reservedStock += quantity)
     for (const auto& item : store.customerCart.items) {
         for (auto& p : store.products) {
             if (p.id == item.phoneId) {
@@ -719,11 +1181,15 @@ OperationResult AppController::checkout(const CheckoutRequest& request, std::str
         }
     }
 
-    // Lấy thời gian hiện tại
-    std::time_t now = std::time(nullptr);
-    std::tm* tm_now = std::localtime(&now);
-    char timeBuf[64];
-    std::strftime(timeBuf, sizeof(timeBuf), "%d/%m/%Y %H:%M", tm_now);
+    // 2. Cập nhật lượt dùng voucher trong View cache nếu có
+    if (!store.customerCart.appliedDiscountCode.empty()) {
+        for (auto& d : store.discounts) {
+            if (d.code == store.customerCart.appliedDiscountCode) {
+                d.usedCount += 1;
+                break;
+            }
+        }
+    }
 
     OrderItemViewModel newOrder;
     newOrder.id = outOrderId;
@@ -743,9 +1209,7 @@ OperationResult AppController::checkout(const CheckoutRequest& request, std::str
     newOrder.total = store.customerCart.grandTotal;
     newOrder.receiverName = request.receiverName;
     newOrder.receiverPhone = request.receiverPhone;
-    newOrder.deliveryAddress = (request.deliveryMethod == 0)
-        ? "Cửa hàng PBL2 Store - 54 Nguyễn Lương Bằng, Đà Nẵng"
-        : request.deliveryAddress;
+    newOrder.deliveryAddress = deliveryAddr;
 
     for (const auto& cItem : store.customerCart.items) {
         OrderDetailItemViewModel d;
@@ -856,6 +1320,14 @@ OperationResult AppController::updateOrderStatus(const std::string& orderId, Ord
                 }
             }
 
+            // Lưu trạng thái đơn hàng xuống file qua OrderService
+            if (orderService != nullptr) {
+                std::string serviceErr;
+                if (!orderService->updateOrderStatus(orderId, newStatus, serviceErr)) {
+                    return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu trạng thái đơn hàng vào file!");
+                }
+            }
+
             OrderStatus oldStatus = ord.status;
             ord.status = newStatus;
             ord.statusText = orderStatusToString(newStatus);
@@ -919,6 +1391,12 @@ OperationResult AppController::cancelOrder(const std::string& orderId) {
             if (!ord.canCancel()) {
                 return OperationResult::Fail("Chỉ có thể hủy đơn hàng đang ở trạng thái 'Chờ xử lý' (PENDING)!");
             }
+            if (orderService != nullptr) {
+                std::string serviceErr;
+                if (!orderService->cancelOrder(orderId, serviceErr)) {
+                    return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi hủy đơn hàng trong file!");
+                }
+            }
             return updateOrderStatus(orderId, OrderStatus::CANCELLED);
         }
     }
@@ -972,6 +1450,18 @@ OperationResult AppController::createInvoiceForOrder(const std::string& orderId,
     if (idDate.empty() ||
         !IdGenerator::nextId("INV", idDate, collectIds(store.invoices), invId, idError)) {
         return OperationResult::Fail(idError.empty() ? "Không thể xác định ngày để sinh mã hóa đơn." : idError);
+    }
+
+    // Lưu hóa đơn vào file qua InvoiceService
+    if (invoiceService != nullptr) {
+        std::string serviceErr;
+        if (!invoiceService->createInvoiceFromOrder(orderId, employeeId, method, ord.discountAmount, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu hóa đơn vào file dữ liệu!");
+        }
+        Invoice* created = invoiceService->getByOrderId(orderId);
+        if (created != nullptr) {
+            invId = created->getID();
+        }
     }
 
     std::time_t now = std::time(nullptr);
@@ -1063,16 +1553,38 @@ OperationResult AppController::createPosInvoice(const std::string& customerId, c
     if (!IdGenerator::nextId("INV", idDate, invoiceIds, invoiceId, idError)) {
         return OperationResult::Fail(idError);
     }
-    outInvoiceId = invoiceId;
-    outChange = change;
 
-    // Trừ kho trực tiếp
-    for (const auto& it : items) {
-        for (auto& p : store.products) {
-            if (p.id == it.phoneId) {
-                p.actualStock -= it.quantity;
-                p.calculateStockStatus();
-                break;
+    // Transaction cho Multi-file (Products, Orders, Invoices, Discount, Customers)
+    FileTransaction tx;
+    if (phoneService != nullptr) tx.addParticipant(phoneService->getRepository().getFilePath());
+    if (orderService != nullptr) tx.addParticipant(orderService->getRepository().getFilePath());
+    if (invoiceService != nullptr) tx.addParticipant(invoiceService->getRepository().getFilePath());
+    if (!discountCode.empty() && discountService != nullptr) {
+        tx.addParticipant(discountService->getRepository().getFilePath());
+    }
+    if (!customerId.empty() && customerId != "WALK-IN" && customerService != nullptr) {
+        tx.addParticipant(customerService->getRepository().getFilePath());
+    }
+
+    tx.onRollback([this]() {
+        if (this->phoneService) this->phoneService->reload();
+        if (this->orderService) this->orderService->reload();
+        if (this->invoiceService) this->invoiceService->reload();
+        if (this->discountService) this->discountService->reload();
+        if (this->customerService) this->customerService->reload();
+    });
+
+    if (!tx.begin()) {
+        return OperationResult::Fail("Không thể khởi tạo giao dịch lưu trữ hóa đơn POS!");
+    }
+
+    // 1. Trừ kho qua PhoneService
+    if (phoneService != nullptr) {
+        for (const auto& it : items) {
+            std::string serviceErr;
+            if (!phoneService->updateStock(it.phoneId, -it.quantity, serviceErr)) {
+                tx.rollback();
+                return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật kho cho đơn bán tại quầy!");
             }
         }
     }
@@ -1083,9 +1595,88 @@ OperationResult AppController::createPosInvoice(const std::string& customerId, c
     std::strftime(timeBuf, sizeof(timeBuf), "%d/%m/%Y %H:%M", tm_now);
 
     std::string custName = "Khách vãng lai";
-    if (!customerId.empty()) {
+    if (!customerId.empty() && customerId != "WALK-IN") {
         CustomerItemViewModel c = getCustomerById(customerId);
         if (!c.fullName.empty()) custName = c.fullName;
+    }
+
+    // 2. Lưu Order hoàn tất qua OrderService
+    if (orderService != nullptr) {
+        ShippingInfo ship(custName, "-", "Tại quầy thu ngân");
+        Order ordModel(orderId, customerId == "WALK-IN" ? "" : customerId, DeliveryMethod::PICKUP, payMethod, ship);
+        ordModel.setStatus(OrderStatus::COMPLETED);
+        ordModel.setDiscountAmount(discount);
+        for (const auto& it : items) {
+            ordModel.addDetail(OrderDetail(it.phoneId, it.phoneName, it.quantity, it.unitPrice));
+        }
+        std::string serviceErr;
+        if (!orderService->addCompletedOrder(ordModel, serviceErr)) {
+            tx.rollback();
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu đơn hàng POS vào file!");
+        }
+    }
+
+    // 3. Xuất hóa đơn và lưu qua InvoiceService
+    if (invoiceService != nullptr) {
+        std::string serviceErr;
+        if (!invoiceService->createInvoiceFromOrder(orderId, employeeId, payMethod, discount, serviceErr)) {
+            tx.rollback();
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu hóa đơn POS vào file!");
+        }
+        Invoice* created = invoiceService->getByOrderId(orderId);
+        if (created != nullptr) {
+            invoiceId = created->getID();
+        }
+    }
+
+    // 4. Tiêu thụ voucher nếu có
+    if (!discountCode.empty() && discountService != nullptr) {
+        if (!discountService->consumeUsage(discountCode)) {
+            tx.rollback();
+            return OperationResult::Fail("Lỗi khi áp dụng và cập nhật lượt dùng mã giảm giá!");
+        }
+    }
+
+    // 5. Tích điểm thành viên nếu có
+    int points = 0;
+    if (!customerId.empty() && customerId != "WALK-IN" && customerService != nullptr) {
+        points = static_cast<int>(total / 100000.0);
+        if (points > 0) {
+            if (!customerService->addPoints(customerId, points)) {
+                tx.rollback();
+                return OperationResult::Fail("Lỗi khi cập nhật điểm tích lũy cho khách hàng!");
+            }
+        }
+    }
+
+    // COMMIT TẤT CẢ FILE TRƯỚC KHI CẬP NHẬT VIEW CACHE
+    if (!tx.commit()) {
+        return OperationResult::Fail("Lỗi khi xác nhận giao dịch ghi file cho đơn bán tại quầy!");
+    }
+
+    // Đã commit thành công 100% -> Cập nhật MockDataStore:
+    outInvoiceId = invoiceId;
+    outChange = change;
+
+    // Trừ kho trên View cache
+    for (const auto& it : items) {
+        for (auto& p : store.products) {
+            if (p.id == it.phoneId) {
+                p.actualStock -= it.quantity;
+                p.calculateStockStatus();
+                break;
+            }
+        }
+    }
+
+    // Cập nhật voucher trên View cache
+    if (!discountCode.empty()) {
+        for (auto& d : store.discounts) {
+            if (d.code == discountCode) {
+                d.usedCount += 1;
+                break;
+            }
+        }
     }
 
     InvoiceItemViewModel inv;
@@ -1138,8 +1729,7 @@ OperationResult AppController::createPosInvoice(const std::string& customerId, c
     store.orders.insert(store.orders.begin(), ord);
 
     // Tích điểm nếu có customer
-    if (!customerId.empty() && customerId != "WALK-IN") {
-        int points = static_cast<int>(total / 100000.0);
+    if (points > 0 && !customerId.empty() && customerId != "WALK-IN") {
         for (auto& c : store.customers) {
             if (c.id == customerId) {
                 c.points += points;
@@ -1212,6 +1802,17 @@ OperationResult AppController::addCustomer(const CustomerFormRequest& req) {
     newC.points = 0;
     newC.updateTier();
 
+    // Ghi xuống file qua CustomerService
+    if (customerService != nullptr) {
+        Name name(req.firstName, req.middleName, req.lastName);
+        Customer cust(customerId, name, req.phone, req.email, req.address, newC.username, "123456", 0);
+        cust.getAccount().setID(accountId);
+        std::string serviceErr;
+        if (!customerService->registerCustomer(cust, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu khách hàng vào file dữ liệu!");
+        }
+    }
+
     store.customers.push_back(newC);
     AccountItemViewModel account;
     account.id = accountId;
@@ -1228,6 +1829,22 @@ OperationResult AppController::addCustomer(const CustomerFormRequest& req) {
 OperationResult AppController::updateCustomer(const CustomerFormRequest& req) {
     if (!IdGenerator::isValidId(req.id, "CUS") || req.phone.empty()) {
         return OperationResult::Fail("Thông tin khách hàng không hợp lệ!");
+    }
+
+    // Cập nhật xuống file qua CustomerService
+    if (customerService != nullptr) {
+        Customer* existing = customerService->getCustomerById(req.id);
+        std::string username = existing ? existing->getAccount().getUsername() : ("cust_" + req.phone);
+        std::string password = existing ? existing->getAccount().getPassword() : "123456";
+        int pts = existing ? existing->getPoints() : 0;
+        std::string accId = existing ? existing->getAccount().getID() : "";
+        Name name(req.firstName, req.middleName, req.lastName);
+        Customer updated(req.id, name, req.phone, req.email, req.address, username, password, pts);
+        updated.getAccount().setID(accId);
+        std::string serviceErr;
+        if (!customerService->updateCustomer(updated, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật khách hàng vào file dữ liệu!");
+        }
     }
 
     auto& store = MockDataStore::getInstance();
@@ -1266,6 +1883,15 @@ OperationResult AppController::deleteCustomer(const std::string& id) {
             return OperationResult::Fail("Không thể xóa khách hàng đang được tham chiếu trong yêu cầu bảo hành (" + warranty.id + ")!");
         }
     }
+
+    // Xóa khỏi file qua CustomerService
+    if (customerService != nullptr) {
+        std::string serviceErr;
+        if (!customerService->deleteCustomer(id, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi xóa khách hàng khỏi file dữ liệu!");
+        }
+    }
+
     for (auto it = store.customers.begin(); it != store.customers.end(); ++it) {
         if (it->id == id) {
             std::string name = it->fullName;
@@ -1339,6 +1965,25 @@ OperationResult AppController::addEmployee(const EmployeeFormRequest& req) {
     newE.salary = req.salary;
     newE.isActive = true;
 
+    // Lưu xuống file qua EmployeeService
+    if (employeeService != nullptr) {
+        Name name(req.firstName, req.middleName, req.lastName);
+        Employee* emp = nullptr;
+        if (req.role == RoleType::ADMIN) {
+            emp = new AdminEmployee(employeeId, name, req.phone, req.email, req.address, req.username, "123456", req.salary);
+        } else if (req.role == RoleType::WAREHOUSE_EMPLOYEE) {
+            emp = new WarehouseEmployee(employeeId, name, req.phone, req.email, req.address, req.username, "123456", req.salary);
+        } else {
+            emp = new SalesEmployee(employeeId, name, req.phone, req.email, req.address, req.username, "123456", req.salary);
+        }
+        emp->getAccount().setID(accountId);
+        std::string serviceErr;
+        if (!employeeService->addEmployee(emp, serviceErr)) {
+            delete emp;
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu nhân viên vào file dữ liệu!");
+        }
+    }
+
     store.employees.push_back(newE);
     AccountItemViewModel account;
     account.id = accountId;
@@ -1356,6 +2001,29 @@ OperationResult AppController::updateEmployee(const EmployeeFormRequest& req) {
     REQUIRE_ADMIN_ROLE();
     if (!IdGenerator::isValidId(req.id, "EMP")) {
         return OperationResult::Fail("Mã nhân viên không hợp lệ!");
+    }
+
+    // Cập nhật xuống file qua EmployeeService
+    if (employeeService != nullptr) {
+        Employee* existing = employeeService->getEmployeeById(req.id);
+        std::string username = existing ? existing->getAccount().getUsername() : req.username;
+        std::string password = existing ? existing->getAccount().getPassword() : "123456";
+        std::string accId = existing ? existing->getAccount().getID() : "";
+        Name name(req.firstName, req.middleName, req.lastName);
+        Employee* updated = nullptr;
+        if (req.role == RoleType::ADMIN) {
+            updated = new AdminEmployee(req.id, name, req.phone, req.email, req.address, username, password, req.salary);
+        } else if (req.role == RoleType::WAREHOUSE_EMPLOYEE) {
+            updated = new WarehouseEmployee(req.id, name, req.phone, req.email, req.address, username, password, req.salary);
+        } else {
+            updated = new SalesEmployee(req.id, name, req.phone, req.email, req.address, username, password, req.salary);
+        }
+        updated->getAccount().setID(accId);
+        std::string serviceErr;
+        if (!employeeService->updateEmployee(updated, serviceErr)) {
+            delete updated;
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật nhân viên vào file dữ liệu!");
+        }
     }
 
     auto& store = MockDataStore::getInstance();
@@ -1397,6 +2065,15 @@ OperationResult AppController::deleteEmployee(const std::string& id) {
             return OperationResult::Fail("Không thể xóa nhân viên đang được tham chiếu trong phiếu nhập (" + receipt.id + ")!");
         }
     }
+
+    // Xóa khỏi file qua EmployeeService
+    if (employeeService != nullptr) {
+        std::string serviceErr;
+        if (!employeeService->deleteEmployee(id, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi xóa nhân viên khỏi file dữ liệu!");
+        }
+    }
+
     for (auto it = store.employees.begin(); it != store.employees.end(); ++it) {
         if (it->id == id) {
             std::string name = it->fullName;
@@ -1459,6 +2136,16 @@ OperationResult AppController::addSupplier(const SupplierFormRequest& req) {
     newS.email = req.email;
     newS.address = req.address;
 
+    // Lưu xuống file qua SupplierService
+    if (supplierService != nullptr) {
+        Name contact(req.contactPerson, "", "");
+        Supplier sup(supplierId, req.companyName, req.taxCode, contact, req.phone, req.email, req.address);
+        std::string serviceErr;
+        if (!supplierService->addSupplier(sup, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu nhà cung cấp vào file dữ liệu!");
+        }
+    }
+
     store.suppliers.push_back(newS);
     return OperationResult::Ok("Thêm nhà cung cấp '" + newS.companyName + "' thành công!");
 }
@@ -1467,6 +2154,16 @@ OperationResult AppController::updateSupplier(const SupplierFormRequest& req) {
     REQUIRE_ADMIN_ROLE();
     if (!IdGenerator::isValidId(req.id, "SUP")) {
         return OperationResult::Fail("Mã nhà cung cấp không đúng định dạng SUP-000001!");
+    }
+
+    // Cập nhật xuống file qua SupplierService
+    if (supplierService != nullptr) {
+        Name contact(req.contactPerson, "", "");
+        Supplier updated(req.id, req.companyName, req.taxCode, contact, req.phone, req.email, req.address);
+        std::string serviceErr;
+        if (!supplierService->updateSupplier(updated, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật nhà cung cấp vào file dữ liệu!");
+        }
     }
 
     auto& store = MockDataStore::getInstance();
@@ -1495,6 +2192,15 @@ OperationResult AppController::deleteSupplier(const std::string& id) {
             return OperationResult::Fail("Không thể xóa nhà cung cấp đang được tham chiếu trong phiếu nhập (" + receipt.id + ")!");
         }
     }
+
+    // Xóa khỏi file qua SupplierService
+    if (supplierService != nullptr) {
+        std::string serviceErr;
+        if (!supplierService->deleteSupplier(id, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi xóa nhà cung cấp khỏi file dữ liệu!");
+        }
+    }
+
     for (auto it = store.suppliers.begin(); it != store.suppliers.end(); ++it) {
         if (it->id == id) {
             std::string name = it->companyName;
@@ -1560,6 +2266,18 @@ OperationResult AppController::createGoodsReceipt(const CreateReceiptRequest& re
         return OperationResult::Fail(idError.empty() ? "Không thể xác định ngày để sinh mã phiếu nhập." : idError);
     }
 
+    // Lưu phiếu nhập và cập nhật tồn kho qua SupplierService & PhoneService
+    if (supplierService != nullptr) {
+        ImportReceipt receipt(receiptId, req.supplierId, employeeId);
+        for (const auto& item : req.items) {
+            receipt.addDetail(OrderDetail(item.phoneId, item.phoneName, item.quantity, item.importPrice));
+        }
+        std::string serviceErr;
+        if (!supplierService->receiveStock(receipt, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi tạo phiếu nhập kho!");
+        }
+    }
+
     GoodsReceiptSummaryViewModel r;
     r.id = receiptId;
     r.supplierId = req.supplierId;
@@ -1611,6 +2329,21 @@ OperationResult AppController::updateDiscount(const DiscountFormRequest& req) {
     if (req.code.empty() || req.value <= 0) {
         return OperationResult::Fail("Mã voucher và giá trị giảm phải lớn hơn 0!");
     }
+
+    // Cập nhật xuống file qua DiscountService
+    if (discountService != nullptr) {
+        DiscountCode* existing = discountService->getByCode(req.code);
+        DiscountType dtype = (req.type == 0) ? DiscountType::PERCENTAGE : DiscountType::FIXED_AMOUNT;
+        DateTime startDate = existing ? existing->getStartDate() : DateTime::now();
+        DateTime endDate = req.expiryDate.empty() ? (existing ? existing->getEndDate() : DateTime(31, 12, 2026, 23, 59, 59)) : DateTime::fromDateString(req.expiryDate);
+        int used = existing ? existing->getUsedCount() : 0;
+        DiscountCode updated(req.code, dtype, req.value, startDate, endDate, req.minOrderValue, req.maxDiscountAmount, req.maxUsage, used);
+        std::string serviceErr;
+        if (!discountService->updateDiscount(updated, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật mã giảm giá vào file dữ liệu!");
+        }
+    }
+
     auto& store = MockDataStore::getInstance();
     bool ok = store.updateDiscount(req);
     if (!ok) {
@@ -1629,6 +2362,18 @@ OperationResult AppController::addDiscount(const DiscountFormRequest& req) {
     for (const auto& d : store.discounts) {
         if (d.code == req.code) {
             return OperationResult::Fail("Mã giảm giá '" + req.code + "' đã tồn tại!");
+        }
+    }
+
+    // Lưu xuống file qua DiscountService
+    if (discountService != nullptr) {
+        DiscountType dtype = (req.type == 0) ? DiscountType::PERCENTAGE : DiscountType::FIXED_AMOUNT;
+        DateTime startDate = DateTime::now();
+        DateTime endDate = req.expiryDate.empty() ? DateTime(31, 12, 2026, 23, 59, 59) : DateTime::fromDateString(req.expiryDate);
+        DiscountCode dc(req.code, dtype, req.value, startDate, endDate, req.minOrderValue, req.maxDiscountAmount, req.maxUsage, 0);
+        std::string serviceErr;
+        if (!discountService->addDiscount(dc, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu mã giảm giá vào file dữ liệu!");
         }
     }
 
@@ -1659,6 +2404,15 @@ OperationResult AppController::deleteDiscount(const std::string& id) {
             if (it->usedCount > 0) {
                 return OperationResult::Fail("Không thể xóa mã giảm giá đã có lịch sử sử dụng!");
             }
+
+            // Xóa khỏi file qua DiscountService
+            if (discountService != nullptr) {
+                std::string serviceErr;
+                if (!discountService->deleteDiscount(id, serviceErr)) {
+                    return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi xóa mã giảm giá khỏi file dữ liệu!");
+                }
+            }
+
             std::string code = it->code;
             store.discounts.erase(it);
             return OperationResult::Ok("Đã xóa mã giảm giá '" + code + "'!");

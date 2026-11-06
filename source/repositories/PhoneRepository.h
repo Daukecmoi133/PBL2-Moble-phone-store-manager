@@ -8,6 +8,8 @@
 #include "../models/Phone.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
+#include "../utils/PathHelper.h"
+#include "../utils/FileHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu sản phẩm từ/vào tệp tin.
 // Lưu trữ danh sách Phone trên RAM bằng Vector<Phone>.
@@ -32,6 +34,7 @@ public:
 
     // Ghi toàn bộ danh sách RAM xuống file (ghi đè).
     bool saveToFile() const;
+    const std::string& getFilePath() const { return filePath; }
 
     // Trả về toàn bộ danh sách (chỉ đọc / cho phép sửa)
     const Vector<Phone>& getAll() const;
@@ -60,19 +63,15 @@ public:
 
 // Tạo file mới với dòng header chuẩn
 inline bool PhoneRepository::createEmptyFile() const {
-    std::ofstream newFile(filePath);
-    if (!newFile.is_open()) {
-        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
-        return false;
-    }
-    newFile << "id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications\n";
-    newFile.close();
-    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
-    return true;
+    return FileHelper::createEmptyFileWithHeader(
+        filePath,
+        "id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications"
+    );
 }
 
 inline PhoneRepository::PhoneRepository(std::string path, std::string specsPath)
-    : filePath(path), specificationsFilePath(specsPath) {}
+    : filePath(PathHelper::resolveDataPath(path)),
+      specificationsFilePath(PathHelper::resolveDataPath(specsPath)) {}
 
 // Nạp dữ liệu từ Products.txt vào RAM
 // - Nếu file không tồn tại: tự tạo file mới và trả về true (danh sách rỗng)
@@ -197,20 +196,16 @@ inline void PhoneRepository::loadDetailedSpecifications() {
     saveCurrentDetails();
 }
 
-// Ghi toàn bộ danh sách phones xuống file (ghi đè)
+// Ghi toàn bộ danh sách phones xuống file (ghi đè an toàn qua Atomic File Write)
 inline bool PhoneRepository::saveToFile() const {
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
-        return false;
-    }
-    // Ghi header đúng với định dạng 9 cột
-    file << "id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications\n";
-    for (int i = 0; i < phones.getSize(); ++i) {
-        file << phones[i].toFileString() << "\n";
-    }
-    file.close();
-    return true;
+    return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
+        // Ghi header đúng với định dạng 9 cột
+        file << "id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications\n";
+        for (int i = 0; i < phones.getSize(); ++i) {
+            file << phones[i].toFileString() << "\n";
+        }
+        return file.good();
+    });
 }
 
 inline const Vector<Phone>& PhoneRepository::getAll() const { return phones; }

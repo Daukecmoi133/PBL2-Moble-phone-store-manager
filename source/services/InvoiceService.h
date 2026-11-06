@@ -29,6 +29,9 @@ public:
     InvoiceService(InvoiceRepository& iRepo, OrderRepository& oRepo);
 
     const Vector<Invoice>& getAll() const;
+    InvoiceRepository& getRepository() { return invoiceRepo; }
+    const InvoiceRepository& getRepository() const { return invoiceRepo; }
+    void reload() { invoiceRepo.loadFromFile(); }
 
     Invoice* getById(const std::string& invoiceId);
     Invoice* getByOrderId(const std::string& orderId);

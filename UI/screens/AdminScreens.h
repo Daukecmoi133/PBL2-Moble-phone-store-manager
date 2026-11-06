@@ -63,14 +63,27 @@ private:
 
     // Dynamic list boxes
     GtkWidget* productListBox;
+    GtkWidget* productCountBadge;
     GtkWidget* employeeListBox;
+    GtkWidget* employeeCountBadge = nullptr;
     GtkWidget* customerListBox;
+    GtkWidget* customerCountBadge = nullptr;
     GtkWidget* supplierListBox;
+    GtkWidget* supplierCountBadge = nullptr;
     GtkWidget* discountListBox;
+    GtkWidget* discountCountBadge = nullptr;
+    std::string discountFilterKeyword;
     GtkWidget* accountListBox;
+    GtkWidget* accountCountBadge = nullptr;
+    std::string accountFilterKeyword;
     GtkWidget* ordersListBox;
+    GtkWidget* ordersCountBadge = nullptr;
     GtkWidget* invoiceListBox;
+    GtkWidget* invoiceCountBadge = nullptr;
+    std::string invoiceFilterKeyword;
     GtkWidget* warrantyListBox;
+    GtkWidget* warrantyCountBadge = nullptr;
+    std::string warrantyFilterKeyword;
     GtkWidget* reportsListBox;
     GtkWidget* realTimeReconcileBox;
 

@@ -22,6 +22,9 @@ public:
     EmployeeService(EmployeeRepository& repository);
 
     void rebuildIndices();
+    void reload() { repo.loadFromFile(); rebuildIndices(); }
+    EmployeeRepository& getRepository() { return repo; }
+    const EmployeeRepository& getRepository() const { return repo; }
     const Vector<Employee*>& getAllEmployees() const;
 
     // Xác thực đăng nhập nhân viên với độ phức tạp O(1)
@@ -33,6 +36,9 @@ public:
     // Nghiệp vụ thêm nhân viên mới: kiểm tra tính duy nhất của username & id
     bool addEmployee(Employee* emp, std::string& errorMessage);
     bool addEmployee(Employee* emp);
+
+    bool updateEmployee(Employee* emp, std::string& errorMessage);
+    bool updateEmployee(Employee* emp);
 
     bool deleteEmployee(const std::string& id, std::string& errorMessage);
     bool deleteEmployee(const std::string& id);
@@ -150,6 +156,28 @@ inline bool EmployeeService::addEmployee(Employee* emp, std::string& errorMessag
 inline bool EmployeeService::addEmployee(Employee* emp) {
     std::string err;
     return addEmployee(emp, err);
+}
+
+inline bool EmployeeService::updateEmployee(Employee* emp, std::string& errorMessage) {
+    if (emp == nullptr) {
+        errorMessage = "Dữ liệu nhân viên không hợp lệ!";
+        return false;
+    }
+    if (!idTable.contains(emp->getID())) {
+        errorMessage = "Không tìm thấy nhân viên có mã [" + emp->getID() + "] để cập nhật!";
+        return false;
+    }
+    if (!repo.updateEmployee(emp)) {
+        errorMessage = "Lỗi khi cập nhật nhân viên vào cơ sở dữ liệu!";
+        return false;
+    }
+    rebuildIndices();
+    return true;
+}
+
+inline bool EmployeeService::updateEmployee(Employee* emp) {
+    std::string err;
+    return updateEmployee(emp, err);
 }
 
 inline bool EmployeeService::deleteEmployee(const std::string& id, std::string& errorMessage) {

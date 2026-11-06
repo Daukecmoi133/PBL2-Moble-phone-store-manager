@@ -18,6 +18,7 @@
 #include "WarehouseScreens.h"
 #include "AdminScreens.h"
 #include "../components/UIComponents.h"
+#include "../styles/AppCss.h"
 
 struct NavButtonData {
     MainShellWindow* shell;
@@ -188,9 +189,9 @@ void MainShellWindow::buildHeader() {
 }
 
 void MainShellWindow::buildSidebar() {
-    sidebarBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    sidebarBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_XS);
     gtk_widget_add_css_class(sidebarBox, "sidebar-panel");
-    gtk_widget_set_size_request(sidebarBox, 240, -1);
+    gtk_widget_set_size_request(sidebarBox, DesignTokens::SIDEBAR_WIDTH, -1);
 }
 
 void MainShellWindow::buildStack() {
@@ -254,6 +255,7 @@ void MainShellWindow::addSidebarButton(const std::string& pageName, const std::s
 
     GtkWidget* box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     GtkWidget* iconLbl = gtk_label_new(icon.c_str());
+    gtk_widget_add_css_class(iconLbl, "sidebar-icon-slot");
     GtkWidget* textLbl = gtk_label_new(label.c_str());
     gtk_widget_set_hexpand(textLbl, TRUE);
     gtk_label_set_xalign(GTK_LABEL(textLbl), 0.0f);
@@ -343,18 +345,33 @@ void MainShellWindow::refreshCurrentRoleUI() {
         warehouseScreens->refreshAll();
 
     } else if (user.isAdmin()) {
-        addCategory("Quản trị hệ thống");
+        auto addDivider = [this]() {
+            GtkWidget* div = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+            gtk_widget_add_css_class(div, "sidebar-divider");
+            gtk_box_append(GTK_BOX(this->sidebarBox), div);
+        };
+
+        addCategory("Tổng quan & Báo cáo");
         addSidebarButton("admin_dashboard", "Báo cáo quản trị", "📊");
+        addSidebarButton("admin_reports", "Thống kê & Lợi nhuận", "📈");
+
+        addDivider();
+        addCategory("Danh mục & Nguồn hàng");
         addSidebarButton("admin_products", "Quản lý sản phẩm", "📱");
-        addSidebarButton("admin_employees", "Quản lý nhân sự", "👥");
-        addSidebarButton("admin_customers", "Quản lý khách hàng", "👤");
         addSidebarButton("admin_suppliers", "Nhà cung cấp", "🏢");
         addSidebarButton("admin_discounts", "Mã giảm giá", "🎟️");
-        addSidebarButton("admin_accounts", "Quản trị tài khoản", "🔐");
+
+        addDivider();
+        addCategory("Giao dịch & Bảo hành");
         addSidebarButton("admin_orders", "Tất cả đơn hàng", "📦");
         addSidebarButton("admin_invoices", "Tất cả hóa đơn", "📑");
         addSidebarButton("admin_warranty", "Giám sát bảo hành", "🛡️");
-        addSidebarButton("admin_reports", "Thống kê & Lợi nhuận", "📈");
+
+        addDivider();
+        addCategory("Nhân sự & Hệ thống");
+        addSidebarButton("admin_employees", "Quản lý nhân sự", "👥");
+        addSidebarButton("admin_customers", "Quản lý khách hàng", "👤");
+        addSidebarButton("admin_accounts", "Quản trị tài khoản", "🔐");
         addSidebarButton("admin_realtime", "Kiểm soát thời gian thực", "⏱️");
 
         initialPage = "admin_dashboard";

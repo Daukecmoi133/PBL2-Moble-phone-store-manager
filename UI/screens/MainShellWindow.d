@@ -786,7 +786,8 @@ UI/screens/MainShellWindow.o: UI/screens/MainShellWindow.cpp \
  C:/DUY/PBL2/source/models/Common.h \
  C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h \
  C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h \
- C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h
+ C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h \
+ UI/screens/../styles/AppCss.h
 UI/screens/MainShellWindow.h:
 C:/msys64/ucrt64/include/gtk-4.0/gtk/gtk.h:
 C:/msys64/ucrt64/include/gtk-4.0/gtk/css/gtkcss.h:
@@ -1578,3 +1579,4 @@ C:/DUY/PBL2/source/models/Common.h:
 C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h:
 C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h:
 C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h:
+UI/screens/../styles/AppCss.h:

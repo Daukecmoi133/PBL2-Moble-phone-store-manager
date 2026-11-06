@@ -8,6 +8,8 @@
 #include "../models/Customer.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
+#include "../utils/PathHelper.h"
+#include "../utils/FileHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu khách hàng từ/vào tệp tin.
 // Lưu trữ danh sách Customer trên RAM bằng Vector<Customer>.
@@ -28,6 +30,7 @@ public:
 
     // Ghi toàn bộ danh sách RAM xuống file (ghi đè).
     bool saveToFile() const;
+    const std::string& getFilePath() const { return filePath; }
 
     // Trả về toàn bộ danh sách (chỉ đọc / cho phép sửa)
     const Vector<Customer>& getAll() const;
@@ -58,18 +61,14 @@ public:
 
 // Tạo file Customers.txt mới với header chuẩn
 inline bool CustomerRepository::createEmptyFile() const {
-    std::ofstream newFile(filePath);
-    if (!newFile.is_open()) {
-        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
-        return false;
-    }
-    newFile << "id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address\n";
-    newFile.close();
-    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
-    return true;
+    return FileHelper::createEmptyFileWithHeader(
+        filePath,
+        "id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address"
+    );
 }
 
-inline CustomerRepository::CustomerRepository(std::string path) : filePath(path) {}
+inline CustomerRepository::CustomerRepository(std::string path)
+    : filePath(PathHelper::resolveDataPath(path)) {}
 
 // Nạp dữ liệu từ Customers.txt vào RAM
 // - Nếu file không tồn tại: tự tạo file mới và trả về true (danh sách rỗng)
@@ -116,18 +115,14 @@ inline bool CustomerRepository::loadFromFile() {
 
 // Ghi toàn bộ danh sách customers xuống file (ghi đè)
 inline bool CustomerRepository::saveToFile() const {
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
-        return false;
-    }
-    // Header khớp với định dạng Customer::toFileString() (cột 9 là points)
-    file << "id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address\n";
-    for (int i = 0; i < customers.getSize(); ++i) {
-        file << customers[i].toFileString() << "\n";
-    }
-    file.close();
-    return true;
+    return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
+        // Header khớp với định dạng Customer::toFileString() (cột 9 là points)
+        file << "id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address\n";
+        for (int i = 0; i < customers.getSize(); ++i) {
+            file << customers[i].toFileString() << "\n";
+        }
+        return file.good();
+    });
 }
 
 inline const Vector<Customer>& CustomerRepository::getAll() const { return customers; }
@@ -174,34 +169,49 @@ inline Vector<Customer> CustomerRepository::searchByName(const std::string& keyw
     return result;
 }
 
-// Thêm khách hàng mới (kiểm tra ID trùng trước)
+// Thêm khách hàng mới (kiểm tra ID trùng trước, rollback RAM nếu ghi file thất bại)
 inline bool CustomerRepository::addCustomer(const Customer& cust) {
     if (existsById(cust.getID())) {
         std::cerr << "[Canh bao] ID khach hang da ton tai: " << cust.getID() << std::endl;
         return false;
     }
+    Vector<Customer> backup = customers;
     customers.push_back(cust);
-    return saveToFile();
+    if (!saveToFile()) {
+        customers = backup; // Rollback RAM
+        return false;
+    }
+    return true;
 }
 
-// Cập nhật khách hàng theo ID
+// Cập nhật khách hàng theo ID (rollback RAM nếu ghi file thất bại)
 inline bool CustomerRepository::updateCustomer(const Customer& updatedCust) {
     for (int i = 0; i < customers.getSize(); ++i) {
         if (customers[i].getID() == updatedCust.getID()) {
+            Vector<Customer> backup = customers;
             customers[i] = updatedCust;
-            return saveToFile();
+            if (!saveToFile()) {
+                customers = backup; // Rollback RAM
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay ID de cap nhat: " << updatedCust.getID() << std::endl;
     return false;
 }
 
-// Xóa khách hàng theo ID
+// Xóa khách hàng theo ID (rollback RAM nếu ghi file thất bại)
 inline bool CustomerRepository::deleteCustomer(const std::string& id) {
     for (int i = 0; i < customers.getSize(); ++i) {
         if (customers[i].getID() == id) {
+            Vector<Customer> backup = customers;
             customers.removeAt(i);
-            return saveToFile();
+            if (!saveToFile()) {
+                customers = backup; // Rollback RAM
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay ID de xoa: " << id << std::endl;

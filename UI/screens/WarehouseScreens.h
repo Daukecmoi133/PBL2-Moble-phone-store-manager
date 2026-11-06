@@ -37,18 +37,26 @@ private:
     GtkWidget* createReceiptView;
     GtkWidget* fulfillmentView;
 
-    // Dynamic containers
-    GtkWidget* inventoryListBox;
-    GtkWidget* lowStockListBox;
-    GtkWidget* receiptsListBox;
-    GtkWidget* fulfillmentListBox;
+    // Dynamic containers & record count badges
+    GtkWidget* inventoryListBox = nullptr;
+    GtkWidget* inventoryCountBadge = nullptr;
+    GtkWidget* lowStockListBox = nullptr;
+    GtkWidget* lowStockCountBadge = nullptr;
+    std::string lowStockKeyword;
+    GtkWidget* receiptsListBox = nullptr;
+    GtkWidget* receiptsCountBadge = nullptr;
+    std::string receiptsKeyword;
+    GtkWidget* fulfillmentListBox = nullptr;
+    GtkWidget* fulfillmentCountBadge = nullptr;
+    std::string fulfillmentKeyword;
 
     // Create receipt draft state
     std::string draftSupplierId;
     std::vector<GoodsReceiptDetailViewModel> draftReceiptItems;
-    GtkWidget* receiptDraftItemsBox;
-    GtkWidget* receiptComboSupplier;
-    GtkWidget* lblReceiptEstimatedTotal;
+    GtkWidget* receiptDraftItemsBox = nullptr;
+    GtkWidget* receiptDraftCountBadge = nullptr;
+    GtkWidget* receiptComboSupplier = nullptr;
+    GtkWidget* lblReceiptEstimatedTotal = nullptr;
 
 public:
     WarehouseScreens(AppController* ctrl, MainShellWindow* parentShell);
@@ -74,6 +82,7 @@ private:
     void buildReceiptsView();
     void buildCreateReceiptView();
     void buildFulfillmentView();
+    void refreshDraftReceiptItems();
 
     void showReceiptDetailModal(const GoodsReceiptSummaryViewModel& receipt);
     void showAddProductToReceiptModal();

@@ -785,7 +785,8 @@ UI/screens/AdminScreens.o: UI/screens/AdminScreens.cpp \
  C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h \
  C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h \
  C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h \
- UI/screens/../mock/RealTimeManager.h \
+ UI/screens/../styles/AppCss.h UI/screens/../mock/RealTimeManager.h \
+ C:/DUY/PBL2/source/utils/PathHelper.h \
  C:/DUY/PBL2/source/utils/Utf8Helper.h
 UI/screens/AdminScreens.h:
 C:/msys64/ucrt64/include/gtk-4.0/gtk/gtk.h:
@@ -1575,5 +1576,7 @@ C:/DUY/PBL2/source/models/Common.h:
 C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h:
 C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h:
 C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h:
+UI/screens/../styles/AppCss.h:
 UI/screens/../mock/RealTimeManager.h:
+C:/DUY/PBL2/source/utils/PathHelper.h:
 C:/DUY/PBL2/source/utils/Utf8Helper.h:

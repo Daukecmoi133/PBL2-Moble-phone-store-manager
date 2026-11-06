@@ -8,6 +8,7 @@
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include "../../source/utils/PathHelper.h"
 
 /**
  * @file RealTimeManager.h
@@ -26,7 +27,7 @@
 class RealTimeManager {
 private:
     std::string currentSimulatedTime; // Format: "YYYY-MM-DD HH:MM:SS"
-    const std::string filePath = "data/realTime.txt";
+    std::string filePath = PathHelper::resolveDataPath("data/realTime.txt");
 
     RealTimeManager() {
         loadFromFile();

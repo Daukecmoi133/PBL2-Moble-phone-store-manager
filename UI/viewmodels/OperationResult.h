@@ -15,6 +15,8 @@ struct OperationResult {
     OperationResult(bool s, const std::string& msg, int c = 0, const std::string& det = "")
         : success(s), code(c), message(msg), details(det) {}
 
+    bool isSuccess() const { return success; }
+
     static OperationResult Ok(const std::string& msg = "Thao tác thành công!", const std::string& det = "") {
         return OperationResult(true, msg, 0, det);
     }

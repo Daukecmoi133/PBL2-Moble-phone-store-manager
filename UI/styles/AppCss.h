@@ -61,6 +61,28 @@
  * =========================================================================================
  */
 
+// =========================================================================
+// HẰNG SỐ DESIGN TOKENS C++ CHO BỐ CỤC GTK4 (4PX BASE / 8PX RHYTHM)
+// =========================================================================
+namespace DesignTokens {
+    // Quy tắc 4px base / 8px rhythm:
+    // - Nhịp chính (8px rhythm): 8, 16, 24, 32, 40, 48
+    // - Bước phụ (4px half-step): 4, 12, 20
+    constexpr int SPACE_XS  = 4;   // 0.5x (4px)  - Khoảng cách nội bộ nhỏ, dòng bảng
+    constexpr int SPACE_SM  = 8;   // 1.0x (8px)  - Khoảng cách nút bấm, padding nhỏ
+    constexpr int SPACE_MD  = 12;  // 1.5x (12px) - Khoảng cách giữa các trường form / cột
+    constexpr int SPACE_LG  = 16;  // 2.0x (16px) - Khoảng cách lưới thẻ KPI, padding chuẩn
+    constexpr int SPACE_XL  = 20;  // 2.5x (20px) - Padding thẻ nội dung vừa
+    constexpr int SPACE_2XL = 24;  // 3.0x (24px) - Padding khung trang chính (.page-container)
+    constexpr int SPACE_3XL = 32;  // 4.0x (32px) - Khoảng cách phân vùng lớn
+
+    // Kích thước khung điều hướng & bảng dữ liệu (bội số của 8px)
+    constexpr int SIDEBAR_WIDTH      = 240; // 30 * 8px — thống nhất với MainShellWindow
+    constexpr int TABLE_ROW_SPACING  = 4;   // 1 * 4px
+    constexpr int TABLE_CELL_SPACING = 12;  // 3 * 4px
+    constexpr int KPI_GRID_SPACING   = 16;  // 2 * 8px
+} // namespace DesignTokens
+
 // Bộ CSS chuẩn giao diện hiện đại cho GTK4 Phone Store Manager
 // Dùng font hệ thống để giao diện phù hợp với từng nền tảng
 inline const char *APP_CSS_STYLES = R"CSS(
@@ -72,15 +94,19 @@ inline const char *APP_CSS_STYLES = R"CSS(
 @define-color pbl_primary_hover #1e40af;
 @define-color pbl_primary_active #1e3a8a;
 @define-color pbl_accent #38bdf8;
+@define-color pbl_focus_ring alpha(#2563eb, 0.45);
 
 /* Nền & viền & chữ */
 @define-color pbl_bg #f1f5f9;
 @define-color pbl_surface #ffffff;
 @define-color pbl_surface_alt #f8fafc;
+@define-color pbl_surface_hover #eff6ff;
+@define-color pbl_divider #e2e8f0;
 @define-color pbl_border #cbd5e1;
 @define-color pbl_border_strong #94a3b8;
 @define-color pbl_text #0f172a;
 @define-color pbl_text_muted #475569;
+@define-color pbl_text_subtle #64748b;
 @define-color pbl_text_inverse #f8fafc;
 
 /* Nền tối (header, sidebar, màn đăng nhập) */
@@ -228,11 +254,22 @@ window {
 
 .sidebar-category-label {
     color: @pbl_border_strong;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
-    padding: 8px 8px 4px 8px;
+    padding: 12px 8px 4px 8px;
+}
+
+.sidebar-divider {
+    background-color: @pbl_navy_2;
+    min-height: 1px;
+    margin: 8px 8px;
+}
+
+.sidebar-icon-slot {
+    min-width: 24px;
+    font-size: 15px;
 }
 
 button.sidebar-btn, .sidebar-btn {
@@ -242,8 +279,8 @@ button.sidebar-btn, .sidebar-btn {
     color: @pbl_navy_text;
     border: none;
     border-radius: 8px;
-    padding: 12px 16px;
-    font-size: 15px;
+    padding: 8px 16px;
+    font-size: 14px;
     font-weight: 600;
     margin-bottom: 4px;
     transition: all 150ms ease;
@@ -253,6 +290,11 @@ button.sidebar-btn:hover, .sidebar-btn:hover {
     background-color: @pbl_navy_2;
     background-image: none;
     color: #ffffff;
+}
+
+button.sidebar-btn:focus, .sidebar-btn:focus {
+    outline: 2px solid @pbl_accent;
+    outline-offset: -2px;
 }
 
 button.sidebar-btn-active, .sidebar-btn-active {
@@ -269,6 +311,11 @@ button.sidebar-btn-active:hover, .sidebar-btn-active:hover {
     color: #ffffff;
 }
 
+button.sidebar-btn-active:focus, .sidebar-btn-active:focus {
+    outline: 2px solid @pbl_accent;
+    outline-offset: -2px;
+}
+
 .cart-count-badge {
     background-color: @pbl_danger;
     color: #ffffff;
@@ -280,21 +327,21 @@ button.sidebar-btn-active:hover, .sidebar-btn-active:hover {
 
 /* === CONTENT PAGES === */
 .page-container {
-    padding: 24px;
+    padding: 20px 24px;
 }
 
 .page-header-box {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 
 .page-title {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 800;
     color: @pbl_text;
 }
 
 .page-subtitle {
-    font-size: 15px;
+    font-size: 14px;
     color: @pbl_text_muted;
     margin-top: 4px;
 }
@@ -304,28 +351,92 @@ button.sidebar-btn-active:hover, .sidebar-btn-active:hover {
     background-color: @pbl_surface;
     border: 1px solid @pbl_border;
     border-radius: 12px;
-    padding: 24px;
+    padding: 20px 24px;
     box-shadow: none;
 }
 
 .card-title {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
     color: @pbl_text;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
-/* === STAT CARDS === */
+/* === STAT CARDS (ĐẶC TẢ MÀU NGỮ NGHĨA THEO VAI TRÒ & CHỈ SỐ) === */
 .stat-card {
     background-color: @pbl_surface;
     border: 1px solid @pbl_border;
+    border-left: 4px solid @pbl_primary;
     border-radius: 12px;
-    padding: 24px;
+    padding: 16px 20px;
     box-shadow: none;
 }
 
+.stat-card-blue {
+    border-left: 4px solid @pbl_primary;
+}
+
+.stat-card-green {
+    border-left: 4px solid @pbl_success;
+}
+
+.stat-card-amber, .stat-card-warning, .stat-card-orange {
+    border-left: 4px solid @pbl_warning;
+}
+
+.stat-card-red, .stat-card-danger {
+    border-left: 4px solid @pbl_danger;
+}
+
+.stat-card-purple {
+    border-left: 4px solid @pbl_purple;
+}
+
+.stat-card-cyan {
+    border-left: 4px solid @pbl_diamond_border;
+}
+
+.stat-icon-box {
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 15px;
+    font-weight: 700;
+    background-color: @pbl_info_bg;
+    color: @pbl_primary;
+}
+
+.stat-icon-blue {
+    background-color: @pbl_blue_bg;
+    color: @pbl_primary;
+}
+
+.stat-icon-green {
+    background-color: @pbl_success_bg;
+    color: @pbl_success;
+}
+
+.stat-icon-amber, .stat-icon-warning, .stat-icon-orange {
+    background-color: @pbl_warning_bg;
+    color: @pbl_warning;
+}
+
+.stat-icon-red, .stat-icon-danger {
+    background-color: @pbl_danger_bg;
+    color: @pbl_danger;
+}
+
+.stat-icon-purple {
+    background-color: @pbl_purple_bg;
+    color: @pbl_purple;
+}
+
+.stat-icon-cyan {
+    background-color: @pbl_diamond_bg;
+    color: @pbl_diamond;
+}
+
 .stat-label {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     color: @pbl_text_muted;
     text-transform: uppercase;
@@ -333,16 +444,29 @@ button.sidebar-btn-active:hover, .sidebar-btn-active:hover {
 }
 
 .stat-value {
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 800;
     color: @pbl_text;
     margin: 8px 0;
+    font-variant-numeric: tabular-nums;
 }
 
 .stat-trend {
-    font-size: 14px;
-    color: @pbl_success;
+    font-size: 13px;
+    color: @pbl_text_muted;
     font-weight: 600;
+}
+
+.stat-trend-positive {
+    color: @pbl_success;
+}
+
+.stat-trend-warning {
+    color: @pbl_warning;
+}
+
+.stat-trend-danger {
+    color: @pbl_danger;
 }
 
 /* === BUTTONS === */
@@ -352,6 +476,11 @@ button {
     box-shadow: none;
     text-shadow: none;
     outline: none;
+}
+
+button:focus, button:focus-visible {
+    outline: 2px solid @pbl_focus_ring;
+    outline-offset: 2px;
 }
 
 button:disabled {
@@ -516,7 +645,33 @@ entry {
 
 entry:focus {
     border-color: @pbl_primary;
+    outline: 2px solid alpha(@pbl_primary, 0.22);
+    outline-offset: 0px;
     box-shadow: none;
+}
+
+dropdown button:focus {
+    border-color: @pbl_primary;
+    outline: 2px solid alpha(@pbl_primary, 0.22);
+    outline-offset: 0px;
+}
+
+/* Thanh công cụ lọc và đếm bản ghi chuẩn doanh nghiệp */
+.filter-toolbar {
+    background-color: @pbl_surface;
+    border: 1px solid @pbl_border;
+    border-radius: 10px;
+    padding: 12px 16px;
+}
+
+.record-count-badge {
+    background-color: @pbl_surface_alt;
+    color: @pbl_text_muted;
+    border: 1px solid @pbl_border;
+    border-radius: 12px;
+    padding: 4px 12px;
+    font-size: 13px;
+    font-weight: 700;
 }
 
 /* Ô tìm kiếm / quét mã của POS: to hơn, luôn nổi bật */
@@ -725,6 +880,12 @@ dropdown.input-error:focus {
 }
 
 /* === TABLES & ROWS === */
+.table-container {
+    background-color: @pbl_surface;
+    border: 1px solid @pbl_border;
+    border-radius: 10px;
+}
+
 .table-header {
     background-color: @pbl_bg;
     border-bottom: 2px solid @pbl_border;
@@ -746,7 +907,7 @@ dropdown.input-error:focus {
 
 .table-row {
     background-color: @pbl_surface;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid @pbl_divider;
     padding: 10px 16px;
     transition: background-color 100ms ease;
 }
@@ -759,9 +920,72 @@ dropdown.input-error:focus {
     background-color: @pbl_surface_alt;
 }
 
-.table-row:hover, .table-row:focus, .table-row.selected {
-    background-color: @pbl_info_bg;
+.table-row:hover, .table-row:focus, .table-row:focus-within, .table-row.selected {
+    background-color: @pbl_surface_hover;
     border-left: 3px solid @pbl_primary;
+}
+
+/* Chữ số thẳng cột & nhãn ô dữ liệu bảng */
+.mono-num, .tabular-num, .cell-number {
+    font-family: "Cascadia Mono", "Consolas", "Segoe UI", monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 14px;
+    font-weight: 700;
+    color: @pbl_text;
+}
+
+.cell-code {
+    font-family: "Cascadia Mono", "Consolas", "Segoe UI", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: @pbl_navy_2;
+    background-color: @pbl_surface_alt;
+    border: 1px solid @pbl_border;
+    border-radius: 8px;
+    padding: 4px 8px;
+}
+
+.cell-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: @pbl_text;
+}
+
+.cell-subtitle {
+    font-size: 13px;
+    font-weight: 500;
+    color: @pbl_text_muted;
+}
+
+.stock-critical {
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    color: @pbl_danger;
+}
+
+.stock-low {
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    color: @pbl_warning;
+}
+
+.stock-ok {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: @pbl_success;
+}
+
+/* Thanh tiến độ / tỷ trọng báo cáo */
+progressbar trough {
+    background-color: @pbl_bg;
+    border-radius: 6px;
+    min-height: 8px;
+}
+
+progressbar progress {
+    background-color: @pbl_primary;
+    border-radius: 6px;
+    min-height: 8px;
 }
 
 button.btn-action-sm, .btn-action-sm {
@@ -770,6 +994,22 @@ button.btn-action-sm, .btn-action-sm {
     font-size: 13px;
     font-weight: 600;
     border-radius: 6px;
+}
+
+button.btn-action-view, .btn-action-view {
+    background-color: @pbl_surface_alt;
+    color: @pbl_navy_2;
+    border: 1px solid @pbl_border;
+    border-radius: 6px;
+    padding: 4px 10px;
+    min-height: 28px;
+    font-size: 13px;
+    font-weight: 600;
+}
+button.btn-action-view:hover, .btn-action-view:hover {
+    background-color: #e2e8f0;
+    border-color: @pbl_border_strong;
+    color: @pbl_text;
 }
 
 button.btn-action-edit, .btn-action-edit {

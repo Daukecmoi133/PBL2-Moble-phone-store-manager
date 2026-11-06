@@ -5,6 +5,8 @@
 #include <glib.h>
 #include "source/PBL2.h"
 #include "source/controllers/AppController.h"
+#include "source/utils/TransactionCoordinator.h"
+#include "source/utils/PathHelper.h"
 #include "UI/AppRunner.h"
 
 int main(int argc, char *argv[]) {
@@ -15,6 +17,11 @@ int main(int argc, char *argv[]) {
     std::cout << "========================================================\n";
     std::cout << "[PBL2] Khởi tạo Phone Store Management System (GTK4)...\n";
     std::cout << "========================================================\n";
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Bước 0: Quét & khôi phục các giao dịch file dở dang nếu ứng dụng crash
+    // ─────────────────────────────────────────────────────────────────────────
+    FileTransaction::recoverPendingTransactions(PathHelper::resolveDataPath("data"));
 
     // ─────────────────────────────────────────────────────────────────────────
     // Bước 1: Khởi tạo Repositories và nạp dữ liệu từ data/

@@ -9,6 +9,8 @@
 #include "../models/ImportReceipt.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
+#include "../utils/PathHelper.h"
+#include "../utils/FileHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu phiếu nhập kho từ/vào tệp tin.
 // Lưu trữ danh sách ImportReceipt trên RAM bằng Vector<ImportReceipt>.
@@ -29,6 +31,7 @@ public:
 
     // Ghi toàn bộ danh sách RAM xuống file
     bool saveToFile() const;
+    const std::string& getFilePath() const { return filePath; }
 
     // Trả về toàn bộ danh sách
     const Vector<ImportReceipt>& getAll() const;
@@ -60,18 +63,14 @@ public:
 
 // Tạo file StockReceipts.txt mới với header chuẩn
 inline bool StockReceiptRepository::createEmptyFile() const {
-    std::ofstream newFile(filePath);
-    if (!newFile.is_open()) {
-        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
-        return false;
-    }
-    newFile << "id|supplierId|employeeId|importTime|details\n";
-    newFile.close();
-    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
-    return true;
+    return FileHelper::createEmptyFileWithHeader(
+        filePath,
+        "id|supplierId|employeeId|importTime|details"
+    );
 }
 
-inline StockReceiptRepository::StockReceiptRepository(std::string path) : filePath(path) {}
+inline StockReceiptRepository::StockReceiptRepository(std::string path)
+    : filePath(PathHelper::resolveDataPath(path)) {}
 
 // Nạp dữ liệu từ StockReceipts.txt vào RAM
 // - Gọi ImportReceipt::fromFileLine() để phân tích mỗi dòng
@@ -117,19 +116,15 @@ inline bool StockReceiptRepository::loadFromFile() {
     return true;
 }
 
-// Ghi toàn bộ danh sách receipts xuống file (dùng ImportReceipt::toFileString())
+// Ghi toàn bộ danh sách receipts xuống file (qua Atomic File Write)
 inline bool StockReceiptRepository::saveToFile() const {
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
-        return false;
-    }
-    file << "id|supplierId|employeeId|importTime|details\n";
-    for (int i = 0; i < receipts.getSize(); ++i) {
-        file << receipts[i].toFileString() << "\n";
-    }
-    file.close();
-    return true;
+    return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
+        file << "id|supplierId|employeeId|importTime|details\n";
+        for (int i = 0; i < receipts.getSize(); ++i) {
+            file << receipts[i].toFileString() << "\n";
+        }
+        return file.good();
+    });
 }
 
 inline const Vector<ImportReceipt>& StockReceiptRepository::getAll() const { return receipts; }
@@ -183,34 +178,49 @@ inline bool StockReceiptRepository::containsPhone(const std::string& phoneId) co
     return false;
 }
 
-// Thêm phiếu nhập kho mới
+// Thêm phiếu nhập kho mới (rollback RAM nếu ghi file thất bại)
 inline bool StockReceiptRepository::addReceipt(const ImportReceipt& receipt) {
     if (existsById(receipt.getID())) {
         std::cerr << "[Canh bao] ID phieu nhap da ton tai: " << receipt.getID() << std::endl;
         return false;
     }
+    Vector<ImportReceipt> backup = receipts;
     receipts.push_back(receipt);
-    return saveToFile();
+    if (!saveToFile()) {
+        receipts = backup; // Rollback RAM
+        return false;
+    }
+    return true;
 }
 
-// Cập nhật phiếu nhập kho theo ID
+// Cập nhật phiếu nhập kho theo ID (rollback RAM nếu ghi file thất bại)
 inline bool StockReceiptRepository::updateReceipt(const ImportReceipt& updatedReceipt) {
     for (int i = 0; i < receipts.getSize(); ++i) {
         if (receipts[i].getID() == updatedReceipt.getID()) {
+            Vector<ImportReceipt> backup = receipts;
             receipts[i] = updatedReceipt;
-            return saveToFile();
+            if (!saveToFile()) {
+                receipts = backup; // Rollback RAM
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay phieu nhap ID: " << updatedReceipt.getID() << std::endl;
     return false;
 }
 
-// Xóa phiếu nhập kho theo ID
+// Xóa phiếu nhập kho theo ID (rollback RAM nếu ghi file thất bại)
 inline bool StockReceiptRepository::deleteReceipt(const std::string& id) {
     for (int i = 0; i < receipts.getSize(); ++i) {
         if (receipts[i].getID() == id) {
+            Vector<ImportReceipt> backup = receipts;
             receipts.removeAt(i);
-            return saveToFile();
+            if (!saveToFile()) {
+                receipts = backup; // Rollback RAM
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay phieu nhap ID de xoa: " << id << std::endl;

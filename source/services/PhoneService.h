@@ -50,6 +50,9 @@ public:
 
     // Tái cấu trúc các chỉ mục DSA (HashTable, BST) từ dữ liệu kho
     void rebuildIndices();
+    void reload() { repo.loadFromFile(); rebuildIndices(); }
+    PhoneRepository& getRepository() { return repo; }
+    const PhoneRepository& getRepository() const { return repo; }
 
     const Vector<Phone>& getAllPhones() const;
 

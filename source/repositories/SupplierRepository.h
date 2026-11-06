@@ -8,6 +8,8 @@
 #include "../models/Supplier.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
+#include "../utils/PathHelper.h"
+#include "../utils/FileHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu nhà cung cấp từ/vào tệp tin.
 // Lưu trữ danh sách Supplier trên RAM bằng Vector<Supplier>.
@@ -28,6 +30,7 @@ public:
 
     // Ghi toàn bộ danh sách RAM xuống file
     bool saveToFile() const;
+    const std::string& getFilePath() const { return filePath; }
 
     // Trả về toàn bộ danh sách
     const Vector<Supplier>& getAll() const;
@@ -53,18 +56,14 @@ public:
 
 // Tạo file Suppliers.txt mới với header chuẩn
 inline bool SupplierRepository::createEmptyFile() const {
-    std::ofstream newFile(filePath);
-    if (!newFile.is_open()) {
-        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
-        return false;
-    }
-    newFile << "id|companyName|taxCode|contactPerson|phoneNumber|email|address\n";
-    newFile.close();
-    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
-    return true;
+    return FileHelper::createEmptyFileWithHeader(
+        filePath,
+        "id|companyName|taxCode|contactPerson|phoneNumber|email|address"
+    );
 }
 
-inline SupplierRepository::SupplierRepository(std::string path) : filePath(path) {}
+inline SupplierRepository::SupplierRepository(std::string path)
+    : filePath(PathHelper::resolveDataPath(path)) {}
 
 // Nạp dữ liệu từ Suppliers.txt vào RAM
 // - Gọi Supplier::fromFileLine() để phân tích mỗi dòng
@@ -110,19 +109,15 @@ inline bool SupplierRepository::loadFromFile() {
     return true;
 }
 
-// Ghi toàn bộ danh sách suppliers xuống file (dùng Supplier::toFileString())
+// Ghi toàn bộ danh sách suppliers xuống file (qua Atomic File Write)
 inline bool SupplierRepository::saveToFile() const {
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
-        return false;
-    }
-    file << "id|companyName|taxCode|contactPerson|phoneNumber|email|address\n";
-    for (int i = 0; i < suppliers.getSize(); ++i) {
-        file << suppliers[i].toFileString() << "\n";
-    }
-    file.close();
-    return true;
+    return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
+        file << "id|companyName|taxCode|contactPerson|phoneNumber|email|address\n";
+        for (int i = 0; i < suppliers.getSize(); ++i) {
+            file << suppliers[i].toFileString() << "\n";
+        }
+        return file.good();
+    });
 }
 
 inline const Vector<Supplier>& SupplierRepository::getAll() const { return suppliers; }
@@ -154,34 +149,49 @@ inline Vector<Supplier> SupplierRepository::searchByCompanyName(const std::strin
     return result;
 }
 
-// Thêm nhà cung cấp mới
+// Thêm nhà cung cấp mới (rollback RAM nếu ghi file thất bại)
 inline bool SupplierRepository::addSupplier(const Supplier& sup) {
     if (existsById(sup.getID())) {
         std::cerr << "[Canh bao] ID nha cung cap da ton tai: " << sup.getID() << std::endl;
         return false;
     }
+    Vector<Supplier> backup = suppliers;
     suppliers.push_back(sup);
-    return saveToFile();
+    if (!saveToFile()) {
+        suppliers = backup; // Rollback RAM
+        return false;
+    }
+    return true;
 }
 
-// Cập nhật nhà cung cấp theo ID
+// Cập nhật nhà cung cấp theo ID (rollback RAM nếu ghi file thất bại)
 inline bool SupplierRepository::updateSupplier(const Supplier& updatedSup) {
     for (int i = 0; i < suppliers.getSize(); ++i) {
         if (suppliers[i].getID() == updatedSup.getID()) {
+            Vector<Supplier> backup = suppliers;
             suppliers[i] = updatedSup;
-            return saveToFile();
+            if (!saveToFile()) {
+                suppliers = backup; // Rollback RAM
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay NCC ID: " << updatedSup.getID() << std::endl;
     return false;
 }
 
-// Xóa nhà cung cấp theo ID
+// Xóa nhà cung cấp theo ID (rollback RAM nếu ghi file thất bại)
 inline bool SupplierRepository::deleteSupplier(const std::string& id) {
     for (int i = 0; i < suppliers.getSize(); ++i) {
         if (suppliers[i].getID() == id) {
+            Vector<Supplier> backup = suppliers;
             suppliers.removeAt(i);
-            return saveToFile();
+            if (!saveToFile()) {
+                suppliers = backup; // Rollback RAM
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay NCC ID de xoa: " << id << std::endl;

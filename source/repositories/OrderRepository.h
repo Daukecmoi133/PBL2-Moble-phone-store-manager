@@ -8,6 +8,8 @@
 #include "../models/Order.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
+#include "../utils/PathHelper.h"
+#include "../utils/FileHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu đơn hàng từ/vào tệp tin.
 // Lưu trữ danh sách Order trên RAM bằng Vector<Order>.
@@ -28,6 +30,7 @@ public:
 
     // Ghi toàn bộ danh sách RAM xuống file (ghi đè)
     bool saveToFile() const;
+    const std::string& getFilePath() const { return filePath; }
 
     // Trả về toàn bộ danh sách (chỉ đọc / cho phép sửa)
     const Vector<Order>& getAllOrders() const;
@@ -59,18 +62,14 @@ public:
 
 // Tạo file Orders.txt mới với header chuẩn
 inline bool OrderRepository::createEmptyFile() const {
-    std::ofstream newFile(filePath);
-    if (!newFile.is_open()) {
-        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
-        return false;
-    }
-    newFile << "id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details\n";
-    newFile.close();
-    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
-    return true;
+    return FileHelper::createEmptyFileWithHeader(
+        filePath,
+        "id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details"
+    );
 }
 
-inline OrderRepository::OrderRepository(std::string path) : filePath(path) {}
+inline OrderRepository::OrderRepository(std::string path)
+    : filePath(PathHelper::resolveDataPath(path)) {}
 
 // Nạp dữ liệu từ Orders.txt vào RAM
 // - Gọi Order::fromFileLine() để phân tích mỗi dòng
@@ -116,19 +115,15 @@ inline bool OrderRepository::loadFromFile() {
     return true;
 }
 
-// Ghi toàn bộ danh sách orders xuống file (dùng Order::toFileString())
+// Ghi toàn bộ danh sách orders xuống file (qua Atomic File Write)
 inline bool OrderRepository::saveToFile() const {
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
-        return false;
-    }
-    file << "id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details\n";
-    for (int i = 0; i < orders.getSize(); ++i) {
-        file << orders[i].toFileString() << "\n";
-    }
-    file.close();
-    return true;
+    return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
+        file << "id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details\n";
+        for (int i = 0; i < orders.getSize(); ++i) {
+            file << orders[i].toFileString() << "\n";
+        }
+        return file.good();
+    });
 }
 
 inline const Vector<Order>& OrderRepository::getAllOrders() const { return orders; }

@@ -28,6 +28,9 @@ public:
   void setPhoneService(PhoneService *pService);
   Queue<Order> &getPendingQueue();
   const Vector<Order> &getAllOrders() const;
+  OrderRepository& getRepository() { return orderRepo; }
+  const OrderRepository& getRepository() const { return orderRepo; }
+  void reload() { orderRepo.loadFromFile(); loadPendingQueue(); }
 
   Order *getOrderById(const std::string &orderId);
   Vector<Order> getOrdersByCustomer(const std::string &customerId) const;
@@ -36,10 +39,16 @@ public:
   bool createOrder(const Order &order, std::string &errorMessage);
   bool createOrder(const Order &order);
 
+  // Nghiệp vụ thêm đơn hàng đã hoàn tất (dành cho POS tại quầy)
+  bool addCompletedOrder(const Order &order, std::string &errorMessage);
+
   // Nghiệp vụ duyệt đơn hàng tiếp theo từ hàng đợi FIFO
   bool processNextPendingOrder(Order &processedOrder,
                                std::string &errorMessage);
   bool processNextPendingOrder(Order &processedOrder);
+
+  // Nghiệp vụ cập nhật trạng thái đơn hàng
+  bool updateOrderStatus(const std::string& orderId, OrderStatus newStatus, std::string& errorMessage);
 
   // Nghiệp vụ hủy đơn hàng
   bool cancelOrder(const std::string &orderId, std::string &errorMessage);
@@ -224,9 +233,35 @@ inline bool OrderService::processNextPendingOrder(Order &processedOrder,
   return true;
 }
 
+inline bool OrderService::addCompletedOrder(const Order &order, std::string &errorMessage) {
+  if (!orderRepo.addOrder(order)) {
+    errorMessage = "Lỗi khi lưu đơn hàng POS vào cơ sở dữ liệu!";
+    return false;
+  }
+  return true;
+}
+
 inline bool OrderService::processNextPendingOrder(Order &processedOrder) {
   std::string err;
   return processNextPendingOrder(processedOrder, err);
+}
+
+inline bool OrderService::updateOrderStatus(const std::string& orderId,
+                                            OrderStatus newStatus,
+                                            std::string& errorMessage) {
+  Order* ord = orderRepo.findById(orderId);
+  if (ord == nullptr) {
+    errorMessage = "Không tìm thấy đơn hàng [" + orderId + "]!";
+    return false;
+  }
+  OrderStatus oldStatus = ord->getStatus();
+  ord->setStatus(newStatus);
+  if (!orderRepo.updateOrder(*ord)) {
+    ord->setStatus(oldStatus);
+    errorMessage = "Lỗi khi lưu trạng thái đơn hàng vào cơ sở dữ liệu!";
+    return false;
+  }
+  return true;
 }
 
 inline bool OrderService::cancelOrder(const std::string &orderId,

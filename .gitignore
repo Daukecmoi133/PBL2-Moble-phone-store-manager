@@ -1,0 +1,34 @@
+# ==============================================================================
+# Git Ignore Configuration - PBL2 Phone Store Manager
+# ==============================================================================
+
+# Compiled binaries and build artifacts
+*.o
+*.d
+*.exe
+pbl2_gtk4
+pbl2_gtk4.exe
+MigrateData.exe
+test_runner.exe
+build_pbl2.exe
+pbl2_app.exe
+
+# Temporary backups and migration logs
+data_backup_*/
+migration_loi.txt
+migration_discount_loi.txt
+err.txt
+out.txt
+output_run.txt
+*.log
+
+# Local report drafts and QA feedback
+feedback.txt
+Summary.txt
+summary.txt
+
+# IDE & Editor temporary files
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

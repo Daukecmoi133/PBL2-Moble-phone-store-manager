@@ -8,6 +8,8 @@
 #include "../models/DiscountCode.h"
 #include "../core/Vector.h"
 #include "../utils/StringHelper.h"
+#include "../utils/PathHelper.h"
+#include "../utils/FileHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu mã giảm giá từ/vào tệp tin.
 // Lưu trữ danh sách DiscountCode trên RAM bằng Vector<DiscountCode>.
@@ -28,6 +30,7 @@ public:
 
     // Ghi toàn bộ danh sách RAM xuống file
     bool saveToFile() const;
+    const std::string& getFilePath() const { return filePath; }
 
     // Trả về toàn bộ danh sách
     const Vector<DiscountCode>& getAll() const;
@@ -53,29 +56,44 @@ public:
 
 // Tạo file Discount.txt mới với header chuẩn
 inline bool DiscountRepository::createEmptyFile() const {
-    std::ofstream newFile(filePath);
-    if (!newFile.is_open()) {
-        std::cerr << "[Loi] Khong the tao file moi: " << filePath << std::endl;
-        return false;
-    }
-    newFile << "code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount\n";
-    newFile.close();
-    std::cout << "[Info] Da tao file moi: " << filePath << std::endl;
-    return true;
+    return FileHelper::createEmptyFileWithHeader(
+        filePath,
+        "code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount"
+    );
 }
 
-inline DiscountRepository::DiscountRepository(std::string path) : filePath(path) {}
+inline DiscountRepository::DiscountRepository(std::string path)
+    : filePath(PathHelper::resolveDataPath(path)) {}
 
 // Nạp dữ liệu từ Discount.txt vào RAM
-// - Gọi DiscountCode::fromFileLine() để phân tích mỗi dòng
-// - Nếu file không tồn tại: tự tạo file mới
-// - Nếu một dòng bị lỗi: in cảnh báo, bỏ qua và đọc tiếp
+// - Phân biệt rõ: File chưa tồn tại (seed 1 lần), File rỗng (sửa header), File có dữ liệu hợp lệ
+// - Không tự động seed lại dữ liệu mặc định khi người dùng đã chủ động xóa toàn bộ bản ghi
 inline bool DiscountRepository::loadFromFile() {
+    std::error_code ec;
+    bool fileExisted = std::filesystem::exists(filePath, ec);
+
+    if (!fileExisted) {
+        // File chưa từng tồn tại: Tạo file và nạp seed data chuẩn ban đầu
+        discounts.clear();
+        discounts.push_back(DiscountCode("SALE10", DiscountType::PERCENTAGE, 10.0,
+            DateTime(1, 1, 2026, 0, 0, 0), DateTime(31, 12, 2026, 23, 59, 59),
+            5000000.0, 500000.0, 100, 12));
+        discounts.push_back(DiscountCode("GIAM500K", DiscountType::FIXED_AMOUNT, 500000.0,
+            DateTime(1, 1, 2026, 0, 0, 0), DateTime(30, 11, 2026, 23, 59, 59),
+            10000000.0, 500000.0, 200, 35));
+        discounts.push_back(DiscountCode("VIP2026", DiscountType::PERCENTAGE, 15.0,
+            DateTime(1, 1, 2026, 0, 0, 0), DateTime(31, 12, 2026, 23, 59, 59),
+            20000000.0, 1500000.0, 50, 5));
+        discounts.push_back(DiscountCode("EXPIRED2025", DiscountType::FIXED_AMOUNT, 200000.0,
+            DateTime(1, 1, 2024, 0, 0, 0), DateTime(1, 1, 2025, 23, 59, 59),
+            2000000.0, 200000.0, 50, 50));
+        return saveToFile();
+    }
+
     std::ifstream file(filePath);
     if (!file.is_open()) {
-        std::cerr << "[Canh bao] Khong the mo file: " << filePath
-                  << ". Dang tao file moi..." << std::endl;
-        return createEmptyFile();
+        std::cerr << "[Canh bao] Khong the mo file: " << filePath << std::endl;
+        return false;
     }
 
     discounts.clear();
@@ -107,33 +125,34 @@ inline bool DiscountRepository::loadFromFile() {
         }
     }
     file.close();
+
+    // Nếu file tồn tại nhưng rỗng hoàn toàn (0 dòng), tạo lại header định dạng chuẩn
+    if (lineNum == 0) {
+        createEmptyFile();
+    }
+    // Nếu discounts.getSize() == 0, người dùng đã xóa hết mã: giữ nguyên 0 mã, KHÔNG seed lại!
+
     return true;
 }
 
-// Ghi toàn bộ danh sách discounts xuống file
-// Dùng DiscountCode::toFileString() (nếu có) hoặc tự build chuỗi
+// Ghi toàn bộ danh sách discounts xuống file (qua Atomic File Write)
 inline bool DiscountRepository::saveToFile() const {
-    std::ofstream file(filePath);
-    if (!file.is_open()) {
-        std::cerr << "[Loi] Khong the ghi file: " << filePath << std::endl;
-        return false;
-    }
-    file << "code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount\n";
-    for (int i = 0; i < discounts.getSize(); ++i) {
-        const DiscountCode& dc = discounts[i];
-        // Build chuỗi theo đúng format: code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount
-        file << dc.getCode() << "|"
-             << (dc.getType() == DiscountType::PERCENTAGE ? "0" : "1") << "|"
-             << static_cast<long long>(dc.getValue()) << "|"
-             << dc.getStartDate().toDateString() << "|"
-             << dc.getEndDate().toDateString() << "|"
-             << static_cast<long long>(dc.getMinOrderValue()) << "|"
-             << static_cast<long long>(dc.getMaxDiscountValue()) << "|"
-             << dc.getMaxUsage() << "|"
-             << dc.getUsedCount() << "\n";
-    }
-    file.close();
-    return true;
+    return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
+        file << "code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount\n";
+        for (int i = 0; i < discounts.getSize(); ++i) {
+            const DiscountCode& dc = discounts[i];
+            file << dc.getCode() << "|"
+                 << (dc.getType() == DiscountType::PERCENTAGE ? "0" : "1") << "|"
+                 << static_cast<long long>(dc.getValue()) << "|"
+                 << dc.getStartDate().toDateString() << "|"
+                 << dc.getEndDate().toDateString() << "|"
+                 << static_cast<long long>(dc.getMinOrderValue()) << "|"
+                 << static_cast<long long>(dc.getMaxDiscountValue()) << "|"
+                 << dc.getMaxUsage() << "|"
+                 << dc.getUsedCount() << "\n";
+        }
+        return file.good();
+    });
 }
 
 inline const Vector<DiscountCode>& DiscountRepository::getAll() const { return discounts; }
@@ -166,34 +185,49 @@ inline Vector<DiscountCode> DiscountRepository::findValidCodes() const {
     return result;
 }
 
-// Thêm mã giảm giá mới
+// Thêm mã giảm giá mới (rollback RAM nếu ghi file thất bại)
 inline bool DiscountRepository::addDiscount(const DiscountCode& dc) {
     if (existsByCode(dc.getCode())) {
         std::cerr << "[Canh bao] Ma giam gia da ton tai: " << dc.getCode() << std::endl;
         return false;
     }
+    Vector<DiscountCode> backup = discounts;
     discounts.push_back(dc);
-    return saveToFile();
+    if (!saveToFile()) {
+        discounts = backup; // Rollback RAM
+        return false;
+    }
+    return true;
 }
 
-// Cập nhật mã giảm giá theo code
+// Cập nhật mã giảm giá theo code (rollback RAM nếu ghi file thất bại)
 inline bool DiscountRepository::updateDiscount(const DiscountCode& updatedDc) {
     for (int i = 0; i < discounts.getSize(); ++i) {
         if (discounts[i].getCode() == updatedDc.getCode()) {
+            Vector<DiscountCode> backup = discounts;
             discounts[i] = updatedDc;
-            return saveToFile();
+            if (!saveToFile()) {
+                discounts = backup; // Rollback RAM
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay ma de cap nhat: " << updatedDc.getCode() << std::endl;
     return false;
 }
 
-// Xóa mã giảm giá theo code
+// Xóa mã giảm giá theo code (rollback RAM nếu ghi file thất bại)
 inline bool DiscountRepository::deleteDiscount(const std::string& code) {
     for (int i = 0; i < discounts.getSize(); ++i) {
         if (discounts[i].getCode() == code) {
+            Vector<DiscountCode> backup = discounts;
             discounts.removeAt(i);
-            return saveToFile();
+            if (!saveToFile()) {
+                discounts = backup; // Rollback RAM
+                return false;
+            }
+            return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay ma de xoa: " << code << std::endl;

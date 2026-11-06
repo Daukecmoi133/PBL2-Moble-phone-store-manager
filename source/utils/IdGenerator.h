@@ -11,6 +11,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include "PathHelper.h"
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -206,13 +207,16 @@ public:
         static std::mutex counterMutex;
         const std::lock_guard<std::mutex> lock(counterMutex);
 
-        const std::string path = "data/system/id_counters.txt";
+        const std::string path = PathHelper::resolveDataPath("data/system/id_counters.txt");
         std::error_code filesystemError;
-        std::filesystem::create_directories("data/system", filesystemError);
-        if (filesystemError) {
-            errorMessage = "Không thể tạo thư mục lưu bộ đếm ID: " +
-                           filesystemError.message() + ".";
-            return false;
+        std::filesystem::path parentDir = std::filesystem::path(path).parent_path();
+        if (!parentDir.empty()) {
+            std::filesystem::create_directories(parentDir, filesystemError);
+            if (filesystemError) {
+                errorMessage = "Không thể tạo thư mục lưu bộ đếm ID: " +
+                               filesystemError.message() + ".";
+                return false;
+            }
         }
 
         std::map<CounterKey, std::uint32_t> counters;

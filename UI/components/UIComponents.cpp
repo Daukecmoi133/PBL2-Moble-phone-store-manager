@@ -15,6 +15,7 @@
  */
 
 #include "UIComponents.h"
+#include "../styles/AppCss.h"
 #include "../screens/MainShellWindow.h"
 #include "../../source/controllers/AppController.h"
 #include <gdk/gdkkeysyms.h>
@@ -546,18 +547,47 @@ GtkWidget* createSuccessBanner(const std::string& message) {
 GtkWidget* createStatCard(const std::string& title, const std::string& value,
                           const std::string& subtitle, const std::string& icon,
                           const std::string& colorClass) {
-    (void)colorClass;
-    GtkWidget* card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    GtkWidget* card = gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_XS);
     gtk_widget_add_css_class(card, "stat-card");
     gtk_widget_set_hexpand(card, TRUE);
 
-    GtkWidget* topRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    std::string cardColorCss = "stat-card-blue";
+    std::string iconColorCss = "stat-icon-blue";
+    std::string trendColorCss = "";
+
+    if (colorClass == "green" || colorClass == "success") {
+        cardColorCss = "stat-card-green";
+        iconColorCss = "stat-icon-green";
+        trendColorCss = "stat-trend-positive";
+    } else if (colorClass == "red" || colorClass == "danger") {
+        cardColorCss = "stat-card-red";
+        iconColorCss = "stat-icon-red";
+        trendColorCss = "stat-trend-danger";
+    } else if (colorClass == "amber" || colorClass == "warning" || colorClass == "orange") {
+        cardColorCss = "stat-card-amber";
+        iconColorCss = "stat-icon-amber";
+        trendColorCss = "stat-trend-warning";
+    } else if (colorClass == "purple") {
+        cardColorCss = "stat-card-purple";
+        iconColorCss = "stat-icon-purple";
+    } else if (colorClass == "cyan") {
+        cardColorCss = "stat-card-cyan";
+        iconColorCss = "stat-icon-cyan";
+    }
+
+    gtk_widget_add_css_class(card, cardColorCss.c_str());
+
+    GtkWidget* topRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
     GtkWidget* lblTitle = gtk_label_new(title.c_str());
     gtk_widget_add_css_class(lblTitle, "stat-label");
     gtk_widget_set_hexpand(lblTitle, TRUE);
     gtk_label_set_xalign(GTK_LABEL(lblTitle), 0.0f);
 
     GtkWidget* lblIcon = gtk_label_new(icon.c_str());
+    gtk_widget_add_css_class(lblIcon, "stat-icon-box");
+    gtk_widget_add_css_class(lblIcon, iconColorCss.c_str());
+    gtk_widget_set_valign(lblIcon, GTK_ALIGN_CENTER);
+
     gtk_box_append(GTK_BOX(topRow), lblTitle);
     gtk_box_append(GTK_BOX(topRow), lblIcon);
     gtk_box_append(GTK_BOX(card), topRow);
@@ -570,6 +600,9 @@ GtkWidget* createStatCard(const std::string& title, const std::string& value,
     if (!subtitle.empty()) {
         GtkWidget* lblSub = gtk_label_new(subtitle.c_str());
         gtk_widget_add_css_class(lblSub, "stat-trend");
+        if (!trendColorCss.empty()) {
+            gtk_widget_add_css_class(lblSub, trendColorCss.c_str());
+        }
         gtk_label_set_xalign(GTK_LABEL(lblSub), 0.0f);
         gtk_box_append(GTK_BOX(card), lblSub);
     }
@@ -642,7 +675,7 @@ GtkWidget* createWarrantyStatusBadge(WarrantyStatus status) {
 }
 
 GtkWidget* createTableHeaderRow(const std::vector<TableColumnSpec>& columns) {
-    GtkWidget* row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+    GtkWidget* row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::TABLE_CELL_SPACING);
     gtk_widget_add_css_class(row, "table-header");
     for (const auto& col : columns) {
         GtkWidget* lbl = gtk_label_new(col.title.c_str());
@@ -657,6 +690,76 @@ GtkWidget* createTableHeaderRow(const std::vector<TableColumnSpec>& columns) {
         gtk_box_append(GTK_BOX(row), lbl);
     }
     return row;
+}
+
+GtkWidget* createTableDataRow(size_t rowIndex) {
+    GtkWidget* row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::TABLE_CELL_SPACING);
+    gtk_widget_add_css_class(row, "table-row");
+    gtk_widget_add_css_class(row, (rowIndex % 2 == 0) ? "row-even" : "row-odd");
+    return row;
+}
+
+void applyColumnSpec(GtkWidget* cellWidget, const TableColumnSpec& spec) {
+    if (!cellWidget) return;
+    if (spec.minWidth > 0) {
+        gtk_widget_set_size_request(cellWidget, spec.minWidth, -1);
+    }
+    gtk_widget_set_hexpand(cellWidget, spec.hexpand ? TRUE : FALSE);
+    gtk_widget_set_valign(cellWidget, GTK_ALIGN_CENTER);
+    if (GTK_IS_LABEL(cellWidget)) {
+        gtk_label_set_xalign(GTK_LABEL(cellWidget), spec.alignment);
+    }
+}
+
+GtkWidget* createTableTextCell(const std::string& text, const TableColumnSpec& spec,
+                               const std::string& cssClass) {
+    GtkWidget* lbl = gtk_label_new(text.c_str());
+    applyColumnSpec(lbl, spec);
+    if (!cssClass.empty()) {
+        gtk_widget_add_css_class(lbl, cssClass.c_str());
+    } else if (spec.alignment >= 0.9f) {
+        gtk_widget_add_css_class(lbl, "cell-number");
+    }
+    return lbl;
+}
+
+GtkWidget* createTableTwoLineCell(const std::string& primaryText, const std::string& secondaryText,
+                                  const TableColumnSpec& spec) {
+    GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_XS);
+    applyColumnSpec(box, spec);
+
+    GtkWidget* lblPrimary = gtk_label_new(primaryText.c_str());
+    gtk_widget_add_css_class(lblPrimary, "cell-title");
+    gtk_label_set_xalign(GTK_LABEL(lblPrimary), spec.alignment);
+    gtk_box_append(GTK_BOX(box), lblPrimary);
+
+    if (!secondaryText.empty()) {
+        GtkWidget* lblSecondary = gtk_label_new(secondaryText.c_str());
+        gtk_widget_add_css_class(lblSecondary, "cell-subtitle");
+        gtk_label_set_xalign(GTK_LABEL(lblSecondary), spec.alignment);
+        gtk_box_append(GTK_BOX(box), lblSecondary);
+    }
+
+    return box;
+}
+
+GtkWidget* createTableWidgetCell(GtkWidget* innerWidget, const TableColumnSpec& spec) {
+    GtkWidget* slot = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    applyColumnSpec(slot, spec);
+
+    if (innerWidget) {
+        if (spec.alignment < 0.25f) {
+            gtk_widget_set_halign(innerWidget, GTK_ALIGN_START);
+        } else if (spec.alignment > 0.75f) {
+            gtk_widget_set_halign(innerWidget, GTK_ALIGN_END);
+        } else {
+            gtk_widget_set_halign(innerWidget, GTK_ALIGN_CENTER);
+        }
+        gtk_widget_set_hexpand(innerWidget, TRUE);
+        gtk_widget_set_valign(innerWidget, GTK_ALIGN_CENTER);
+        gtk_box_append(GTK_BOX(slot), innerWidget);
+    }
+    return slot;
 }
 
 GtkWidget* createTableActionButton(const std::string& label, const std::string& tooltip,
@@ -679,7 +782,7 @@ GtkWidget* createTableActionButton(const std::string& label, const std::string& 
 
 GtkWidget* createSearchBar(const std::string& placeholder, GCallback onSearchChanged,
                            gpointer data, GtkWidget** outEntry) {
-    GtkWidget* box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    GtkWidget* box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
     GtkWidget* entry = gtk_entry_new();
     gtk_entry_set_placeholder_text(GTK_ENTRY(entry), placeholder.c_str());
     gtk_widget_set_hexpand(entry, TRUE);
@@ -693,6 +796,47 @@ GtkWidget* createSearchBar(const std::string& placeholder, GCallback onSearchCha
 
     gtk_box_append(GTK_BOX(box), entry);
     return box;
+}
+
+GtkWidget* createFilterToolbar(const std::string& searchPlaceholder, GCallback onSearchChanged,
+                               gpointer data, GtkWidget** outEntry,
+                               GtkWidget** outCountBadge, GtkWidget* extraControlsBox) {
+    GtkWidget* toolbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_MD);
+    gtk_widget_add_css_class(toolbar, "filter-toolbar");
+
+    GtkWidget* entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(entry), searchPlaceholder.c_str());
+    gtk_widget_set_hexpand(entry, TRUE);
+
+    if (onSearchChanged) {
+        g_signal_connect(entry, "changed", onSearchChanged, data);
+    }
+    if (outEntry) {
+        *outEntry = entry;
+    }
+    gtk_box_append(GTK_BOX(toolbar), entry);
+
+    if (extraControlsBox) {
+        gtk_widget_set_valign(extraControlsBox, GTK_ALIGN_CENTER);
+        gtk_box_append(GTK_BOX(toolbar), extraControlsBox);
+    }
+
+    if (outCountBadge) {
+        GtkWidget* lblCount = gtk_label_new("Hiển thị: 0 bản ghi");
+        gtk_widget_add_css_class(lblCount, "record-count-badge");
+        gtk_widget_set_valign(lblCount, GTK_ALIGN_CENTER);
+        gtk_box_append(GTK_BOX(toolbar), lblCount);
+        *outCountBadge = lblCount;
+    }
+
+    return toolbar;
+}
+
+void updateRecordCountBadge(GtkWidget* countBadgeLabel, size_t shownCount,
+                            const std::string& unitName) {
+    if (!countBadgeLabel || !GTK_IS_LABEL(countBadgeLabel)) return;
+    std::string text = "Hiển thị: " + formatNumber(static_cast<long long>(shownCount)) + " " + unitName;
+    gtk_label_set_text(GTK_LABEL(countBadgeLabel), text.c_str());
 }
 
 GtkWidget* createFormField(const std::string& labelText, GtkWidget* inputWidget, GtkWidget** outErrorLabel) {

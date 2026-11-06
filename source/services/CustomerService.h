@@ -25,6 +25,9 @@ public:
     CustomerService(CustomerRepository& repository);
 
     void rebuildIndices();
+    void reload() { repo.loadFromFile(); rebuildIndices(); }
+    CustomerRepository& getRepository() { return repo; }
+    const CustomerRepository& getRepository() const { return repo; }
     const Vector<Customer>& getAllCustomers() const;
 
     // Xác thực đăng nhập khách hàng

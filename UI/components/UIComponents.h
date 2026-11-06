@@ -97,12 +97,38 @@ struct TableColumnSpec {
 /// @brief Tạo hàng tiêu đề bảng chuẩn (in đậm, nền xám nhạt, cố định chiều rộng)
 GtkWidget* createTableHeaderRow(const std::vector<TableColumnSpec>& columns);
 
+/// @brief Tạo hàng dữ liệu bảng chuẩn (kèm phân biệt màu dòng chẵn/lẻ .row-even / .row-odd)
+GtkWidget* createTableDataRow(size_t rowIndex);
+
+/// @brief Áp dụng thông số cột (minWidth, alignment, hexpand) từ TableColumnSpec lên widget ô dữ liệu
+void applyColumnSpec(GtkWidget* cellWidget, const TableColumnSpec& spec);
+
+/// @brief Tạo ô văn bản / số liệu đơn dòng khớp kích thước và căn lề của TableColumnSpec
+GtkWidget* createTableTextCell(const std::string& text, const TableColumnSpec& spec,
+                               const std::string& cssClass = "");
+
+/// @brief Tạo ô dữ liệu 2 dòng (Tiêu đề chính + Phụ đề mã/thông số) khớp kích thước TableColumnSpec
+GtkWidget* createTableTwoLineCell(const std::string& primaryText, const std::string& secondaryText,
+                                  const TableColumnSpec& spec);
+
+/// @brief Bọc một widget con (Badge, nhóm nút thao tác...) vào khung cột cố định chiều rộng theo TableColumnSpec
+GtkWidget* createTableWidgetCell(GtkWidget* innerWidget, const TableColumnSpec& spec);
+
 /// @brief Tạo nút thao tác nhỏ gọn ở cuối bảng kèm Tooltip giải thích hành động
 GtkWidget* createTableActionButton(const std::string& label, const std::string& tooltip,
                                    const std::string& btnClass, GCallback onClick = nullptr, gpointer data = nullptr);
 
 GtkWidget* createSearchBar(const std::string& placeholder, GCallback onSearchChanged,
                            gpointer data, GtkWidget** outEntry = nullptr);
+
+/// @brief Tạo thanh công cụ lọc chuẩn gồm ô tìm kiếm, vùng điều khiển phụ (nếu có) và huy hiệu đếm số bản ghi
+GtkWidget* createFilterToolbar(const std::string& searchPlaceholder, GCallback onSearchChanged,
+                               gpointer data, GtkWidget** outEntry = nullptr,
+                               GtkWidget** outCountBadge = nullptr, GtkWidget* extraControlsBox = nullptr);
+
+/// @brief Cập nhật văn bản cho huy hiệu đếm số bản ghi trên thanh công cụ lọc
+void updateRecordCountBadge(GtkWidget* countBadgeLabel, size_t shownCount,
+                            const std::string& unitName = "bản ghi");
 
 /// @brief Tạo trường nhập liệu chuẩn: Nhãn ở trên, căn trái, dấu * màu đỏ nếu bắt buộc, hỗ trợ nhãn lỗi bên dưới
 GtkWidget* createFormField(const std::string& labelText, GtkWidget* inputWidget, GtkWidget** outErrorLabel = nullptr);

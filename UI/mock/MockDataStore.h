@@ -141,7 +141,11 @@ public:
 
 private:
     MockDataStore() {
-        resetToDefault();
+        // KHÔNG gọi resetToDefault() tự động để tránh ghi đè dữ liệu tệp tin của người dùng.
+        // Dữ liệu sẽ được AppController nạp từ tầng Repository/Service theo đúng kiến trúc.
+        initWarranties();
+        initAccounts();
+        initCart();
     }
 
     void initProducts() {

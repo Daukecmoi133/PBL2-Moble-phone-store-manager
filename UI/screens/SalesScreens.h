@@ -42,24 +42,32 @@ private:
     std::string posSelectedCustomerId;
     std::vector<CartItemViewModel> posCartItems;
     std::string posAppliedCoupon;
-    GtkWidget* posCartListBox;
-    GtkWidget* posLblSubtotal;
-    GtkWidget* posLblDiscount;
-    GtkWidget* posLblGrandTotal;
-    GtkWidget* posEntryCash;
+    GtkWidget* posCartListBox = nullptr;
+    GtkWidget* posCartCountBadge = nullptr;
+    GtkWidget* posLblSubtotal = nullptr;
+    GtkWidget* posLblDiscount = nullptr;
+    GtkWidget* posLblGrandTotal = nullptr;
+    GtkWidget* posEntryCash = nullptr;
     GtkWidget* posEntrySearch = nullptr;
     GtkWidget* posBtnPay = nullptr;
-    GtkWidget* posLblChange;
-    GtkWidget* posComboCustomer;
-    GtkWidget* posComboPayMethod;
-    GtkWidget* posEntryCoupon;
+    GtkWidget* posLblChange = nullptr;
+    GtkWidget* posComboCustomer = nullptr;
+    GtkWidget* posComboPayMethod = nullptr;
+    GtkWidget* posEntryCoupon = nullptr;
 
-    // Dynamic containers
-    GtkWidget* productLookupListBox;
-    GtkWidget* customerListBox;
-    GtkWidget* invoiceListBox;
-    GtkWidget* ordersListBox;
-    GtkWidget* warrantyListBox;
+    // Dynamic containers & record count badges
+    GtkWidget* productLookupListBox = nullptr;
+    GtkWidget* lookupCountBadge = nullptr;
+    GtkWidget* customerListBox = nullptr;
+    GtkWidget* customerCountBadge = nullptr;
+    GtkWidget* invoiceListBox = nullptr;
+    GtkWidget* invoiceCountBadge = nullptr;
+    GtkWidget* ordersListBox = nullptr;
+    GtkWidget* ordersCountBadge = nullptr;
+    std::string onlineOrderKeyword;
+    GtkWidget* warrantyListBox = nullptr;
+    GtkWidget* warrantyCountBadge = nullptr;
+    std::string warrantyKeyword;
 
 public:
     SalesScreens(AppController* ctrl, MainShellWindow* parentShell);

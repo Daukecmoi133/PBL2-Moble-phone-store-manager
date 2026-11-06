@@ -767,7 +767,7 @@ UI/components/UIComponents.o: UI/components/UIComponents.cpp \
  C:/DUY/PBL2/source/models/Common.h \
  C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h \
  C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h \
- C:/DUY/PBL2/UI/screens/MainShellWindow.h \
+ C:/DUY/PBL2/UI/styles/AppCss.h C:/DUY/PBL2/UI/screens/MainShellWindow.h \
  C:/DUY/PBL2/source/controllers/AppController.h \
  C:/DUY/PBL2/UI/viewmodels/OperationResult.h \
  C:/DUY/PBL2/UI/viewmodels/AuthViewModels.h \
@@ -1555,6 +1555,7 @@ C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h:
 C:/DUY/PBL2/source/models/Common.h:
 C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h:
 C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h:
+C:/DUY/PBL2/UI/styles/AppCss.h:
 C:/DUY/PBL2/UI/screens/MainShellWindow.h:
 C:/DUY/PBL2/source/controllers/AppController.h:
 C:/DUY/PBL2/UI/viewmodels/OperationResult.h:

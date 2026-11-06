@@ -104,6 +104,7 @@ main.o: main.cpp C:/msys64/ucrt64/include/glib-2.0/glib.h \
  C:/DUY/PBL2/source/models/Employee.h C:/DUY/PBL2/source/core/Vector.h \
  source/repositories/PhoneRepository.h C:/DUY/PBL2/source/models/Phone.h \
  C:/DUY/PBL2/source/utils/StringHelper.h \
+ C:/DUY/PBL2/source/utils/PathHelper.h \
  source/repositories/CustomerRepository.h \
  source/repositories/EmployeeRepository.h \
  source/repositories/SupplierRepository.h \
@@ -119,6 +120,7 @@ main.o: main.cpp C:/msys64/ucrt64/include/glib-2.0/glib.h \
  source/services/../core/HashTable.h source/services/../core/BST.h \
  source/services/../repositories/PhoneRepository.h \
  source/services/../utils/IdGenerator.h \
+ source/services/../utils/PathHelper.h \
  source/services/../utils/StringHelper.h source/services/Check.h \
  source/services/../repositories/OrderRepository.h \
  source/services/../repositories/InvoiceRepository.h \
@@ -962,6 +964,7 @@ C:/DUY/PBL2/source/core/Vector.h:
 source/repositories/PhoneRepository.h:
 C:/DUY/PBL2/source/models/Phone.h:
 C:/DUY/PBL2/source/utils/StringHelper.h:
+C:/DUY/PBL2/source/utils/PathHelper.h:
 source/repositories/CustomerRepository.h:
 source/repositories/EmployeeRepository.h:
 source/repositories/SupplierRepository.h:
@@ -981,6 +984,7 @@ source/services/../core/HashTable.h:
 source/services/../core/BST.h:
 source/services/../repositories/PhoneRepository.h:
 source/services/../utils/IdGenerator.h:
+source/services/../utils/PathHelper.h:
 source/services/../utils/StringHelper.h:
 source/services/Check.h:
 source/services/../repositories/OrderRepository.h:
