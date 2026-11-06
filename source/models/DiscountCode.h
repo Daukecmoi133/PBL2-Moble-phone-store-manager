@@ -4,6 +4,7 @@
 
 #include <string>
 #include <algorithm>
+#include <sstream>
 #include "Common.h"
 #include "../utils/DateTime.h"
 
@@ -118,23 +119,40 @@ inline void DiscountCode::increaseUsage() {
 }
 
 // Phân tích dòng dữ liệu từ Discount.txt thành đối tượng DiscountCode
-// Format: code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount
+// Format chuẩn: code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount
+// Hỗ trợ định dạng cũ: ID TYPE VALUE (ví dụ: DIS00001 1 30)
 inline DiscountCode DiscountCode::fromFileLine(const std::string& line) {
-    Vector<std::string> parts = StringHelper::split(line, '|');
-    if (parts.getSize() < 9) return DiscountCode(); // Dòng không hợp lệ
+    if (line.find('|') != std::string::npos) {
+        Vector<std::string> parts = StringHelper::split(line, '|');
+        if (parts.getSize() < 9) return DiscountCode(); // Dòng không hợp lệ
 
-    std::string code   = StringHelper::trim(parts[0]);
-    int typeInt        = std::stoi(StringHelper::trim(parts[1])); // 0=PERCENTAGE, 1=FIXED_AMOUNT
-    double value       = std::stod(StringHelper::trim(parts[2]));
-    DateTime startDate = DateTime::fromDateString(StringHelper::trim(parts[3]));
-    DateTime endDate   = DateTime::fromDateString(StringHelper::trim(parts[4]));
-    double minOrder    = std::stod(StringHelper::trim(parts[5]));
-    double maxDiscount = std::stod(StringHelper::trim(parts[6]));
-    int maxUsage       = std::stoi(StringHelper::trim(parts[7]));
-    int usedCount      = std::stoi(StringHelper::trim(parts[8]));
+        std::string code   = StringHelper::trim(parts[0]);
+        int typeInt        = std::stoi(StringHelper::trim(parts[1])); // 0=PERCENTAGE, 1=FIXED_AMOUNT
+        double value       = std::stod(StringHelper::trim(parts[2]));
+        DateTime startDate = DateTime::fromDateString(StringHelper::trim(parts[3]));
+        DateTime endDate   = DateTime::fromDateString(StringHelper::trim(parts[4]));
+        double minOrder    = std::stod(StringHelper::trim(parts[5]));
+        double maxDiscount = std::stod(StringHelper::trim(parts[6]));
+        int maxUsage       = std::stoi(StringHelper::trim(parts[7]));
+        int usedCount      = std::stoi(StringHelper::trim(parts[8]));
 
-    return DiscountCode(code, static_cast<DiscountType>(typeInt), value,
-                        startDate, endDate, minOrder, maxDiscount, maxUsage, usedCount);
+        return DiscountCode(code, static_cast<DiscountType>(typeInt), value,
+                            startDate, endDate, minOrder, maxDiscount, maxUsage, usedCount);
+    } else {
+        // Tương thích ngược với định dạng mẫu cũ: ID TYPE VALUE (ví dụ: DIS00001 1 30)
+        std::stringstream ss(line);
+        std::string code;
+        int typeInt = 0;
+        double val = 0.0;
+        if (ss >> code >> typeInt >> val) {
+            DiscountType dt = (typeInt == 2) ? DiscountType::FIXED_AMOUNT : DiscountType::PERCENTAGE;
+            return DiscountCode(code, dt, val,
+                                DateTime(1, 1, 2026, 0, 0, 0),
+                                DateTime(31, 12, 2026, 23, 59, 59),
+                                0.0, 5000000.0, 100, 0);
+        }
+        return DiscountCode();
+    }
 }
 
 #endif // DISCOUNTCODE_H

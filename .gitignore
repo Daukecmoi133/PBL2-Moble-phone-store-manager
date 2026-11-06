@@ -14,6 +14,7 @@ build_pbl2.exe
 pbl2_app.exe
 
 # Temporary backups and migration logs
+tests/sandbox_runtime_data/
 data_backup_*/
 migration_loi.txt
 migration_discount_loi.txt
@@ -21,11 +22,13 @@ err.txt
 out.txt
 output_run.txt
 *.log
+PBL2_Skeleton_Spec.md
 
 # Local report drafts and QA feedback
 feedback.txt
 Summary.txt
 summary.txt
+CHANGELOG.md
 
 # IDE & Editor temporary files
 .vscode/

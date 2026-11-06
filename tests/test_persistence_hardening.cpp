@@ -194,7 +194,7 @@ static int runSubprocessVerification(const std::string& sandboxDir) {
 // TEST SUITE CHÍNH
 // =========================================================================
 int main(int argc, char* argv[]) {
-    std::string sandboxDir = "tests/sandbox_data";
+    std::string sandboxDir = "tests/sandbox_runtime_data";
 
     // Nếu được gọi ở chế độ tiến trình con kiểm thử
     if (argc >= 3 && std::string(argv[1]) == "--verify-proc") {
@@ -412,7 +412,8 @@ int main(int argc, char* argv[]) {
         int initialStock = phone->getQuantity();
         int initialOrders = countFileLines(sandboxDir + "/PAY/Order/Orders.txt");
         int initialInvoices = countFileLines(sandboxDir + "/PAY/Invoices.txt");
-        DiscountCode* dc = session.repos.discountRepo.findByCode("SALE10");
+        std::string testVoucher = "DIS00001";
+        DiscountCode* dc = session.repos.discountRepo.findByCode(testVoucher);
         int initialUsedCount = dc ? dc->getUsedCount() : 0;
 
         std::vector<CartItemViewModel> cart;
@@ -429,7 +430,7 @@ int main(int argc, char* argv[]) {
 
         double outChange = 0.0;
         std::string outInvoiceId;
-        OperationResult res = session.controller.createPosInvoice("WALK-IN", "EMP-000002", cart, "SALE10",
+        OperationResult res = session.controller.createPosInvoice("WALK-IN", "EMP-000002", cart, testVoucher,
                                                                  PaymentMethod::CASH, 100000000.0,
                                                                  outChange, outInvoiceId);
         TEST_ASSERT_FAIL(res, "createPosInvoice() từ chối khi cập nhật Discount.txt thất bại");
@@ -443,7 +444,8 @@ int main(int argc, char* argv[]) {
                     "ROLLBACK BƯỚC 4: Đơn hàng đã được xóa khỏi Orders.txt");
         TEST_ASSERT(countFileLines(sandboxDir + "/PAY/Invoices.txt") == initialInvoices,
                     "ROLLBACK BƯỚC 4: Hóa đơn đã được xóa khỏi Invoices.txt");
-        TEST_ASSERT(session.repos.discountRepo.findByCode("SALE10")->getUsedCount() == initialUsedCount,
+        DiscountCode* postDc = session.repos.discountRepo.findByCode(testVoucher);
+        TEST_ASSERT(postDc != nullptr && postDc->getUsedCount() == initialUsedCount,
                     "ROLLBACK BƯỚC 4: Lượt dùng voucher không bị trừ sai");
     }
     std::cout << "\n";
@@ -490,7 +492,8 @@ int main(int argc, char* argv[]) {
                     "ROLLBACK BƯỚC 5: Đơn hàng đã được xóa khỏi Orders.txt");
         TEST_ASSERT(countFileLines(sandboxDir + "/PAY/Invoices.txt") == initialInvoices,
                     "ROLLBACK BƯỚC 5: Hóa đơn đã được xóa khỏi Invoices.txt");
-        TEST_ASSERT(session.repos.customerRepo.findById("CUS-000001")->getPoints() == initialPoints,
+        Customer* postCust = session.repos.customerRepo.findById("CUS-000001");
+        TEST_ASSERT(postCust != nullptr && postCust->getPoints() == initialPoints,
                     "ROLLBACK BƯỚC 5: Điểm khách hàng giữ nguyên");
     }
     std::cout << "\n";
