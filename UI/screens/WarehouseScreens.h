@@ -52,6 +52,8 @@ private:
 
     // Create receipt draft state
     std::string draftSupplierId;
+    std::vector<std::string> receiptSupplierIds;
+    guint lastSelectedSupplierIndex = 0;
     std::vector<GoodsReceiptDetailViewModel> draftReceiptItems;
     GtkWidget* receiptDraftItemsBox = nullptr;
     GtkWidget* receiptDraftCountBadge = nullptr;
@@ -67,6 +69,10 @@ public:
     GtkWidget* getReceiptsView() { return receiptsView; }
     GtkWidget* getCreateReceiptView() { return createReceiptView; }
     GtkWidget* getFulfillmentView() { return fulfillmentView; }
+
+    const std::vector<GoodsReceiptDetailViewModel>& getDraftReceiptItems() const { return draftReceiptItems; }
+    void addDraftReceiptItem(const GoodsReceiptDetailViewModel& item);
+    void clearDraftReceiptItems();
 
     void refreshAll();
     void refreshDashboard();

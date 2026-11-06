@@ -14,6 +14,7 @@ build_pbl2.exe
 pbl2_app.exe
 
 # Temporary backups and migration logs
+tests/
 data_backup_*/
 migration_loi.txt
 migration_discount_loi.txt
@@ -21,7 +22,6 @@ err.txt
 out.txt
 output_run.txt
 *.log
-
 
 
 # Local report drafts and QA feedback
@@ -36,3 +36,7 @@ PBL2_Skeleton_Spec.md
 .idea/
 Thumbs.db
 .DS_Store
+
+
+# Agent UI 
+.agents/

@@ -23,11 +23,14 @@ struct DateTime {
   static DateTime now();
   static DateTime fromDateString(const std::string &str);
   static DateTime fromString(const std::string &str);
+  static bool isValidDate(int y, int m, int d);
+  static bool isValidDateString(const std::string &str);
 
   // Member methods
   void setTime(int y, int m, int d, int h = 0, int min = 0, int s = 0);
   std::string toString() const;
   std::string toDateString() const;
+  DateTime addDays(int days) const;
 
   // Comparison operators
   bool operator<(const DateTime &other) const;
@@ -107,6 +110,74 @@ inline bool isValidDate(int y, int m, int d) {
 
 inline bool isValidTime(int h, int min, int s) {
   return (h >= 0 && h <= 23) && (min >= 0 && min <= 59) && (s >= 0 && s <= 59);
+}
+
+inline bool DateTime::isValidDate(int y, int m, int d) {
+  return ::isValidDate(y, m, d);
+}
+
+inline bool DateTime::isValidDateString(const std::string &str) {
+  if (str.empty()) return false;
+  int d = 0, m = 0, y = 0;
+  if (str.find('/') != std::string::npos) {
+    char sep1 = 0, sep2 = 0;
+    std::istringstream iss(str);
+    if ((iss >> d >> sep1 >> m >> sep2 >> y) && sep1 == '/' && sep2 == '/') {
+      return ::isValidDate(y, m, d);
+    }
+  } else if (str.find('-') != std::string::npos) {
+    char sep1 = 0, sep2 = 0;
+    std::istringstream iss(str);
+    if ((iss >> y >> sep1 >> m >> sep2 >> d) && sep1 == '-' && sep2 == '-') {
+      return ::isValidDate(y, m, d);
+    }
+  }
+  return false;
+}
+
+inline DateTime DateTime::addDays(int days) const {
+  DateTime result = *this;
+  if (days == 0) return result;
+
+  static const int daysInMonth[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+  auto getMonthDays = [](int y, int m) -> int {
+    if (m == 2 && isLeapYear(y)) return 29;
+    return daysInMonth[m];
+  };
+
+  if (days > 0) {
+    int d = result.day + days;
+    int m = result.month;
+    int y = result.year;
+    while (d > getMonthDays(y, m)) {
+      d -= getMonthDays(y, m);
+      m++;
+      if (m > 12) {
+        m = 1;
+        y++;
+      }
+    }
+    result.day = d;
+    result.month = m;
+    result.year = y;
+  } else {
+    int d = result.day + days;
+    int m = result.month;
+    int y = result.year;
+    while (d < 1) {
+      m--;
+      if (m < 1) {
+        m = 12;
+        y--;
+      }
+      d += getMonthDays(y, m);
+    }
+    result.day = d;
+    result.month = m;
+    result.year = y;
+  }
+  return result;
 }
 
 inline DateTime DateTime::fromDateString(const std::string &str) {

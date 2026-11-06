@@ -86,6 +86,7 @@ private:
     std::string warrantyFilterKeyword;
     GtkWidget* reportsListBox;
     GtkWidget* realTimeReconcileBox;
+    GtkWidget* lblClockDisplay = nullptr;
 
     // Order filters
     std::string orderFilterKeyword;
@@ -125,6 +126,7 @@ public:
     void refreshWarrantyMonitor();
     void refreshReports();
     void refreshRealTime();
+    void updateClockDisplay(const std::string& timeStr);
 
     // Full-screen detail & edit views with Back buttons
     void showProductListView();

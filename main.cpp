@@ -8,11 +8,19 @@
 #include "source/utils/TransactionCoordinator.h"
 #include "source/utils/PathHelper.h"
 #include "UI/AppRunner.h"
+#include "UI/FontSetup.h"
 
 int main(int argc, char *argv[]) {
-    // Tránh crash 'GTK_IS_IM_CONTEXT_IME' khi gõ tiếng Việt trên Windows: dùng IM module "simple".
-    // Bắt buộc đặt TRƯỚC khi GTK được khởi tạo (trước AppRunner).
-    g_setenv("GTK_IM_MODULE", "simple", TRUE);
+    setupEmojiFont();
+
+    // BUG-CRITICAL-02: Để GTK4 tự động sử dụng native Win32 IME (GtkIMContextIME) mặc định.
+    // Loại bỏ việc tự động ép GTK_IM_MODULE=simple để hỗ trợ gõ phím trực tiếp và bộ gõ tiếng Việt.
+    // Chỉ kích hoạt simple IM khi được yêu cầu tường minh qua biến PBL2_FORCE_SIMPLE_IM=1 (debugging).
+    const char* forceSimple = g_getenv("PBL2_FORCE_SIMPLE_IM");
+    if (forceSimple && (std::string(forceSimple) == "1" || std::string(forceSimple) == "true")) {
+        g_setenv("GTK_IM_MODULE", "simple", TRUE);
+        std::cout << "[PBL2 Thông báo] Đang kích hoạt GTK_IM_MODULE=simple theo cờ PBL2_FORCE_SIMPLE_IM.\n";
+    }
 
     std::cout << "========================================================\n";
     std::cout << "[PBL2] Khởi tạo Phone Store Management System (GTK4)...\n";
@@ -34,9 +42,13 @@ int main(int argc, char *argv[]) {
     EmployeeRepository     employeeRepo;
     SupplierRepository     supplierRepo;
     DiscountRepository     discountRepo;
+    ProductImageRepository productImageRepo;
 
     if (!phoneRepo.loadFromFile()) {
         std::cerr << "[PBL2 Cảnh báo] Không thể nạp dữ liệu sản phẩm từ file!\n";
+    }
+    if (!productImageRepo.loadFromFile()) {
+        std::cerr << "[PBL2 Cảnh báo] Không thể nạp ánh xạ ảnh sản phẩm từ file!\n";
     }
     if (!orderRepo.loadFromFile()) {
         std::cerr << "[PBL2 Cảnh báo] Không thể nạp dữ liệu đơn hàng từ file!\n";
@@ -65,7 +77,7 @@ int main(int argc, char *argv[]) {
     // Bước 2: Khởi tạo tầng Services với ReferenceChecker
     // ─────────────────────────────────────────────────────────────────────────
     ReferenceChecker refChecker(&orderRepo, &invoiceRepo, &stockRepo);
-    PhoneService    phoneService(phoneRepo, &refChecker);
+    PhoneService    phoneService(phoneRepo, &refChecker, &productImageRepo);
     OrderService    orderService(orderRepo, &phoneService);
     CustomerService customerService(customerRepo);
     EmployeeService employeeService(employeeRepo);

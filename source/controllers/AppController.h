@@ -74,6 +74,7 @@ public:
     std::string getSimulatedDate();
     OperationResult setSimulatedTime(const std::string& newTimeStr);
     OperationResult advanceSimulatedDays(int days);
+    void advanceSimulatedSeconds(int seconds = 1);
     OperationResult resetSimulatedTimeToNow();
 
     // === SẢN PHẨM ===
@@ -82,6 +83,7 @@ public:
     OperationResult addProduct(const ProductItemViewModel& product);
     OperationResult updateProduct(const ProductItemViewModel& product);
     OperationResult deleteProduct(const std::string& id);
+    OperationResult updateProductImage(const std::string& productId, const std::string& imageFilePath);
 
     // === GIỎ HÀNG & CHECKOUT ===
     CartSummaryViewModel getCart(const std::string& customerId);
@@ -124,6 +126,7 @@ public:
 
     // === KHO & NHÀ CUNG CẤP ===
     std::vector<ProductItemViewModel> getInventory(bool lowStockOnly = false);
+    std::vector<ProductItemViewModel> getProductsBySupplier(const std::string& supplierId);
     std::vector<SupplierItemViewModel> getSuppliers(const std::string& keyword = "");
     OperationResult addSupplier(const SupplierFormRequest& req);
     OperationResult updateSupplier(const SupplierFormRequest& req);

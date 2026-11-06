@@ -108,6 +108,14 @@ inline bool DiscountService::validateDiscount(const DiscountCode& dc, std::strin
         errorMessage = "So luot su dung toi da phai lon hon 0!";
         return false;
     }
+    if (!DateTime::isValidDate(dc.getStartDate().year, dc.getStartDate().month, dc.getStartDate().day)) {
+        errorMessage = "Ngay bat dau hieu luc khong hop le theo lich!";
+        return false;
+    }
+    if (!DateTime::isValidDate(dc.getEndDate().year, dc.getEndDate().month, dc.getEndDate().day)) {
+        errorMessage = "Ngay het han khong hop le theo lich!";
+        return false;
+    }
     if (dc.getEndDate() < dc.getStartDate()) {
         errorMessage = "Ngay het han phai sau ngay bat dau hieu luc!";
         return false;

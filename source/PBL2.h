@@ -47,6 +47,7 @@
 #include "repositories/OrderRepository.h"
 #include "repositories/InvoiceRepository.h"
 #include "repositories/StockReceiptRepository.h"
+#include "repositories/ProductImageRepository.h"
 
 // ================= TẦNG XỬ LÝ NGHIỆP VỤ VÀ DỮ LIỆU (SERVICES) =================
 #include "services/PhoneService.h"

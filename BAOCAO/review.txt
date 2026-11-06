@@ -1,0 +1,942 @@
+====================================================================================================
+TÀI LIỆU TỔNG HỢP TOÀN DIỆN PHỤC VỤ VIẾT BÁO CÁO & BẢO VỆ ĐỒ ÁN PBL2
+HỌC PHẦN: DỰ ÁN CƠ SỞ LẬP TRÌNH (CƠ SỞ DỮ LIỆU & GIẢI THUẬT + LẬP TRÌNH HƯỚNG ĐỐI TƯỢNG)
+ĐỀ TÀI: HỆ THỐNG QUẢN LÝ CỬA HÀNG ĐIỆN THOẠI (PHONE STORE MANAGEMENT SYSTEM)
+NĂM HỌC: 2026 - 2027 | ĐẠI HỌC BÁCH KHOA - ĐẠI HỌC ĐÀ NẴNG | KHOA CÔNG NGHỆ THÔNG TIN
+====================================================================================================
+
+Tài liệu này được tổng hợp trực tiếp từ toàn bộ kiến trúc mã nguồn, cấu trúc dữ liệu tự cài đặt,
+tầng nghiệp vụ, cơ chế giao dịch bền vững, giao diện GTK4 và bộ kiểm thử tự động của dự án.
+Cung cấp toàn bộ lý thuyết, phân tích kỹ thuật, số liệu thực tế, kịch bản demo và ngân hàng câu hỏi
+phản biện giúp sinh viên tự tin đạt điểm xuất sắc trong buổi bảo vệ trước Hội đồng giảng viên.
+
+----------------------------------------------------------------------------------------------------
+MỤC LỤC TỔNG QUAN
+----------------------------------------------------------------------------------------------------
+I.   THÔNG TIN CHUNG & QUY CHUẨN ĐỒ ÁN PBL2
+II.  MỤC TIÊU & PHẠM VI HỆ THỐNG
+III. KIẾN TRÚC TỔNG THỂ (MULTI-TIER ARCHITECTURE)
+IV.  MÔ HÌNH LẬP TRÌNH HƯỚNG ĐỐI TƯỢNG (OOP DESIGN & 4 TÍNH CHẤT NỀN TẢNG)
+V.   CẤU TRÚC DỮ LIỆU & GIẢI THUẬT TỰ CÀI ĐẶT (CORE DSA DEEP DIVE)
+VI.  THIẾT KẾ DỮ LIỆU & ĐỊNH DẠNG TỆP TIN LƯU TRỮ (DATA PERSISTENCE & FILE STORAGE)
+VII. CƠ CHẾ GIAO DỊCH NGUYÊN TỬ & TOÀN VẸN THAM CHIẾU (TRANSACTIONS & DATA INTEGRITY)
+VIII.CHI TIẾT CÁC PHÂN HỆ NGHIỆP VỤ THEO 4 VAI TRÒ (ROLE-BASED BUSINESS FEATURES)
+IX.  CÔNG NGHỆ GIAO DIỆN ĐỒ HỌA GTK4 & TỐI ƯU HÓA WINDOWS DESKTOP
+X.   HỆ THỐNG KIỂM SOÁT THỜI GIAN THỰC (REAL-TIME SIMULATION)
+XI.  BỘ KIỂM THỬ TỰ ĐỘNG & BẢO ĐẢM CHẤT LƯỢNG (AUTOMATED TESTING & QA)
+XII. HƯỚNG DẪN BIÊN DỊCH, TRIỂN KHAI & TÀI KHOẢN TRÌNH DIỄN
+XIII.KỊCH BẢN DEMO BẢO VỆ CHUẨN TỪNG BƯỚC (STEP-BY-STEP DEFENSE SCRIPT)
+XIV. NGÂN HÀNG CÂU HỎI & CÂU TRẢ LỜI PHẢN BIỆN BẢO VỆ ĐỒ ÁN (DEFENSE Q&A BANK)
+XV.  TỔNG KẾT, ĐÁNH GIÁ ĐẠT ĐƯỢC & HƯỚNG PHÁT TRIỂN
+
+====================================================================================================
+I. THÔNG TIN CHUNG & QUY CHUẨN ĐỒ ÁN PBL2
+====================================================================================================
+1. Tên đề tài: Hệ thống Quản lý Cửa hàng Điện thoại (Phone Store Management System).
+2. Học phần: PBL2 - Dự án Cơ sở Lập trình (Project-Based Learning 2).
+3. Bản chất học phần:
+   - Là dự án tích hợp liên môn giữa 02 học phần nền tảng:
+     + Lập trình hướng đối tượng (Object-Oriented Programming - OOP).
+     + Cấu trúc dữ liệu và giải thuật (Data Structures and Algorithms - DSA).
+   - Yêu cầu cốt lõi từ Bộ môn / Giảng viên hướng dẫn:
+     * Sử dụng ngôn ngữ C++ (chuẩn C++17).
+     * HẠN CHẾ TỐI ĐA THƯ VIỆN CÓ SẴN (STL containers như std::vector, std::list, std::map, std::set).
+       Toàn bộ các cấu trúc dữ liệu phục vụ lưu trữ và tra cứu nghiệp vụ cốt lõi phải được TỰ CÀI ĐẶT TỪ ĐẦU
+       bằng con trỏ và template.
+     * Tương tác dữ liệu bền vững trực tiếp với hệ thống tệp tin văn bản thuần (.txt) có mã hóa UTF-8.
+     * Xây dựng giao diện đồ họa trực quan (GUI) hiện đại với GTK4 thay vì chỉ dừng lại ở màn hình dòng lệnh console.
+     * Chứng minh được tính toàn vẹn dữ liệu, kiểm soát giao dịch và giải thích cặn kẽ mọi quyết định thiết kế.
+4. Quy chuẩn hình thức báo cáo (theo văn bản Kế hoạch PBL2 Khoa CNTT - ĐH Bách Khoa ĐHĐN):
+   - Trình bày trên khổ giấy A4 dọc.
+   - Font chữ: Times New Roman, cỡ chữ 13 - 14 pt, dãn dòng 1.2 - 1.3 lines.
+   - Định lề chuẩn: Top: 2.5 cm; Bottom: 2.5 cm; Left: 3.5 cm (đóng gáy); Right: 2.0 cm.
+   - Đánh số trang, mục lục tự động, danh mục bảng biểu, danh mục hình vẽ, tài liệu tham khảo theo IEEE.
+5. Cơ cấu điểm đánh giá:
+   - Điểm quá trình (40%): Giảng viên hướng dẫn chấm (Chuyên cần, làm việc nhóm, báo cáo tiến độ qua các tuần).
+   - Điểm bảo vệ (60%): Hội đồng chấm thi độc lập đánh giá (Cuốn báo cáo hoàn chỉnh, Slide trình chiếu súc tích,
+     sản phẩm phần mềm chạy thực tế, mức độ am hiểu mã nguồn và câu trả lời phản biện).
+
+====================================================================================================
+II. MỤC TIÊU & PHẠM VI HỆ THỐNG
+====================================================================================================
+1. Mục tiêu đề tài:
+   - Về mặt học thuật: Hiện thực hóa và kiểm chứng các nguyên lý OOP (Kế thừa, Đa hình, Đóng gói, Trừu tượng)
+     kết hợp với các cấu trúc dữ liệu nâng cao (Vector mảng động, Danh sách liên kết đôi, Ngăn xếp, Hàng đợi,
+     Bảng băm Separate Chaining, Cây nhị phân tìm kiếm BST) trên một bài toán quản trị thực tế.
+   - Về mặt ứng dụng: Xây dựng một phần mềm máy tính hoàn chỉnh cho cửa hàng kinh doanh thiết bị di động,
+     hỗ trợ đồng thời 4 phân quyền người dùng (Admin, Sales, Warehouse, Customer) với đầy đủ quy trình:
+     Nhập kho -> Quản lý tồn kho -> Đặt hàng trực tuyến -> Bán lẻ POS tại quầy -> Áp voucher -> Xuất hóa đơn
+     -> Quản lý bảo hành -> Báo cáo tài chính doanh thu, lợi nhuận.
+
+2. Phạm vi hệ thống:
+   - Đối tượng quản lý:
+     * Sản phẩm điện thoại (Phone): Thông số kỹ thuật, giá vốn, giá niêm yết, tồn kho động, ảnh minh họa.
+     * Nhân sự (Employee): Quản trị viên (Admin), Nhân viên bán hàng (Sales), Thủ kho (Warehouse).
+     * Khách hàng (Customer): Thông tin liên lạc, lịch sử mua sắm, điểm thưởng tích lũy thành viên.
+     * Nhà cung cấp (Supplier): Thông tin đối tác, mã số thuế, đầu mối liên hệ.
+     * Phiếu nhập kho (ImportReceipt): Chi tiết lô hàng nhập, giá vốn nhập đích danh, đối soát tồn.
+     * Đơn đặt hàng (Order): Đơn online, trạng thái vòng đời (PENDING -> CONFIRMED -> PREPARING -> SHIPPING -> COMPLETED).
+     * Hóa đơn thanh toán (Invoice): Doanh thu bán lẻ tại quầy và online, thuế GTGT (VAT 8%), chiết khấu khuyến mãi.
+     * Chương trình khuyến mãi (DiscountCode): Mã voucher giảm theo % hoặc tiền mặt, giới hạn ngày, số lượt dùng.
+     * Hồ sơ bảo hành (Warranty): Tiếp nhận máy lỗi, tra cứu hạn bảo hành, phân công kỹ thuật viên xử lý.
+
+====================================================================================================
+III. KIẾN TRÚC TỔNG THỂ (MULTI-TIER ARCHITECTURE)
+====================================================================================================
+Hệ thống được thiết kế theo kiến trúc phân tầng chuyên biệt (Multi-Tier Architecture / Separation of Concerns),
+tuyệt đối không để tầng giao diện (UI) chọc trực tiếp vào tệp tin lưu trữ hay cấu trúc dữ liệu thô:
+
+  +-----------------------------------------------------------------------+
+  | TẦNG 5: GIAO DIỆN ĐỒ HỌA NGƯỜI DÙNG (GTK4 VIEW & SCREENS)            |
+  |  - MainShellWindow: Khung ứng dụng chính, Sidebar responsive          |
+  |  - AdminScreens: Bảng điều khiển KPI, Quản lý SP/NV/KH/NCC/Voucher   |
+  |  - SalesScreens: Quầy thu ngân POS, Quản lý duyệt đơn hàng, Hóa đơn   |
+  |  - WarehouseScreens: Quản lý tồn kho khả dụng, Lập phiếu nhập kho     |
+  |  - CustomerScreens: Mua sắm danh mục, Giỏ hàng, Đơn cá nhân, Bảo hành |
+  |  - LoginScreen: Đăng nhập phân quyền, Đăng ký, Quên mật khẩu          |
+  |  - UIComponents: Thư viện widget bảng biểu, toast, dialog dùng chung  |
+  +-----------------------------------+-----------------------------------+
+                                      | Trao đổi dữ liệu qua ViewModels / DTOs
+                                      v
+  +-----------------------------------------------------------------------+
+  | TẦNG 4: ĐIỀU PHỐI HỆ THỐNG (CONTROLLER LAYER)                         |
+  |  - AppController: Quản lý phiên làm việc (UserSessionViewModel),      |
+  |    kiểm soát phân quyền RBAC, kiểm tra hợp lệ dữ liệu form đầu vào,   |
+  |    điều phối luồng giữa UI và các Core Services, đóng gói kết quả    |
+  |    thành OperationResult (Success / Fail + thông điệp tiếng Việt).    |
+  +-----------------------------------+-----------------------------------+
+                                      | Gọi thực thi nghiệp vụ logic
+                                      v
+  +-----------------------------------------------------------------------+
+  | TẦNG 3: NGHIỆP VỤ CỐT LÕI (CORE SERVICE LAYER)                       |
+  |  - PhoneService: Vận hành BST (lọc giá) & HashTable (tra cứu ID)      |
+  |  - OrderService: Quản lý Queue FIFO duyệt đơn, trừ kho, rollback kho  |
+  |  - InvoiceService: Tính toán tài chính số nguyên, thuế VAT, xuất HĐ    |
+  |  - SupplierService: Nhập hàng từ NCC, giao dịch nguyên tử lập phiếu   |
+  |  - CustomerService: Tích lũy/khấu trừ điểm thưởng, HashTable tra cứu   |
+  |  - EmployeeService: Quản lý chức vụ, lương, phân quyền tài khoản      |
+  |  - DiscountService: Kiểm tra hạn dùng, min đơn, trừ lượt dùng voucher |
+  |  - ReportService: Tổng hợp doanh thu, lợi nhuận gộp theo mốc ngày     |
+  |  - AuthService: Xác thực thông tin đăng nhập, phiên người dùng        |
+  |  - ReferenceChecker: Đảm bảo toàn vẹn tham chiếu trước khi xóa        |
+  +-----------------------------------+-----------------------------------+
+                                      | Nạp / Lưu dữ liệu thực thể
+                                      v
+  +-----------------------------------------------------------------------+
+  | TẦNG 2: TRUY XUẤT DỮ LIỆU BỀN VỮNG (REPOSITORY LAYER)                |
+  |  - PhoneRepository, OrderRepository, InvoiceRepository                |
+  |  - StockReceiptRepository, CustomerRepository, EmployeeRepository     |
+  |  - SupplierRepository, DiscountRepository, ProductImageRepository    |
+  |  - Bộ nhớ RAM: Lưu mảng động các thực thể bằng cấu trúc tự cài Vector |
+  |  - Cơ chế Snapshot: Lưu bản sao RAM để tự động phục hồi nếu ghi lỗi   |
+  +-----------------------------------+-----------------------------------+
+                                      | Giao dịch đĩa bền vững
+                                      v
+  +-----------------------------------------------------------------------+
+  | TẦNG 1: ĐIỀU PHỐI GIAO DỊCH TỆP TIN & CẤU TRÚC DỮ LIỆU CƠ SỞ          |
+  |  - TransactionCoordinator / FileTransaction: Giao dịch phân tán       |
+  |    nhiều file (.tx_manifest, .tx_bak, atomic temp swap, crash recovery)|
+  |  - Core DSA tự cài đặt: Vector, LinkedList, Stack, Queue, HashTable, BST|
+  |  - File lưu trữ vật lý: data/Device/, data/PAY/, data/people/, data/system|
+  +-----------------------------------------------------------------------+
+
+Ưu điểm nổi bật của kiến trúc:
+- Khả năng bảo trì (Maintainability): Khi thay đổi logic tính thuế hoặc giao diện GTK4,
+  các tầng khác hoàn toàn không bị ảnh hưởng.
+- Dễ dàng kiểm thử (Testability): Tầng Service và Repository độc lập hoàn toàn với GTK4,
+  cho phép xây dựng bộ test tự động headless chạy siêu tốc không cần mở cửa sổ đồ họa.
+- Tính toàn vẹn cao: Không có tình trạng truy cập dữ liệu chéo gây xung đột dữ liệu.
+
+====================================================================================================
+IV. MÔ HÌNH LẬP TRÌNH HƯỚNG ĐỐI TƯỢNG (OOP DESIGN & 4 TÍNH CHẤT NỀN TẢNG)
+====================================================================================================
+Dự án áp dụng triệt để 4 nguyên lý cốt lõi của Lập trình hướng đối tượng trong C++17:
+
+1. TÍNH ĐÓNG GÓI (ENCAPSULATION):
+   - Bản chất: Giấu kín trạng thái nội tại của đối tượng, ngăn chặn việc sửa đổi trực tiếp từ bên ngoài;
+     chỉ cho phép truy xuất và thao tác thông qua các phương thức giao diện (Getters, Setters, Business Methods)
+     kèm theo các bước kiểm tra tính hợp lệ chặt chẽ.
+   - Thể hiện trong dự án:
+     * Tất cả các trường thuộc tính trong các lớp Model (`Phone`, `Order`, `Invoice`, `Customer`, `Employee`)
+       đều được đặt trong phạm vi `private` hoặc `protected`.
+     * Ví dụ trong `Phone`: Giá bán (`sellingPrice`), giá nhập (`importPrice`) không thể gán âm;
+       tồn kho không lưu biến thô mà phải tính toán qua nhật ký nhập xuất.
+     * Cấu trúc `Vector<T>`, `HashTable<K, V>`, `BST<Key, Value>` bảo vệ tuyệt đối con trỏ bộ nhớ động
+       (`data`, `table`, `root`), ngăn chặn tình trạng giải phóng vùng nhớ ngoài ý muốn từ bên ngoài.
+
+2. TÍNH KẾ THỪA (INHERITANCE):
+   - Bản chất: Tái sử dụng mã nguồn và thiết lập mối quan hệ phân cấp "Is-A" giữa lớp cha tổng quát
+     và các lớp con chuyên biệt.
+   - Sơ đồ kế thừa thực tế trong `source/models/`:
+
+                              +-------------------+
+                              |      People       | (Lớp cơ sở trừu tượng)
+                              | - id, name, phone |
+                              | - email, address  |
+                              +---------+---------+
+                                        |
+                   +--------------------+--------------------+
+                   |                                         |
+         +---------+---------+                     +---------+---------+
+         |     Customer      |                     |     Employee      | (Kế thừa People)
+         | - points (điểm)   |                     | - account (Account|
+         | - username        |                     | - salary (Lương)  |
+         +-------------------+                     +---------+---------+
+                                                             |
+                                  +--------------------------+--------------------------+
+                                  |                          |                          |
+                        +---------+---------+      +---------+---------+      +---------+---------+
+                        |   AdminEmployee   |      |   SalesEmployee   |      | WarehouseEmployee |
+                        | Role: ADMIN       |      | Role: SALE        |      | Role: WAREHOUSE   |
+                        +-------------------+      +-------------------+      +-------------------+
+
+   - Lợi ích: Lớp con thừa hưởng toàn bộ các thuộc tính định danh cá nhân và phương thức của `People`,
+     giảm thiểu trùng lặp mã nguồn, đồng thời mở rộng các hành vi chuyên biệt theo vai trò.
+
+3. TÍNH ĐA HÌNH (POLYMORPHISM):
+   - Bản chất: Cùng một lời gọi phương thức nhưng các đối tượng thuộc các lớp dẫn xuất khác nhau sẽ thực thi
+     những hành vi khác nhau tại thời điểm chạy (Runtime / Dynamic Binding).
+   - Thể hiện trong dự án:
+     * Lớp cơ sở `People` khai báo hàm hủy ảo:
+       `virtual ~People() = default;`
+       => Đảm bảo khi hủy một con trỏ kiểu `People*` trỏ tới đối tượng `Customer` hay `Employee`, hàm hủy
+       của lớp con sẽ được gọi chính xác, không bị rò rỉ bộ nhớ (memory leak).
+     * Lớp `Employee` định nghĩa các phương thức thuần ảo (Pure Virtual Methods):
+       `virtual std::string getRole() const = 0;`
+       `virtual RoleType getRoleType() const = 0;`
+     * Các lớp con ghi đè (Override):
+       - `AdminEmployee::getRole()` trả về `"Admin"`, `getRoleType()` trả về `RoleType::ADMIN`.
+       - `SalesEmployee::getRole()` trả về `"Sale"`, `getRoleType()` trả về `RoleType::SALE_EMPLOYEE`.
+       - `WarehouseEmployee::getRole()` trả về `"Warehouse"`, `getRoleType()` trả về `RoleType::WAREHOUSE_EMPLOYEE`.
+     * Trong `EmployeeRepository` và `EmployeeService`, hệ thống quản lý danh sách nhân viên thông qua
+       mảng con trỏ đa hình `Vector<Employee*>`. Khi duyệt mảng và gọi `emp->getRole()`, trình biên dịch
+       sử dụng bảng phương thức ảo (vtable) để liên kết động đúng hàm của từng chức vụ.
+
+4. TÍNH TRỪU TƯỢNG (ABSTRACTION):
+   - Bản chất: Tập trung vào các đặc trưng bản chất của đối tượng và hệ thống mà bỏ qua các chi tiết cài đặt
+     phức tạp bên dưới.
+   - Thể hiện trong dự án:
+     * Lớp `Employee` là một lớp trừu tượng (Abstract Class) vì chứa phương thức thuần ảo, không thể khởi tạo
+       đối tượng trực tiếp mà bắt buộc phải thông qua các lớp con cụ thể.
+     * Factory Pattern trong `Employee::fromFileLine(line)`: Ẩn giấu chi tiết phân tích chuỗi ký tự; căn cứ
+       vào mã chức vụ trong file text để tự động cấp phát đối tượng cụ thể (`new AdminEmployee`, `new SalesEmployee`,
+       hoặc `new WarehouseEmployee`) và trả về con trỏ trừu tượng `Employee*`.
+     * Tầng Controller che giấu toàn bộ sự phức tạp của các cấu trúc dữ liệu bên dưới: Giao diện UI chỉ cần
+       gọi `controller->getProducts()` mà không cần biết dữ liệu được truy xuất từ BST hay HashTable.
+
+====================================================================================================
+V. CẤU TRÚC DỮ LIỆU & GIẢI THUẬT TỰ CÀI ĐẶT (CORE DSA DEEP DIVE)
+====================================================================================================
+Dự án KHÔNG sử dụng `std::vector`, `std::list`, `std::map`, `std::set`, `std::queue`, `std::stack` của thư viện chuẩn STL
+cho tầng lưu trữ và chỉ mục nghiệp vụ. Toàn bộ 6 cấu trúc dữ liệu đều được thiết kế dạng C++ Template tự cài đặt:
+
+----------------------------------------------------------------------------------------------------
+1. MẢNG ĐỘNG TỰ CO GIÃN (DYNAMIC ARRAY) — `Vector<T>`
+----------------------------------------------------------------------------------------------------
+- Tệp mã nguồn: `source/core/Vector.h` (253 dòng).
+- Cấu trúc thành phần:
+  * `T* data`: Con trỏ quản lý vùng nhớ heap được cấp phát động.
+  * `int size`: Số lượng phần tử thực tế đang chứa trong Vector.
+  * `int capacity`: Sức chứa tối đa hiện tại trước khi bắt buộc cấp phát lại.
+- Thuật toán quản lý bộ nhớ:
+  * Khởi tạo mặc định: `capacity = 8`.
+  * Cơ chế tăng trưởng (Growth Strategy): Khi `size == capacity`, hàm `resize(capacity * 2)` được gọi để nhân đôi
+    sức chứa. Cấp phát mảng mới, di chuyển phần tử qua toán tử `std::move`, giải phóng mảng cũ `delete[] data`.
+  * Độ phức tạp thời gian:
+    + Thêm vào cuối (`push_back`): Trung bình $O(1)$ phân tích khấu hao (Amortized $O(1)$). Trường hợp xấu nhất
+      khi đầy mảng là $O(N)$ do phải sao chép dữ liệu.
+    + Truy xuất ngẫu nhiên qua chỉ mục (`operator[]`, `at`): $O(1)$.
+    + Xóa cuối (`pop_back`): $O(1)$.
+    + Xóa tại vị trí bất kỳ (`removeAt`): $O(N)$ do phải dồn các phần tử phía sau về trước 1 bước.
+- Cài đặt chuẩn C++ hiện đại (Rule of 5):
+  * Copy Constructor (Sao chép sâu) & Copy Assignment: Tạo vùng nhớ mới độc lập, sao chép toàn bộ dữ liệu.
+  * Move Constructor (Di chuyển) & Move Assignment (`noexcept`): Tiếp quản con trỏ tài nguyên của đối tượng tạm thời
+    (rvalue) mà không cấp phát lại, gán con trỏ cũ về `nullptr` để tối ưu hiệu năng.
+  * Destructor: Giải phóng an toàn vùng nhớ `delete[] data;`.
+  * Iterator Support: Cung cấp `begin()` và `end()` hỗ trợ duyệt mảng tuần tự.
+- Ứng dụng thực tế: Là kho chứa dữ liệu chính trên bộ nhớ RAM của tất cả 8 Repository trong hệ thống
+  (`PhoneRepository`, `OrderRepository`, `InvoiceRepository`, `CustomerRepository`, `EmployeeRepository`,
+  `SupplierRepository`, `StockReceiptRepository`, `DiscountRepository`).
+
+----------------------------------------------------------------------------------------------------
+2. BẢNG BĂM XỬ LÝ ĐỤNG ĐỘ DÂY CHUYỀN (HASH TABLE SEPARATE CHAINING) — `HashTable<K, V>`
+----------------------------------------------------------------------------------------------------
+- Tệp mã nguồn: `source/core/HashTable.h` (241 dòng).
+- Cấu trúc thành phần:
+  * Cấu trúc nút `HashNode`: Chứa `K key`, `V value`, con trỏ `HashNode* next`.
+  * `HashNode** table`: Mảng động chứa các con trỏ đầu danh sách liên kết đơn (Array of Buckets).
+  * `int capacity`: Kích thước mảng bucket (khởi tạo ban đầu là số nguyên tố 17 để giảm thiểu xung đột).
+  * `int size`: Tổng số lượng cặp Key-Value hiện có trong bảng băm.
+- Thuật toán băm chuỗi (String Hash Function):
+  * Cài đặt giải thuật băm nổi tiếng DJB2 của Daniel J. Bernstein:
+    ```cpp
+    unsigned long hash = 5381;
+    for (char c : str) {
+        hash = ((hash << 5) + hash) + static_cast<unsigned char>(c); // hash * 33 + c
+    }
+    return hash;
+    ```
+  * Vị trí bucket: `index = hash % capacity`.
+- Cơ chế giải quyết đụng độ (Collision Resolution):
+  * Sử dụng phương pháp Dây chuyền riêng biệt (Separate Chaining). Các phần tử bị băm trùng chỉ mục bucket
+    sẽ được nối vào một danh sách liên kết đơn tại ô đó.
+- Cơ chế Tái băm (Rehashing):
+  * Khi hệ số tải (Load Factor) vượt ngưỡng cho phép ($\alpha = \frac{size}{capacity} \ge 0.75$), hệ thống tự động
+    gọi hàm `rehash()`: Tạo bảng băm mới có sức chứa tăng gấp đôi cộng 1 (chọn số nguyên tố tiếp theo),
+    băm lại toàn bộ các phần tử hiện có và chuyển sang bảng mới.
+- Độ phức tạp thời gian:
+  * Thêm (`insert`): Trung bình $O(1)$, xấu nhất $O(N)$ khi tất cả key bị đụng độ vào 1 bucket.
+  * Tìm kiếm (`find`): Trung bình $O(1)$, xấu nhất $O(N)$.
+  * Xóa (`remove`): Trung bình $O(1)$, xấu nhất $O(N)$.
+- Ứng dụng thực tế:
+  * `PhoneService`: `HashTable<std::string, Phone> idTable` — Tra cứu thông tin điện thoại theo mã ID siêu tốc $O(1)$.
+  * `CustomerService`: `HashTable<std::string, Customer> usernameTable` (tra cứu theo tên đăng nhập) và `phoneTable` (tra cứu theo số điện thoại).
+  * `EmployeeService`: `HashTable<std::string, Employee*> usernameTable` và `idTable`.
+  * `DiscountService`: `HashTable<std::string, DiscountCode> codeTable` — Đối soát voucher hợp lệ tức thời $O(1)$.
+
+----------------------------------------------------------------------------------------------------
+3. CÂY NHỊ PHÂN TÌM KIẾM (BINARY SEARCH TREE) — `BST<Key, Value>`
+----------------------------------------------------------------------------------------------------
+- Tệp mã nguồn: `source/core/BST.h` (215 dòng).
+- Cấu trúc thành phần:
+  * Nút cây `BSTNode`: Chứa `Key key`, `Value value`, hai con trỏ con `BSTNode* left` và `BSTNode* right`.
+  * `BSTNode* root`: Con trỏ trỏ tới nút gốc của cây.
+  * `int size`: Số lượng nút hiện có trên cây.
+- Các thuật toán cốt lõi:
+  * Chèn nút (`insert`): So sánh khóa để đệ quy xuống cây con trái nếu nhỏ hơn, cây con phải nếu lớn hơn.
+  * Xóa nút (`remove`): Xử lý 3 trường hợp (nút lá, nút có 1 con, và nút có 2 con - tìm nút nhỏ nhất bên cây con phải
+    thông qua hàm `findMin` để thay thế).
+  * Duyệt trung thứ tự In-Order (LNR - Left-Node-Right): Duyệt cây con trái -> Thăm nút gốc -> Duyệt cây con phải.
+    Kết quả thu được là một danh sách phần tử có thứ tự khóa tăng dần tuyệt đối.
+  * Lọc theo khoảng khóa (`findRange(minKey, maxKey)`): Đệ quy có tỉa nhánh (Branch Pruning):
+    + Nếu khóa hiện tại $> minKey$, tiếp tục xét cây con trái.
+    + Nếu khóa nằm trong khoảng $[minKey, maxKey]$, bổ sung vào kết quả.
+    + Nếu khóa hiện tại $< maxKey$, tiếp tục xét cây con phải.
+- GIẢI PHÁP ĐỘT PHÁ CHO VẤN ĐỀ TRÙNG GIÁ BÁN (COMPOSITE KEY):
+  * Vấn đề nan giải: Cây BST chuẩn chỉ chấp nhận mỗi khóa là duy nhất. Nếu dùng trực tiếp `double price` làm khóa,
+    khi có hai chiếc điện thoại khác nhau nhưng cùng mức giá (ví dụ iPhone 15 và Galaxy S24 đều có giá 22.000.000 đ),
+    sản phẩm thêm sau sẽ ghi đè hoặc làm mất sản phẩm thêm trước!
+  * Giải pháp trong dự án: Thiết kế cấu trúc Khóa tổ hợp `PhonePriceKey` (`source/services/PhoneService.h`):
+    ```cpp
+    struct PhonePriceKey {
+        double price;
+        std::string id;
+        bool operator<(const PhonePriceKey& other) const {
+            if (price != other.price) return price < other.price;
+            return id < other.id; // Nếu giá bằng nhau, so sánh theo mã ID!
+        }
+    };
+    ```
+  * Kết quả: Đảm bảo tính duy nhất tuyệt đối cho từng nút trên cây BST, đồng thời vẫn bảo toàn hoàn hảo thứ tự sắp xếp
+    theo giá bán. Không bao giờ bị mất sản phẩm khi lọc khoảng giá.
+- Độ phức tạp thời gian:
+  * Chèn, tìm kiếm, xóa: Trung bình $O(\log N)$, xấu nhất $O(N)$ khi cây bị suy biến thành danh sách liên kết.
+  * Lọc theo khoảng giá (`findRange`): $O(\log N + K)$ với $K$ là số lượng sản phẩm thỏa mãn khoảng giá.
+- Ứng dụng thực tế: `PhoneService::priceTree` — Vận hành chức năng lọc sản phẩm theo khoảng giá trên thanh tìm kiếm
+  và màn hình mua sắm của khách hàng.
+
+----------------------------------------------------------------------------------------------------
+4. HÀNG ĐỢI FIFO DỰA TRÊN DANH SÁCH LIÊN KẾT — `Queue<T>` & `LinkedList<T>`
+----------------------------------------------------------------------------------------------------
+- Tệp mã nguồn: `source/core/Queue.h` (113 dòng) và `source/core/LinkedList.h` (262 dòng).
+- Cấu trúc:
+  * `LinkedList<T>`: Danh sách liên kết đôi (Doubly Linked List) với `head`, `tail`, mỗi `ListNode` có con trỏ `prev` và `next`.
+  * `Queue<T>`: Được xây dựng theo mẫu Adapter, sử dụng `LinkedList<T>` làm nền tảng.
+- Cơ chế vận hành FIFO (First-In, First-Out):
+  * `push(val)`: Đẩy vào cuối hàng đợi (`list.push_back(val)`) với chi phí $O(1)$ nhờ con trỏ `tail`.
+  * `pop()`: Loại bỏ phần tử ở đầu hàng đợi (`list.pop_front()`) với chi phí $O(1)$ nhờ con trỏ `head`.
+  * `front()`: Truy xuất phần tử đầu hàng đợi với chi phí $O(1)$.
+- Ứng dụng thực tế:
+  * `OrderService::pendingQueue`: Quản lý danh sách đơn hàng trực tuyến đang chờ nhân viên bán hàng duyệt.
+    Đảm bảo tính công bằng tuyệt đối: Khách hàng đặt đơn trước sẽ được nhân viên tiếp nhận và xử lý trước.
+
+----------------------------------------------------------------------------------------------------
+5. NGÂN XẾP LIFO DỰA TRÊN MẢNG ĐỘNG — `Stack<T>`
+----------------------------------------------------------------------------------------------------
+- Tệp mã nguồn: `source/core/Stack.h` (94 dòng).
+- Cấu trúc: Được thiết kế theo mẫu Adapter, bao bọc cấu trúc `Vector<T>` bên trong.
+- Cơ chế vận hành LIFO (Last-In, First-Out):
+  * `push(val)`: Đẩy vào đỉnh ngăn xếp (`vec.push_back(val)`) với chi phí $O(1)$.
+  * `pop()`: Loại bỏ phần tử ở đỉnh ngăn xếp (`vec.pop_back()`) với chi phí $O(1)$.
+  * `top()`: Truy xuất phần tử ở đỉnh ngăn xếp với chi phí $O(1)$.
+- Ứng dụng thực tế: Quản lý lịch sử các thao tác điều hướng màn hình (Navigation History) trong giao diện GTK4,
+  hỗ trợ nút "Quay lại" (Back) và cơ chế khôi phục trạng thái Undo/Rollback khi xảy ra lỗi.
+
+----------------------------------------------------------------------------------------------------
+BẢNG TỔNG HỢP SO SÁNH ĐỘ PHỨC TẠP CÁC CẤU TRÚC DỮ LIỆU TỰ CÀI:
+----------------------------------------------------------------------------------------------------
+| Cấu trúc dữ liệu | Bộ nhớ phụ | Thao tác Thêm | Thao tác Xóa | Tìm kiếm / Tra cứu | Ứng dụng trong dự án |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `Vector<T>` | $O(N)$ liên tục | $O(1)$ amortized | $O(N)$ / $O(1)$ pop | $O(1)$ theo index, $O(N)$ giá trị | Toàn bộ 8 Repositories lưu RAM |
+| `HashTable<K, V>` | $O(N)$ rời rạc | $O(1)$ trung bình | $O(1)$ trung bình | $O(1)$ trung bình theo Key | Tra cứu Phone/User/Voucher |
+| `BST<Key, Value>` | $O(N)$ cây | $O(\log N)$ TB | $O(\log N)$ TB | $O(\log N)$ TB, Lọc khoảng $O(\log N + K)$ | Lọc khoảng giá sản phẩm |
+| `Queue<T>` | $O(N)$ DSLK | $O(1)$ (đuôi) | $O(1)$ (đầu) | $O(1)$ truy xuất front | Xử lý duyệt đơn hàng FIFO |
+| `Stack<T>` | $O(N)$ Vector | $O(1)$ (đỉnh) | $O(1)$ (đỉnh) | $O(1)$ truy xuất top | Điều hướng giao diện & Undo |
+| `LinkedList<T>` | $O(N)$ đôi | $O(1)$ đầu/cuối | $O(1)$ đầu/cuối | $O(N)$ theo vị trí | Nền tảng cho Queue & Buckets |
+
+====================================================================================================
+VI. THIẾT KẾ DỮ LIỆU & ĐỊNH DẠNG TỆP TIN LƯU TRỮ (DATA PERSISTENCE & FILE STORAGE)
+====================================================================================================
+Toàn bộ dữ liệu của hệ thống được lưu trữ bền vững trong thư mục `data/` dưới dạng các tệp tin văn bản thuần (.txt)
+được mã hóa ký tự UTF-8 tiêu chuẩn. Các trường dữ liệu phân tách nhau bằng ký tự gạch đứng (`|`), dấu chấm phẩy (`;`)
+và dấu phẩy (`,`).
+
+1. DANH MỤC TỆP TIN VÀ CẤU TRÚC:
+```text
+data/
+├── Device/
+│   ├── Products.txt          # Danh mục 18 sản phẩm điện thoại (chuẩn 9 cột)
+│   ├── StockReceipts.txt     # Nhật ký các phiếu nhập kho từ nhà cung cấp
+│   ├── Thongsokythuat.txt    # Bảng mô tả chi tiết thông số cấu hình phần cứng
+│   ├── ProductImage.txt      # Bảng ánh xạ mã sản phẩm sang đường dẫn tệp ảnh
+│   └── productImages/        # Thư mục chứa các tệp ảnh thực tế định dạng PNG
+├── PAY/
+│   ├── Invoices.txt          # Sổ cái hóa đơn bán hàng (phân loại dòng Header H và Detail D)
+│   ├── Discount.txt          # Danh mục mã giảm giá voucher khuyến mãi
+│   └── Order/
+│       └── Orders.txt        # Danh sách toàn bộ các đơn hàng trực tuyến và POS
+├── people/
+│   ├── Customers.txt         # Danh sách khách hàng và điểm tích lũy thành viên
+│   ├── Employee.txt          # Danh sách nhân viên, chức vụ và mức lương cơ bản
+│   └── Suppliers.txt         # Danh mục đối tác nhà cung cấp thiết bị
+└── system/
+    └── id_counters.txt       # Bảng lưu bộ đếm số tự tăng phục vụ IdGenerator
+```
+
+2. CHI TIẾT ĐỊNH DẠNG CỘT CỦA CÁC FILE CHÍNH:
+
+A. `data/Device/Products.txt` (Danh mục sản phẩm - Chuẩn 9 cột):
+   - Cú pháp: `id|phoneName|brand|operatingSystem|importPrice|sellingPrice|manufacturer|specifications|status`
+   - Ví dụ:
+     `PHN-000101|Oppo Reno 16F 5G|Oppo|Android - ColorOS 16|10600000|14000000|Oppo Electronics|6.57 inch AMOLED, 8GB RAM, 256GB, Dimensity 7300-Energy, 7000mAh|DangBan`
+   - QUY TẮC ĐẶC BIỆT: Cột số lượng tồn kho (`quantity`) cũ đã bị LOẠI BỎ HOÀN TOÀN khỏi file này!
+     Hệ thống tính toán tồn kho động: `Tồn kho = Tổng nhập kho hợp lệ - Tổng bán ra thành công`.
+
+B. `data/Device/StockReceipts.txt` (Phiếu nhập kho - Chuẩn 6 cột):
+   - Cú pháp: `id|supplierId|employeeId|importTime|details|status`
+   - Trường `details` chứa danh sách các mặt hàng nhập, phân tách bằng dấu chấm phẩy `;`. Mỗi mặt hàng gồm 3 trường:
+     `productId,quantity,importPrice`
+   - Ví dụ:
+     `IMP-10092026-000001|SUP-000001|EMP-000003|2026-09-10 08:30:00|PHN-000102,20,27500000;PHN-000105,35,11200000|HoatDong`
+
+C. `data/PAY/Invoices.txt` (Hóa đơn thanh toán - Chuẩn 2 loại dòng Header/Detail):
+   - Dòng Header (ký tự đầu `H`):
+     `H|id|orderId|customerId|employeeId|paymentMethod|createTime|tamTinh|giamGia|thueSuat|tienThue|tongThanhToan|status`
+     Ví dụ: `H|INV-15092026-000001|ORD-15092026-000001|CUS-000001|EMP-000002|0|2026-09-15 10:20:00|42000000|0|8|3360000|45360000|DaThanhToan`
+   - Dòng Detail (ký tự đầu `D`):
+     `D|invoiceId|productId|quantity|unitPrice|costPrice`
+     Ví dụ: `D|INV-15092026-000001|PHN-000101|3|14000000|10600000`
+   - Thuế suất VAT: Cố định 8%. Tiền thuế tính theo công thức số nguyên: `tienThue = (tienSauGiam * 8 + 50) / 100`.
+
+D. `data/people/Employee.txt` (Nhân viên - Chuẩn 8 cột):
+   - Cú pháp: `id|fullName|phone|email|address|role|username|salary`
+   - Bảng mã `role`: `1` = Admin, `2` = Sales, `3` = Warehouse.
+   - Ví dụ: `EMP-000001|Admin He Thong|0900000001|admin@example.com|Hai Chau, Da Nang|1|admin.demo|15000000`
+
+E. `data/people/Customers.txt` (Khách hàng - Chuẩn 7 cột):
+   - Cú pháp: `id|fullName|phone|email|address|points|username`
+   - Điểm tích lũy (`points`): Cứ mỗi 100.000 đ tiền mua hàng được cộng 1 điểm thưởng. 1 điểm = 1.000 đ giảm giá.
+
+F. `data/PAY/Discount.txt` (Mã giảm giá voucher - Chuẩn 10 cột):
+   - Cú pháp: `code|discountType|discountValue|minOrderAmount|maxDiscountAmount|startDate|endDate|maxUsage|usedCount|status`
+   - `discountType`: `0` = Giảm theo % giá trị đơn, `1` = Giảm tiền mặt cố định.
+   - Ví dụ: `HELLOPBL2|0|10|10000000|1000000|2026-01-01 00:00:00|2026-12-31 23:59:59|100|12|HoatDong`
+
+====================================================================================================
+VII. CƠ CHẾ GIAO DỊCH NGUYÊN TỬ & TOÀN VẸN THAM CHIẾU (TRANSACTIONS & DATA INTEGRITY)
+====================================================================================================
+Một trong những điểm sáng kỹ thuật lớn nhất giúp dự án vượt trội so với các đồ án sinh viên thông thường
+chính là cơ chế bảo vệ dữ liệu chuẩn công nghiệp:
+
+1. ĐIỀU PHỐI GIAO DỊCH PHÂN TÁN NHIỀU FILE (MULTI-FILE TRANSACTION COORDINATOR):
+   - Tệp mã nguồn: `source/utils/TransactionCoordinator.h` (341 dòng).
+   - Vấn đề thực tế: Trong một giao dịch bán hàng POS, hệ thống phải cập nhật đồng thời ít nhất 4 tệp tin:
+     `Orders.txt`, `Invoices.txt`, `Customers.txt` (cộng điểm) và `Discount.txt` (tăng lượt dùng). Nếu đang ghi
+     đến file thứ 2 mà mất điện hoặc crash ứng dụng, dữ liệu sẽ bị mất đồng bộ nghiêm trọng!
+   - Giải pháp 3 pha (Two-Phase Commit Pattern):
+     * Pha 1 - Chuẩn bị (PREPARING): Tạo tệp kê khai giao dịch (`.tx_manifest`) và tạo các bản sao lưu
+       bền vững (`.tx_bak`) cho tất cả các file tham gia. Mọi thao tác ghi tệp sao lưu đều qua tệp tạm `.tmp`
+       và gọi hàm ép xả đĩa `FlushFileBuffers()` của Windows API.
+     * Pha 2 - Thực thi (ACTIVE): Tiến hành ghi dữ liệu mới vào các file chính. Đồng thời đăng ký các callback
+       phục hồi dữ liệu trên RAM (`rollbackCallbacks`).
+     * Pha 3 - Hoàn tất (COMMITTED): Khi tất cả các file đã ghi thành công 100%, trạng thái trong manifest được
+       chuyển thành `COMMITTED`. Đây là điểm không thể đảo ngược (Point of No Return). Sau đó các tệp sao lưu
+       `.tx_bak` và manifest được dọn dẹp sạch sẽ.
+   - Cơ chế Phục hồi sau sự cố (Crash Recovery on Startup):
+     * Khi ứng dụng khởi động (`main.cpp`), hàm `FileTransaction::recoverPendingTransactions()` được gọi đầu tiên:
+       Quét toàn bộ thư mục dữ liệu, nếu phát hiện manifest dở dang:
+       + Nếu trạng thái là `ACTIVE`: Tự động khôi phục nguyên trạng tất cả các file từ `.tx_bak`, đưa hệ thống
+         về trạng thái nhất quán trước khi xảy ra sự cố.
+       + Nếu trạng thái là `COMMITTED`: Giữ nguyên dữ liệu mới và chỉ xóa các file `.tx_bak` thừa.
+
+2. CƠ CHẾ GHI TỆP AN TOÀN NGUYÊN TỬ (SAFE ATOMIC FILE WRITE):
+   - Tệp mã nguồn: `source/utils/FileHelper.h`.
+   - Tuyệt đối KHÔNG mở tệp trực tiếp bằng `std::ofstream out("Products.txt", ios::trunc)` vì nếu crash giữa chừng,
+     tệp gốc sẽ bị xóa trắng!
+   - Quy trình ghi chuẩn:
+     `Ghi vào Products.txt.tmp -> fsync / FlushFileBuffers -> Đổi tên (Atomic Rename/Replace) đè lên Products.txt`.
+
+3. TOÀN VẸN THAM CHIẾU (REFERENTIAL INTEGRITY & SOFT DELETE):
+   - Tệp mã nguồn: `source/services/Check.h` (`ReferenceChecker`).
+   - Ràng buộc:
+     * Tuyệt đối KHÔNG cho phép xóa cứng một sản phẩm điện thoại (`Phone`) nếu mã sản phẩm đó đã từng xuất hiện
+       trong bất kỳ Đơn hàng (`Orders.txt`), Hóa đơn (`Invoices.txt`) hoặc Phiếu nhập kho (`StockReceipts.txt`).
+     * Nếu vi phạm, `PhoneService::deletePhone` sẽ từ chối và trả về lỗi rõ ràng:
+       "Không thể xóa sản phẩm đã phát sinh giao dịch lịch sử! Hãy chuyển sang trạng thái Ngừng kinh doanh."
+     * Tương tự: Không xóa Nhà cung cấp khi đang có phiếu nhập kho; Không xóa nhân viên Quản trị viên nếu là Admin duy nhất.
+
+4. BỘ ĐẾM SINH MÃ TỰ TĂNG CHUẨN HÓA (ID GENERATOR CONTRACT):
+   - Tệp mã nguồn: `source/utils/IdGenerator.h` và văn bản `HOPDONG/ChuanHoaID.txt`.
+   - Định dạng mã: `TIỀN_TỐ-ddMMyyyy-xxxxxx` cho giao dịch và `TIỀN_TỐ-xxxxxx` cho danh mục.
+   - Mọi mã ID đều duy nhất, tự động tăng, lưu vết bền vững trong `data/system/id_counters.txt`, không tái sử dụng
+     ngay cả khi bản ghi bị xóa.
+
+====================================================================================================
+VIII. CHI TIẾT CÁC PHÂN HỆ NGHIỆP VỤ THEO 4 VAI TRÒ (ROLE-BASED BUSINESS FEATURES)
+====================================================================================================
+
+1. PHÂN HỆ QUẢN TRỊ VIÊN (ADMINISTRATOR):
+   - Bảng điều khiển KPI tài chính (Dashboard Stats):
+     * Tổng doanh thu thực tế, Lợi nhuận gộp, Tổng số đơn hàng, Tồn kho khả dụng toàn hệ thống.
+     * BỘ LỌC THỜI GIAN THEO KHOẢNG NGÀY: Cho phép chọn "Từ ngày" -> "Đến ngày" để xem doanh thu, lợi nhuận
+       chính xác trong từng khoảng thời gian tùy chọn.
+     * Biểu đồ Top 5 sản phẩm bán chạy nhất (Best Sellers) kèm số lượng và doanh thu tương ứng.
+   - Quản lý sản phẩm (Product Catalog Management):
+     * Thêm sản phẩm mới, cập nhật cấu hình kỹ thuật, ngừng kinh doanh sản phẩm.
+     * TÍNH NĂNG ĐỔI ẢNH SẢN PHẨM: Tự động sao chép tệp ảnh vào `data/Device/productImages/` và lưu ánh xạ vào `ProductImage.txt`.
+   - Quản lý nhân viên (Employee Management):
+     * Xem danh sách, thêm nhân viên, phân công vai trò (Admin, Sales, Warehouse), cập nhật mức lương cơ bản.
+   - Quản lý khách hàng & Mã giảm giá:
+     * Theo dõi điểm tích lũy thành viên; Tạo mã voucher với đầy đủ ràng buộc ngày hiệu lực, giá trị đơn tối thiểu.
+   - Quản trị tài khoản & Phân quyền (Account Administration):
+     * Khóa hoặc kích hoạt tài khoản đăng nhập; Đổi quyền vai trò trực tiếp.
+
+2. PHÂN HỆ NHÂN VIÊN BÁN HÀNG (SALES):
+   - Quầy thu ngân bán lẻ tại quầy (POS - Point of Sale):
+     * Tìm kiếm sản phẩm tức thời, chọn số lượng mua (kiểm tra tồn kho khả dụng thời gian thực).
+     * Áp dụng mã giảm giá voucher: Tự động kiểm tra điều kiện min đơn, hạn sử dụng, tính tiền chiết khấu.
+     * Tính toán tài chính chuẩn: Tiền hàng trước thuế -> Tiền chiết khấu -> Thuế VAT 8% -> Tổng thanh toán.
+     * Nhập số tiền khách đưa: Tự động tính tiền thừa trả khách; Chặn thanh toán nếu tiền khách đưa không đủ.
+     * Hoàn tất giao dịch: Tự động sinh Hóa đơn (INV) và Đơn hàng (ORD) tương ứng, tích điểm thành viên cho khách.
+   - Quản lý đơn hàng trực tuyến (Online Order Processing):
+     * Tiếp nhận đơn hàng từ khách hàng theo cơ chế hàng đợi FIFO (`pendingQueue`).
+     * Duyệt đơn qua các trạng thái: Chờ duyệt (PENDING) -> Xác nhận (CONFIRMED) -> Chuẩn bị (PREPARING) -> Giao hàng (SHIPPING) -> Hoàn tất (COMPLETED).
+     * Hủy đơn hàng an toàn: Tự động hoàn lại số lượng tồn kho khả dụng cho sản phẩm.
+   - Tra cứu & In hóa đơn: Xem lại toàn bộ lịch sử hóa đơn bán lẻ với đầy đủ thông tin chi tiết từng dòng máy.
+
+3. PHÂN HỆ THỦ KHO (WAREHOUSE):
+   - Giám sát tồn kho thực tế & khả dụng (Inventory Monitor):
+     * Hiển thị danh mục máy, giá vốn đích danh hiện tại, cảnh báo sản phẩm sắp hết hàng (tồn $\le 5$ máy).
+   - Lập phiếu nhập kho từ Nhà cung cấp (Goods Receipt):
+     * Chọn nhà cung cấp hợp tác; Lọc danh mục sản phẩm theo đúng nhà cung cấp đã chọn.
+     * Cho phép nhập linh hoạt số lượng và đơn giá nhập cho từng dòng máy (không fix cứng).
+     * Tự động cập nhật tăng tồn kho thực tế và tính lại giá vốn bình quân/giá vốn đích danh.
+   - Hủy phiếu nhập kho (Receipt Cancellation):
+     * Khi phát hiện sai sót, cho phép hủy phiếu nhập: Hệ thống chuyển trạng thái sang `DaHuy`, tự động trừ
+       ngược lại số lượng tồn kho tương ứng và khôi phục giá vốn cũ.
+   - Quản lý đối tác nhà cung cấp: Thêm, sửa, tra cứu thông tin liên hệ và mã số thuế.
+
+4. PHÂN HỆ KHÁCH HÀNG (CUSTOMER):
+   - Mua sắm trực tuyến (Online Storefront):
+     * Danh mục sản phẩm trực quan kèm hình ảnh thumbnail thực tế.
+     * Thanh điều hướng thương hiệu nằm ngang (Apple, Samsung, Xiaomi, Oppo,...).
+     * Bộ lọc giá tiền theo cây BST (dưới 10 triệu, 10 - 20 triệu, trên 20 triệu).
+     * Xem thông số chi tiết cấu hình máy (Màn hình, Chip, RAM, Bộ nhớ trong, Pin).
+   - Giỏ hàng & Đặt hàng (Cart & Checkout):
+     * Thêm sản phẩm vào giỏ, tăng/giảm số lượng (chặn vượt quá tồn kho khả dụng).
+     * Áp dụng mã voucher giảm giá cá nhân.
+     * Đặt hàng: Chọn hình thức nhận (Tại cửa hàng / Giao hàng tận nơi), phương thức thanh toán (COD / Chuyển khoản).
+   - Quản lý cá nhân & Bảo hành:
+     * Tra cứu lịch sử các đơn hàng đã đặt và trạng thái giao hàng.
+     * Xem điểm tích lũy thành viên; Đổi mật khẩu tài khoản bảo mật.
+     * Đăng ký yêu cầu bảo hành trực tuyến cho các thiết bị đã mua.
+
+====================================================================================================
+IX. CÔNG NGHỆ GIAO DIỆN ĐỒ HỌA GTK4 & TỐI ƯU HÓA WINDOWS DESKTOP
+====================================================================================================
+1. Lựa chọn công nghệ GTK4 (GIMP Toolkit phiên bản 4.24.0):
+   - Là bộ thư viện giao diện đồ họa C/C++ hiện đại, mạnh mẽ, tiêu chuẩn công nghiệp trên Linux và Windows.
+   - Sử dụng mô hình hướng đối tượng GObject, hệ thống phân phối sự kiện Event Controller, CSS Styling Engine.
+   - Đem lại điểm cộng rất lớn trong đồ án PBL2 so với giao diện Console màn hình đen trắng truyền thống.
+
+2. Xử lý các thách thức đặc thù trên môi trường Windows 11 (Platform Engineering):
+   - Khắc phục sự cố gõ phím & Bộ gõ tiếng Việt Windows IME (`BUG-CRITICAL-02`):
+     * Triệu chứng lỗi cũ: Người dùng không gõ được một số phím hoặc crash tiến trình với thông báo
+       `gtk_im_context_ime_message_filter: assertion 'GTK_IS_IM_CONTEXT_IME (data)' failed`.
+     * Giải pháp: Trong `main.cpp`, tối ưu hóa việc quản lý vòng đời bộ đệm nhập liệu Win32 Native IME,
+       đồng thời cung cấp cờ chuyển đổi an toàn `PBL2_FORCE_SIMPLE_IM` khi cần thiết.
+   - Tối ưu hóa phông chữ & Emoji đa màu sắc:
+     * Tích hợp thư viện font chữ `NotoColorEmoji.ttf` và cấu hình FontConfig (`UI/styles/FontSetup.cpp`)
+       giúp hiển thị trọn vẹn các biểu tượng đồ họa cảm xúc (🛒, 📱, 📦, 👤, 💰, ⚙️) sắc nét trên Windows.
+   - Chuẩn hóa CSS Engine cho GTK4 (`UI/styles/AppCss.h`):
+     * Không sử dụng các thuộc tính web không tương thích như `max-width` trong CSS GTK4.
+     * Sử dụng kỹ thuật `border-left: 3px solid transparent` trên các hàng dữ liệu để triệt tiêu hoàn toàn
+       hiện tượng giật lắc giao diện (Hover Jitter) khi rê chuột.
+     * Hỗ trợ chuyển đổi giao diện Sáng / Tối (Light / Dark Theme) mượt mà.
+   - Căn chỉnh bảng dữ liệu (DataGrid) chống lệch cột:
+     * Cài đặt độ rộng cố định cho các cột dữ liệu ngắn (Mã, Thời gian, Số lượng) và bật `hexpand = true`
+       duy nhất cho cột nội dung dài (Tên sản phẩm, Địa chỉ) kèm cơ chế ngắt chữ tự động (`PANGO_ELLIPSIZE_END`).
+
+====================================================================================================
+X. HỆ THỐNG KIỂM SOÁT THỜI GIAN THỰC (REAL-TIME SIMULATION)
+====================================================================================================
+- Tệp mã nguồn: `UI/mock/RealTimeManager.h` và `data/realTime.txt`.
+- Vấn đề nghiệp vụ: Các tính năng như hạn sử dụng Voucher khuyến mãi (ví dụ hết hạn ngày 30/10/2026) hay thời hạn
+  bảo hành 12 tháng rất khó để kiểm thử trong vài phút bảo vệ nếu chỉ phụ thuộc vào đồng hồ hệ điều hành máy tính.
+- Giải pháp: Xây dựng hệ thống Thời gian thực giả lập (Real-time Clock Simulation):
+  * Đồng hồ hệ thống tự động nhảy giây và lưu trạng thái bền vững.
+  * Cung cấp bảng điều khiển "Kiểm soát thời gian thực" cho Quản trị viên:
+    + Nút "Tua nhanh 1 ngày (+1 Day)", "Tua nhanh 7 ngày (+7 Days)", "Tua nhanh 30 ngày (+30 Days)".
+    + Cho phép nhập mốc thời gian tùy ý `yyyy-MM-dd HH:mm:ss`.
+    + Nút "Đồng bộ giờ máy tính" để đưa thời gian về giờ thực tế.
+  * Khi thời gian giả lập vượt quá ngày kết thúc của Voucher, hệ thống tự động khóa mã voucher ngay lập tức;
+    khi khách hàng tra cứu bảo hành, hệ thống tính toán chính xác số ngày bảo hành còn lại theo mốc giờ giả lập này.
+
+====================================================================================================
+XI. BỘ KIỂM THỬ TỰ ĐỘNG & BẢO ĐẢM CHẤT LƯỢNG (AUTOMATED TESTING & QA)
+====================================================================================================
+Dự án được xây dựng với văn hóa kiểm thử chuyên nghiệp (Test-Driven Development / Quality Assurance).
+Toàn bộ mã nguồn được bao phủ bởi các kịch bản kiểm thử độc lập, tự động cô lập trong các thư mục sandbox riêng biệt
+để tuyệt đối không làm ảnh hưởng đến dữ liệu thật:
+
+1. Danh mục các bộ kiểm thử đã được chạy và kiểm chứng:
+   - `test_phase_f_e2e.exe`: Kiểm thử toàn trình End-to-End toàn bộ nghiệp vụ qua cả 4 Role (Admin -> Warehouse -> Sales -> Customer)
+     và kiểm tra độ bền vững dữ liệu sau khi tắt ứng dụng rồi mở lại phiên mới.
+     * Kết quả: **57/57 assertions ĐẠT (PASS 100%)**.
+   - `test_phase_e2_ui.exe`: Kiểm thử tính nhất quán của bảng biểu, font chữ, CSS và các nhãn form giao diện (55 assertions PASS).
+   - `test_phase_e1_search.exe`: Kiểm thử thuật toán tìm kiếm tiếng Việt không dấu (`Utf8Helper`), tra cứu sản phẩm và lọc giá BST.
+   - `test_phase_d_sync.exe`: Kiểm thử tính đồng bộ tức thời giữa đơn hàng, hóa đơn và voucher khi có giao dịch mới.
+   - `test_phase_c_image.exe`: Kiểm thử luồng cập nhật ảnh sản phẩm và tính bền vững của tệp ánh xạ `ProductImage.txt`.
+   - `test_phase_b1_pos.exe`: Kiểm thử toàn diện quầy POS, tính thuế VAT, tiền thừa, trừ kho và tích điểm.
+   - `test_phase_b2_warehouse.exe`: Kiểm thử nhập kho, tăng kho, hủy phiếu nhập hoàn kho và đối soát giá vốn.
+   - `test_phase_b3_voucher.exe`: Kiểm thử logic voucher: hạn dùng, min đơn, tỷ lệ %, mức giảm trần và trừ lượt dùng.
+   - `test_persistence_phase_a.exe` & `test_persistence_hardening.exe`: Kiểm thử cơ chế Transaction Coordinator,
+     bản sao lưu `.tx_bak`, manifest và phục hồi sau sự cố crash đột ngột.
+
+2. Tổng kết chất lượng:
+   - Không có lỗi rò rỉ bộ nhớ nghiêm trọng.
+   - Dữ liệu luôn nhất quán giữa bộ nhớ RAM và các tệp tin trên đĩa cứng.
+
+====================================================================================================
+XII. HƯỚNG DẪN BIÊN DỊCH, TRIỂN KHAI & TÀI KHOẢN TRÌNH DIỄN
+====================================================================================================
+
+1. MÔI TRƯỜNG YÊU CẦU:
+   - Hệ điều hành: Windows 10/11 64-bit (hoặc Linux Ubuntu 22.04+).
+   - Trình biên dịch: GCC / G++ phiên bản 13.x trở lên hỗ trợ chuẩn C++17 (khuyến nghị MSYS2 UCRT64).
+   - Công cụ biên dịch: GNU Make (`mingw32-make`).
+   - Thư viện đồ họa: GTK4 (`libgtk-4-dev` hoặc `mingw-w64-ucrt-x86_64-gtk4`).
+   - Công cụ hỗ trợ: `pkg-config`, `fontconfig`.
+
+2. CÁC LỆNH BIÊN DỊCH CHÍNH (TẠI THƯ MỤC GỐC DỰ ÁN):
+   - Biên dịch ứng dụng giao diện chính:
+     ```bash
+     mingw32-make all
+     ```
+     (Sinh ra tệp thực thi `pbl2_gtk4.exe`).
+   - Khởi chạy ứng dụng:
+     ```bash
+     mingw32-make run
+     ```
+     hoặc chạy trực tiếp: `.\pbl2_gtk4.exe`.
+   - Dọn dẹp các tệp build tạm (`.o`, `.d`):
+     ```bash
+     mingw32-make clean
+     ```
+
+3. BẢNG TÀI KHOẢN THỬ NGHIỆM PHỤC VỤ BẢO VỆ (DEMO CREDENTIALS):
+   | Vai trò (Role) | Tên đăng nhập (Username) | Mật khẩu mặc định | Trách nhiệm chính trong buổi bảo vệ |
+   | :--- | :--- | :--- | :--- |
+   | **Quản trị viên** | `admin.demo` | `123456` | Xem Dashboard KPI, Quản lý SP, Voucher, Phân quyền, Lọc ngày |
+   | **Nhân viên Bán hàng**| `sales.demo` | `123456` | Bán lẻ tại quầy POS, Áp voucher, Duyệt đơn online FIFO |
+   | **Thủ kho** | `warehouse.demo` | `123456` | Xem tồn kho, Lập phiếu nhập từ NCC, Hủy phiếu nhập hoàn kho |
+   | **Khách hàng** | `customer001.demo` | `123456` | Mua sắm, Lọc BST, Đặt đơn online, Xem lịch sử, Đăng ký bảo hành |
+
+====================================================================================================
+XIII. KỊCH BẢN DEMO BẢO VỆ CHUẨN TỪNG BƯỚC (STEP-BY-STEP DEFENSE SCRIPT)
+====================================================================================================
+Để gây ấn tượng mạnh với Hội đồng chấm thi trong thời gian 10 - 15 phút trình diễn, nhóm nên thực hiện
+theo kịch bản 6 màn liền mạch sau:
+
+----------------------------------------------------------------------------------------------------
+MÀN 1: ĐĂNG NHẬP ADMIN & TỔNG QUAN HỆ THỐNG (2 PHÚT)
+----------------------------------------------------------------------------------------------------
+1. Khởi chạy `pbl2_gtk4.exe`. Giới thiệu giao diện đăng nhập trau chuốt, hỗ trợ ẩn/hiện mật khẩu.
+2. Đăng nhập bằng tài khoản `admin.demo` / `123456`.
+3. Giới thiệu Bảng điều khiển Quản trị (Dashboard):
+   - Chỉ ra các thẻ KPI: Doanh thu, Lợi nhuận gộp, Tổng số đơn hàng, Tồn kho khả dụng.
+   - Thao tác: Nhập "Từ ngày" và "Đến ngày" trên thanh lọc -> Bấm "Lọc báo cáo". Chỉ số tự động tính toán lại
+     theo đúng các đơn hàng trong khoảng ngày đó.
+   - Chỉ ra biểu đồ Top sản phẩm bán chạy.
+
+----------------------------------------------------------------------------------------------------
+MÀN 2: THỦ KHO NHẬP HÀNG & CẬP NHẬT TỒN KHO TỰ ĐỘNG (2 PHÚT)
+----------------------------------------------------------------------------------------------------
+1. Đăng xuất Admin, đăng nhập tài khoản Thủ kho `warehouse.demo` / `123456`.
+2. Mở tab "Quản lý tồn kho": Ghi nhận số lượng tồn của một máy (ví dụ `PHN-000102` đang có 18 máy).
+3. Mở tab "Lập phiếu nhập kho":
+   - Chọn Nhà cung cấp: Apple Vietnam (`SUP-000001`). Hệ thống lọc đúng danh mục thiết bị của NCC này.
+   - Chọn sản phẩm `PHN-000102`, nhập số lượng 10 máy, đơn giá nhập 22.000.000 đ.
+   - Bấm "Xác nhận nhập kho". Thông báo thành công hiển thị kèm mã phiếu `IMP-...`.
+4. Quay lại tab "Tồn kho": Chỉ cho giảng viên thấy tồn kho của `PHN-000102` đã tăng chính xác từ 18 -> 28 máy!
+5. (Tùy chọn ghi điểm): Bấm "Hủy phiếu nhập" vừa tạo -> Tồn kho lập tức giảm lại về 18 máy, chứng minh cơ chế hoàn kho.
+
+----------------------------------------------------------------------------------------------------
+MÀN 3: KHÁCH HÀNG MUA SẮM & TRẢI NGHIỆM CÂY BST (3 PHÚT)
+----------------------------------------------------------------------------------------------------
+1. Đăng xuất, đăng nhập tài khoản Khách hàng `customer001.demo` / `123456`.
+2. Mở tab "Cửa hàng điện thoại":
+   - Chỉ ra các thẻ sản phẩm hiển thị hình ảnh thực tế, giá bán niêm yết, thông số kỹ thuật.
+   - Bấm chuyển đổi nhanh trên thanh thương hiệu: Apple, Samsung, Xiaomi.
+   - DEMO CÂY BST: Chọn bộ lọc khoảng giá "Từ 10 đến 20 triệu" -> Giải thích với thầy cô: "Chức năng này được
+     vận hành bởi cây nhị phân tìm kiếm BST tự cài đặt với Khóa tổ hợp PhonePriceKey, cho kết quả tức thời $O(\log N + K)$".
+3. Bấm "Thêm vào giỏ hàng" 1 sản phẩm. Mở giỏ hàng, nhập địa chỉ nhận hàng và bấm "Đặt hàng ngay".
+4. Hệ thống thông báo đặt hàng thành công kèm mã đơn `ORD-...`. Tồn kho khả dụng lập tức được giữ chỗ!
+
+----------------------------------------------------------------------------------------------------
+MÀN 4: SALES BÁN HÀNG TẠI QUẦY (POS) & ÁP DỤNG MÃ GIẢM GIÁ (3 PHÚT)
+----------------------------------------------------------------------------------------------------
+1. Đăng nhập tài khoản Nhân viên Bán hàng `sales.demo` / `123456`.
+2. Mở tab "Quầy thu ngân (POS)":
+   - Chọn khách hàng thành viên: Phan Văn Nam (`CUS-000013`).
+   - Thêm sản phẩm vào đơn bán.
+   - Nhập mã giảm giá: `HELLOPBL2` -> Bấm áp dụng. Hệ thống chiết khấu chính xác 10% giá trị đơn hàng.
+   - Chỉ ra bảng tính: Tạm tính -> Giảm giá -> Thuế GTGT 8% -> Tổng thanh toán.
+   - Nhập số tiền khách đưa lớn hơn tổng thanh toán -> Hệ thống tính chính xác tiền thừa trả khách.
+   - Bấm "Thanh toán tại quầy" -> Xuất hiện popup thành công kèm mã hóa đơn `INV-...`.
+3. Mở tab "Hóa đơn": Chỉ ra hóa đơn mới tạo với đầy đủ thông tin chi tiết và trạng thái `DaThanhToan`.
+
+----------------------------------------------------------------------------------------------------
+MÀN 5: BẢO HÀNH & KIỂM SOÁT THỜI GIAN THỰC (2 PHÚT)
+----------------------------------------------------------------------------------------------------
+1. Đăng nhập lại tài khoản Khách hàng: Mở tab "Lịch sử mua hàng" -> Xem thấy hóa đơn vừa mua tại quầy.
+2. Mở tab "Đăng ký bảo hành" -> Nhập yêu cầu bảo hành cho máy vừa mua -> Hệ thống tiếp nhận thành công.
+3. Đăng nhập lại Admin:
+   - Mở cửa sổ "Kiểm soát thời gian thực".
+   - Tua nhanh thời gian thêm 30 ngày -> Quay lại kiểm tra mã giảm giá: Hệ thống tự động báo mã đã hết hạn sử dụng.
+   - Chứng minh cơ chế Real-time Simulation phục vụ kiểm thử hoàn hảo.
+
+----------------------------------------------------------------------------------------------------
+MÀN 6: CHỨNG MINH TÍNH BỀN VỮNG DỮ LIỆU FILE (1 PHÚT)
+----------------------------------------------------------------------------------------------------
+1. Tắt hoàn toàn ứng dụng (Đóng cửa sổ GTK4).
+2. Mở thư mục `data/PAY/Invoices.txt` và `data/PAY/Order/Orders.txt` bằng Notepad hoặc VS Code.
+3. Chỉ cho Hội đồng thấy các dòng hóa đơn và đơn hàng vừa thao tác trong buổi demo đã được ghi chép chuẩn xác,
+   an toàn xuống ổ đĩa, chứng minh 100% dữ liệu không bị mất sau khi đóng phiên làm việc!
+
+====================================================================================================
+XIV. NGÂN HÀNG CÂU HỎI & CÂU TRẢ LỜI PHẢN BIỆN BẢO VỆ ĐỒ ÁN (DEFENSE Q&A BANK)
+====================================================================================================
+Dưới đây là 25 câu hỏi phản biện chuyên sâu điển hình nhất mà các Giảng viên Hội đồng thường đặt ra,
+kèm theo câu trả lời chuẩn xác, tự tin và thuyết phục nhất:
+
+----------------------------------------------------------------------------------------------------
+NHÓM 1: CÂU HỎI VỀ CẤU TRÚC DỮ LIỆU & GIẢI THUẬT (DSA)
+----------------------------------------------------------------------------------------------------
+
+Câu 1: Tại sao nhóm không dùng luôn `std::vector` và `std::map` của thư viện chuẩn C++ cho nhanh và ít lỗi?
+Trả lời:
+"Dạ thưa Thầy/Cô, mục tiêu cốt lõi của học phần PBL2 là kiểm tra năng lực tự thiết kế và cài đặt cấu trúc dữ liệu
+của sinh viên. Việc tự cài đặt `Vector`, `HashTable` và `BST` giúp nhóm:
+1. Nắm vững bản chất quản lý bộ nhớ động cấp thấp (con trỏ, heap, cấp phát lại mảng, giải phóng bộ nhớ chống rò rỉ).
+2. Tùy biến cấu trúc dữ liệu chính xác theo bài toán nghiệp vụ (ví dụ: Khóa tổ hợp `PhonePriceKey` trên cây BST
+   để hỗ trợ nhiều sản phẩm cùng giá bán - điều mà `std::map` mặc định không hỗ trợ nếu không dùng multimap).
+3. Làm chủ hoàn toàn mã nguồn và hiểu rõ chi phí thời gian/không gian của từng thao tác."
+
+Câu 2: Cơ chế tăng trưởng (Growth Strategy) của lớp `Vector` tự cài đặt hoạt động như thế nào? Tại sao lại nhân đôi capacity?
+Trả lời:
+"Dạ thưa Thầy/Cô, khi số lượng phần tử `size` đạt tới sức chứa tối đa `capacity`, `Vector` sẽ gọi hàm `resize(capacity * 2)`:
+1. Cấp phát một vùng nhớ mới trên heap có kích thước gấp đôi mảng cũ.
+2. Di chuyển các phần tử từ mảng cũ sang mảng mới bằng ngữ nghĩa di chuyển `std::move` để tránh sao chép tốn kém.
+3. Giải phóng vùng nhớ cũ bằng `delete[] data` và cập nhật lại con trỏ.
+Việc nhân đôi sức chứa thay vì chỉ tăng từng đơn vị (+1) giúp phân tích khấu hao chi phí thêm vào cuối (`push_back`)
+chỉ mất thời gian trung bình $O(1)$ thay vì bị suy biến thành $O(N)$ trong mọi lần thêm."
+
+Câu 3: Bảng băm `HashTable` của nhóm sử dụng hàm băm nào? Giải quyết đụng độ ra sao?
+Trả lời:
+"Dạ thưa Thầy/Cô:
+- Về hàm băm: Nhóm sử dụng thuật toán băm chuỗi kinh điển DJB2 của Daniel J. Bernstein với công thức:
+  `hash = ((hash << 5) + hash) + c` (tương đương `hash * 33 + c`), khởi tạo giá trị ban đầu là số nguyên tố 5381.
+  Thuật toán này có ưu điểm tính toán cực nhanh qua phép dịch bit và phân bố giá trị băm rất đều trên không gian khóa.
+- Về giải quyết đụng độ: Nhóm sử dụng phương pháp Dây chuyền riêng biệt (Separate Chaining). Mảng `table` là mảng
+  các con trỏ đầu danh sách liên kết đơn. Khi hai khóa băm trùng vào cùng một bucket, nút mới sẽ được thêm vào
+  danh sách liên kết tại bucket đó.
+- Ngoài ra, khi hệ số tải $\alpha = size / capacity \ge 0.75$, bảng băm sẽ tự động `rehash()` sang một mảng mới
+  có kích thước gấp đôi để luôn duy trì thời gian tra cứu trung bình đạt $O(1)$."
+
+Câu 4: Trường hợp xấu nhất (Worst-case) của `HashTable` xảy ra khi nào và độ phức tạp là bao nhiêu?
+Trả lời:
+"Dạ thưa Thầy/Cô, trường hợp xấu nhất xảy ra khi tất cả các khóa đầu vào đều bị băm ra cùng một chỉ số bucket duy nhất
+(toàn bộ phần tử rơi vào cùng 1 danh sách liên kết). Khi đó, thao tác tìm kiếm, thêm, xóa sẽ bị suy biến thành $O(N)$
+như một danh sách liên kết thông thường. Tuy nhiên, nhờ sử dụng hàm băm DJB2 chất lượng cao và cơ chế tự động rehash
+khi hệ số tải đạt 0.75, xác suất xảy ra trường hợp này trong thực tế là cực kỳ thấp."
+
+Câu 5: Cây nhị phân tìm kiếm `BST` xử lý thế nào khi có 2 chiếc điện thoại trùng giá bán niêm yết?
+Trả lời:
+"Dạ thưa Thầy/Cô, đây chính là lỗi mà nhóm đã khắc phục triệt để. Nếu cây BST chỉ dùng `price` làm khóa thì sản phẩm
+thêm sau sẽ ghi đè hoặc bị bỏ qua. Nhóm đã thiết kế cấu trúc Khóa tổ hợp `PhonePriceKey` gồm hai trường: `price` (giá bán)
+và `id` (mã điện thoại duy nhất). Trong toán tử so sánh `<`:
+- Nếu hai sản phẩm khác giá: Cây so sánh theo giá bán.
+- Nếu hai sản phẩm bằng giá nhau: Cây tiếp tục so sánh theo mã `id`.
+Nhờ vậy, mọi sản phẩm trên cây đều có khóa duy nhất tuyệt đối, cây không bao giờ bị ghi đè mất sản phẩm, và khi duyệt
+trung thứ tự In-Order hay lọc khoảng giá bằng hàm `findRange(minPrice, maxPrice)`, hệ thống vẫn lấy ra trọn vẹn tất cả
+các sản phẩm theo đúng thứ tự giá tăng dần với độ phức tạp $O(\log N + K)$."
+
+Câu 6: Tại sao hàng đợi `Queue` lại được cài đặt dựa trên `LinkedList` mà không dùng `Vector`?
+Trả lời:
+"Dạ thưa Thầy/Cô, trong hàng đợi FIFO, thao tác lấy phần tử ra (`pop`) diễn ra ở ĐẦU hàng đợi.
+- Nếu dùng `Vector`: Khi xóa phần tử đầu mảng (vị trí index 0), ta phải dịch chuyển toàn bộ $N-1$ phần tử còn lại
+  về trước 1 bước, dẫn đến chi phí $O(N)$ rất tốn kém (trừ khi làm mảng vòng phức tạp).
+- Khi dùng `LinkedList` (Danh sách liên kết đôi có con trỏ `head` và `tail`): Thao tác đẩy vào cuối (`push_back`)
+  và thao tác lấy ra ở đầu (`pop_front`) đều chỉ là các phép gán lại con trỏ, đạt hiệu năng tuyệt đối $O(1)$."
+
+----------------------------------------------------------------------------------------------------
+NHÓM 2: CÂU HỎI VỀ LẬP TRÌNH HƯỚNG ĐỐI TƯỢNG (OOP)
+----------------------------------------------------------------------------------------------------
+
+Câu 7: Đa hình (Polymorphism) được thể hiện ở đâu trong mã nguồn dự án? Cho ví dụ cụ thể.
+Trả lời:
+"Dạ thưa Thầy/Cô, tính đa hình được thể hiện rõ nét nhất ở phân hệ quản lý nhân sự:
+1. Lớp cơ sở `Employee` kế thừa `People` và khai báo hai phương thức thuần ảo:
+   `virtual std::string getRole() const = 0;`
+   `virtual RoleType getRoleType() const = 0;`
+2. Các lớp dẫn xuất `AdminEmployee`, `SalesEmployee`, `WarehouseEmployee` ghi đè (override) các hàm này để trả về
+   chuỗi vai trò và mã quyền tương ứng.
+3. Trong `EmployeeRepository`, nhóm quản lý danh sách nhân viên thông qua mảng con trỏ kiểu lớp cơ sở:
+   `Vector<Employee*> employees;`
+4. Khi chạy chương trình, tại bất kỳ vị trí nào gọi `emp->getRole()`, trình biên dịch sử dụng cơ chế liên kết động
+   (Dynamic Binding qua bảng vtable) để gọi chính xác phương thức của lớp con tương ứng tại runtime mà không cần
+   dùng chuỗi câu lệnh `if-else` hay `switch-case` kiểm tra kiểu đối tượng."
+
+Câu 8: Tại sao lớp `People` bắt buộc phải khai báo hàm hủy ảo `virtual ~People() = default;`? Nếu không có thì sao?
+Trả lời:
+"Dạ thưa Thầy/Cô, khi ta quản lý các đối tượng lớp con thông qua con trỏ lớp cơ sở (ví dụ: `People* p = new Customer(...)`
+hoặc `People* p = new Employee(...)`), nếu ta gọi lệnh `delete p;`:
+- Nếu hàm hủy KHÔNG phải là ảo (non-virtual destructor): Trình biên dịch chỉ gọi hàm hủy của lớp cơ sở `People`,
+  bỏ qua hàm hủy của lớp dẫn xuất `Customer`/`Employee`. Nếu lớp con có cấp phát bộ nhớ động (như tài khoản, danh sách con),
+  các vùng nhớ đó sẽ bị rò rỉ vĩnh viễn (Memory Leak).
+- Khi khai báo hàm hủy ảo `virtual ~People()`: Cơ chế đa hình sẽ kích hoạt, đảm bảo hàm hủy của lớp dẫn xuất được gọi
+  trước, sau đó mới đến hàm hủy của lớp cha, giúp giải phóng sạch sẽ 100% tài nguyên."
+
+Câu 9: Tính đóng gói (Encapsulation) được bảo vệ thế nào trong cấu trúc `Vector` và các lớp `Model`?
+Trả lời:
+"Dạ thưa Thầy/Cô, trong các lớp Model:
+- Toàn bộ biến thành viên lưu dữ liệu (`id`, `sellingPrice`, `importPrice`, `points`) đều được đặt ở mức `private` hoặc `protected`.
+- Bên ngoài không thể gán trực tiếp dữ liệu sai (ví dụ giá âm, tên rỗng) mà bắt buộc phải qua các hàm Setter có kèm
+  logic kiểm tra hợp lệ (Validation).
+Trong cấu trúc `Vector`:
+- Người dùng chỉ biết kích thước qua `getSize()`, sức chứa qua `getCapacity()`, thao tác qua `push_back()`, `pop_back()`.
+  Con trỏ bộ nhớ thô `T* data` được giấu kín hoàn toàn, ngăn chặn việc can thiệp trực tiếp từ bên ngoài làm sai lệch con trỏ."
+
+Câu 10: Phân biệt giữa Copy Constructor (Sao chép) và Move Constructor (Di chuyển) trong lớp `Vector`. Khi nào dùng cái nào?
+Trả lời:
+"Dạ thưa Thầy/Cô:
+- Copy Constructor (`Vector(const Vector& other)`): Nhận vào một tham chiếu lvalue (đối tượng còn tồn tại lâu dài).
+  Cơ chế: Cấp phát một vùng nhớ heap mới có cùng kích thước và sao chép từng phần tử sang. Tốn chi phí thời gian $O(N)$
+  và dung lượng bộ nhớ.
+- Move Constructor (`Vector(Vector&& other) noexcept`): Nhận vào một tham chiếu rvalue (đối tượng tạm thời sắp bị hủy).
+  Cơ chế: Chỉ việc "đánh cắp" (tiếp quản) con trỏ `data` của đối tượng tạm thời gán sang cho đối tượng mới, đồng thời
+  gán con trỏ của đối tượng cũ về `nullptr` để khi nó bị hủy không làm mất dữ liệu. Chi phí thời gian chỉ mất $O(1)$!
+Move Constructor được tự động kích hoạt khi trả về Vector từ một hàm hoặc khi ép kiểu `std::move()`, giúp ứng dụng chạy cực nhanh."
+
+----------------------------------------------------------------------------------------------------
+NHÓM 3: CÂU HỎI VỀ DỮ LIỆU & GIAO DỊCH (DATA PERSISTENCE & TRANSACTIONS)
+----------------------------------------------------------------------------------------------------
+
+Câu 11: Làm sao hệ thống đảm bảo không bị mất dữ liệu hoặc hỏng file khi người dùng tắt máy đột ngột hoặc mất điện?
+Trả lời:
+"Dạ thưa Thầy/Cô, hệ thống bảo vệ dữ liệu bằng 2 lớp phòng thủ:
+- Lớp 1 (Ghi an toàn nguyên tử - Safe Atomic Write): Nhóm không bao giờ mở file trực tiếp bằng cờ ghi đè `trunc`.
+  Dữ liệu luôn được ghi tạm vào file đuôi `.tmp`, gọi hàm `FlushFileBuffers()` của Windows API để ép xả dữ liệu từ
+  bộ đệm phần cứng xuống phiến đĩa vật lý, rồi mới đổi tên nguyên tử (Atomic Rename) đè lên file gốc.
+- Lớp 2 (Điều phối giao dịch đa file - TransactionCoordinator): Đối với các nghiệp vụ chạm vào nhiều file (như POS
+  ghi Hóa đơn, Đơn hàng, Điểm tích lũy, Voucher), hệ thống tạo file kê khai `.tx_manifest` và bản sao lưu `.tx_bak`.
+  Nếu mất điện giữa chừng, lần khởi động tiếp theo hệ thống tự động quét manifest và rollback an toàn toàn bộ các file
+  về nguyên trạng trước giao dịch."
+
+Câu 12: Tại sao trong tệp `Products.txt` nhóm lại bỏ cột số lượng tồn kho (`quantity`)? Vậy tồn kho được tính như thế nào?
+Trả lời:
+"Dạ thưa Thầy/Cô, việc lưu cứng cột tồn kho trong `Products.txt` là một thiết kế phản mẫu (Anti-Pattern) trong hệ thống
+cơ sở dữ liệu vì dễ gây ra hiện tượng không nhất quán (Anomaly) giữa tồn kho hiển thị và lịch sử xuất nhập.
+Nhóm đã cải tiến thành mô hình Tồn kho động (Dynamic Inventory Calculation):
+`Tồn kho thực tế = Tổng số lượng nhập trong các phiếu nhập kho hợp lệ (HoatDong) - Tổng số lượng đã bán trong các hóa đơn thành công`.
+`Tồn kho khả dụng = Tồn kho thực tế - Số lượng sản phẩm đang bị giữ chỗ trong các đơn hàng chờ xử lý (PENDING)`.
+Nhờ thiết kế này, số liệu tồn kho luôn phản ánh đúng 100% sự thật lịch sử giao dịch và không bao giờ bị lệch."
+
+Câu 13: Toàn vẹn tham chiếu (Referential Integrity) hoạt động như thế nào khi Quản trị viên cố tình bấm Xóa một sản phẩm?
+Trả lời:
+"Dạ thưa Thầy/Cô, trước khi thực hiện xóa trong `PhoneService::deletePhone()`, hệ thống kích hoạt module `ReferenceChecker`:
+- Kiểm tra xem mã sản phẩm `id` có đang xuất hiện trong bất kỳ Đơn hàng (`Orders.txt`), Hóa đơn (`Invoices.txt`)
+  hay Phiếu nhập kho (`StockReceipts.txt`) nào hay không.
+- Nếu sản phẩm đã từng phát sinh giao dịch lịch sử: Hệ thống TỪ CHỐI xóa cứng và trả về thông báo yêu cầu chuyển sang
+  trạng thái 'Ngừng kinh doanh' (Soft Delete / status = NgungBan).
+Quy tắc này giúp bảo toàn tuyệt đối tính toàn vẹn của sổ cái hóa đơn: Khi mở lại hóa đơn cũ của 2 năm trước, thông tin
+tên máy và đơn giá vẫn hiển thị đầy đủ, không bị rỗng hoặc crash chương trình."
+
+----------------------------------------------------------------------------------------------------
+NHÓM 4: CÂU HỎI VỀ KIẾN TRÚC & PHÂN QUYỀN HỆ THỐNG
+----------------------------------------------------------------------------------------------------
+
+Câu 14: Kiến trúc phân tầng của dự án mang lại lợi ích gì so với việc viết code dồn hết vào màn hình UI?
+Trả lời:
+"Dạ thưa Thầy/Cô:
+1. Phân tách trách nhiệm độc lập: Giao diện UI chỉ lo hiển thị và bắt sự kiện chuột/phím; Controller lo phân quyền và điều phối;
+   Service lo thuật toán và nghiệp vụ; Repository lo đọc ghi file.
+2. Dễ dàng bảo trì và mở rộng: Nếu muốn đổi giao diện từ GTK4 sang Qt hoặc ứng dụng Web, ta giữ nguyên 100% toàn bộ
+   tầng Service, Repository và Model bên dưới.
+3. Khả năng kiểm thử tự động: Nhóm có thể viết các bài test tự động (như `test_phase_f_e2e.cpp`) chạy kiểm tra toàn bộ
+   nghiệp vụ hệ thống mà không cần phụ thuộc vào môi trường đồ họa."
+
+Câu 15: Hệ thống phân quyền người dùng (Role-Based Access Control) được kiểm soát ở những tầng nào? Có an toàn không?
+Trả lời:
+"Dạ thưa Thầy/Cô, hệ thống áp dụng cơ chế Phòng thủ chiều sâu (Defense-in-Depth) với 2 lớp kiểm soát:
+- Lớp 1 (Giao diện UI): Căn cứ vào vai trò trong `UserSessionViewModel`, giao diện `MainShellWindow` chỉ hiển thị các
+  nút bấm chức năng thuộc quyền hạn của người đó (ví dụ: Nhân viên Sales không nhìn thấy nút Báo cáo doanh thu hay Quản lý nhân sự).
+- Lớp 2 (Tầng Controller & Service): Tại đầu mỗi hàm nghiệp vụ nhạy cảm trong `AppController.cpp` (như `addProduct`, `addEmployee`,
+  `createGoodsReceipt`), hệ thống luôn kiểm tra lại quyền của phiên làm việc hiện tại:
+  `if (!currentSession.isAdmin()) return OperationResult::Fail("Từ chối truy cập: Thao tác chỉ dành cho Quản trị viên!");`
+Nhờ đó, ngay cả khi người dùng cố tình can thiệp mã giao diện thì tầng Controller vẫn chặn đứng mọi hành vi vượt quyền."
+
+Câu 16: Module "Kiểm soát thời gian thực" (Real-Time Simulation) giải quyết bài toán gì trong dự án?
+Trả lời:
+"Dạ thưa Thầy/Cô, trong các bài toán quản lý cửa hàng, có những nghiệp vụ gắn liền với dòng thời gian dài hạn như:
+Thời hạn bảo hành 12 tháng của điện thoại, hay hạn sử dụng 15 ngày của Voucher khuyến mãi.
+Nếu chỉ lấy giờ thực tế của máy tính (`std::chrono::system_clock`), trong buổi bảo vệ 10 phút, Thầy/Cô không thể kiểm chứng
+được voucher có tự động khóa khi hết hạn hay không.
+Module `RealTimeManager` cho phép Quản trị viên chủ động tua nhanh thời gian (tua 1 ngày, 7 ngày, 30 ngày) để kiểm thử
+ngay lập tức tính đúng đắn của logic hết hạn voucher và tra cứu bảo hành mà không làm ảnh hưởng đến đồng hồ của máy tính."
+
+====================================================================================================
+XV. TỔNG KẾT, ĐÁNH GIÁ ĐẠT ĐƯỢC & HƯỚNG PHÁT TRIỂN
+====================================================================================================
+
+1. NHỮNG KẾT QUẢ XUẤT SẮC ĐÃ ĐẠT ĐƯỢC:
+   - Hoàn thành 100% các yêu cầu cốt lõi và nâng cao của học phần PBL2: Dự án Cơ sở Lập trình.
+   - Tự cài đặt toàn bộ hệ thống Cấu trúc dữ liệu và giải thuật (Vector, LinkedList, Stack, Queue, HashTable DJB2, BST Khóa tổ hợp),
+     không dựa dẫm vào các container có sẵn của thư viện chuẩn STL.
+   - Thể hiện trọn vẹn, bài bản 4 tính chất của Lập trình hướng đối tượng (OOP) thông qua sơ đồ phân cấp thừa kế và hàm ảo đa hình.
+   - Hệ thống quản lý toàn diện 4 phân quyền người dùng (Admin, Sales, Warehouse, Customer) với giao diện đồ họa GTK4
+     hiện đại, trực quan, hỗ trợ tiếng Việt có dấu và bộ gõ Windows hoàn hảo.
+   - Cơ chế lưu trữ bền vững trên tệp tin text với bộ điều phối giao dịch đa file (`FileTransaction`), ghi đĩa an toàn hai pha,
+     đảm bảo tính toàn vẹn dữ liệu chuẩn công nghiệp.
+   - Bộ kiểm thử tự động phong phú, kiểm chứng 57/57 ca kiểm thử End-to-End thành công 100%.
+
+2. HẠN CHẾ ĐÃ BIẾT (TÍNH TRUNG THỰC HỌC THUẬT KHI BÁO CÁO):
+   - Mật khẩu tài khoản trong bản trình diễn hiện tại lưu trữ dạng chuỗi thuần phục vụ chấm thi (trong môi trường sản xuất
+     cần áp dụng thêm thuật toán băm mật khẩu một chiều như bcrypt hoặc SHA-256 kèm salt).
+   - Module Bảo hành hiện tại quản lý trên bộ nhớ RAM phiên làm việc, cần bổ sung thêm tệp lưu trữ riêng `Warranties.txt`
+     để đồng bộ hoàn toàn với các tệp dữ liệu khác.
+
+3. HƯỚNG PHÁT TRIỂN TRONG TƯƠNG LAI:
+   - Mở rộng kết nối mạng Socket TCP/IP để nhiều máy trạm (Sales, Warehouse) có thể kết nối đồng thời đến máy chủ tập trung (Client-Server).
+   - Nâng cấp cây nhị phân tìm kiếm BST thành Cây đỏ đen (Red-Black Tree) hoặc Cây AVL để đảm bảo cây luôn cân bằng tự động trong mọi trường hợp.
+   - Tích hợp cổng thanh toán trực tuyến qua mã phản hồi nhanh VietQR / VNPay tự động đối soát tiền về tài khoản.
+
+====================================================================================================
+LỜI KẾT DÀNH CHO NHÓM BẢO VỆ:
+- Hãy nắm vững cấu trúc cây thư mục và vai trò của từng file mã nguồn.
+- Tự tin phân tích độ phức tạp thuật toán $O(1)$ và $O(\log N)$ khi trình bày về HashTable và BST.
+- Bình tĩnh, tự tin thao tác theo đúng Kịch bản Demo 6 màn đã chuẩn bị ở Mục XIII.
+Chúc nhóm có một buổi bảo vệ đồ án PBL2 đại thành công và đạt điểm số cao nhất!
+====================================================================================================
+

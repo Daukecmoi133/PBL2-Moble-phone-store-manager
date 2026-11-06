@@ -45,7 +45,7 @@ LoginScreen::LoginScreen(AppController *ctrl,
 
   card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 16);
   gtk_widget_add_css_class(card, "login-card");
-  gtk_widget_set_size_request(card, 480, -1);
+  gtk_widget_set_size_request(card, 540, -1);
 
   gtk_box_append(GTK_BOX(centerBox), card);
   gtk_box_append(GTK_BOX(rootWidget), centerBox);
@@ -71,7 +71,7 @@ void LoginScreen::showLoginForm() {
   gtk_widget_add_css_class(lblTitle, "login-title");
 
   GtkWidget *lblSubtitle =
-      gtk_label_new("Hệ thống quản lý cửa hàng điện thoại — Đồ án PBL2");
+      gtk_label_new("Hệ thống Quản lý Cửa hàng Điện thoại");
   gtk_widget_add_css_class(lblSubtitle, "login-subtitle");
 
   gtk_box_append(GTK_BOX(brandBox), lblLogo);
@@ -91,9 +91,24 @@ void LoginScreen::showLoginForm() {
   entryPassword = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(entryPassword), "Nhập mật khẩu...");
   gtk_widget_set_name(entryPassword, "login_password_entry");
-  gtk_box_append(GTK_BOX(card),
-                 UIComponents::createFormField(
-                     "Mật khẩu", UIComponents::createPasswordField(entryPassword)));
+  gtk_box_append(
+      GTK_BOX(card),
+      UIComponents::createFormField(
+          "Mật khẩu", UIComponents::createPasswordField(entryPassword)));
+
+  // Xóa cảnh báo lỗi khi người dùng bắt đầu nhập lại
+  g_signal_connect_swapped(entryUsername, "changed",
+                           G_CALLBACK(+[](LoginScreen *s) {
+                             if (s->lblError)
+                               gtk_widget_set_visible(s->lblError, FALSE);
+                           }),
+                           this);
+  g_signal_connect_swapped(entryPassword, "changed",
+                           G_CALLBACK(+[](LoginScreen *s) {
+                             if (s->lblError)
+                               gtk_widget_set_visible(s->lblError, FALSE);
+                           }),
+                           this);
 
   // Corner Action 1: Quên mật khẩu (gọn ở góc phải bên dưới ô mật khẩu)
   GtkWidget *forgotBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -107,9 +122,10 @@ void LoginScreen::showLoginForm() {
   gtk_box_append(GTK_BOX(forgotBox), btnForgot);
   gtk_box_append(GTK_BOX(card), forgotBox);
 
-  // Error message label
+  // Inline Alert message box
   lblError = gtk_label_new("");
-  gtk_widget_add_css_class(lblError, "badge-cancelled");
+  gtk_widget_add_css_class(lblError, "login-alert");
+  gtk_label_set_wrap(GTK_LABEL(lblError), TRUE);
   gtk_widget_set_visible(lblError, FALSE);
   gtk_box_append(GTK_BOX(card), lblError);
 
@@ -146,8 +162,7 @@ void LoginScreen::showLoginForm() {
   gtk_widget_set_margin_bottom(sep, 6);
   gtk_box_append(GTK_BOX(card), sep);
 
-  GtkWidget *lblQuick =
-      gtk_label_new("Tài khoản Demo để kiểm thử đồ án:");
+  GtkWidget *lblQuick = gtk_label_new("Tài khoản mẫu dùng thử hệ thống:");
   gtk_widget_add_css_class(lblQuick, "stat-label");
   gtk_label_set_xalign(GTK_LABEL(lblQuick), 0.0f);
   gtk_box_append(GTK_BOX(card), lblQuick);
@@ -251,9 +266,10 @@ void LoginScreen::showRegisterForm() {
   GtkWidget *ePassConfirm = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(ePassConfirm),
                                  "Nhập lại mật khẩu...");
-  gtk_box_append(GTK_BOX(card), UIComponents::createFormField(
-                                    "Xác nhận mật khẩu *",
-                                    UIComponents::createPasswordField(ePassConfirm)));
+  gtk_box_append(GTK_BOX(card),
+                 UIComponents::createFormField(
+                     "Xác nhận mật khẩu *",
+                     UIComponents::createPasswordField(ePassConfirm)));
 
   GtkWidget *lblRegMsg = gtk_label_new("");
   gtk_widget_add_css_class(lblRegMsg, "badge-cancelled");
@@ -326,7 +342,7 @@ void LoginScreen::showRegisterForm() {
 void LoginScreen::showForgotPasswordDialog() {
   GtkWidget *win = gtk_window_new();
   gtk_window_set_title(GTK_WINDOW(win), "Khôi phục mật khẩu");
-  gtk_window_set_default_size(GTK_WINDOW(win), 450, 430);
+  gtk_window_set_default_size(GTK_WINDOW(win), 520, 480);
   gtk_window_set_modal(GTK_WINDOW(win), TRUE);
 
   GtkWidget *cardBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 14);
@@ -337,9 +353,10 @@ void LoginScreen::showForgotPasswordDialog() {
   gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
   gtk_box_append(GTK_BOX(cardBox), title);
 
-  GtkWidget *desc = gtk_label_new("Tính năng mô phỏng cho đồ án PBL2: Nhập tên "
-                                  "tài khoản, SĐT hoặc Email đã đăng ký để xác minh "
-                                  "và mật khẩu mới (tối thiểu 4 ký tự):");
+  GtkWidget *desc =
+      gtk_label_new("Tính năng mô phỏng cho đồ án PBL2: Nhập tên "
+                    "tài khoản, SĐT hoặc Email đã đăng ký để xác minh "
+                    "và mật khẩu mới (tối thiểu 4 ký tự):");
   gtk_widget_add_css_class(desc, "page-subtitle");
   gtk_label_set_wrap(GTK_LABEL(desc), TRUE);
   gtk_label_set_xalign(GTK_LABEL(desc), 0.0f);
@@ -356,16 +373,15 @@ void LoginScreen::showForgotPasswordDialog() {
   gtk_entry_set_placeholder_text(GTK_ENTRY(eContact),
                                  "SĐT hoặc Email đã đăng ký với tài khoản...");
   gtk_box_append(GTK_BOX(cardBox),
-                 UIComponents::createFormField("Xác minh danh tính (SĐT / Email)", eContact));
-  
+                 UIComponents::createFormField(
+                     "Xác minh danh tính (SĐT / Email)", eContact));
+
   GtkWidget *ePass = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(ePass), "Nhập mật khẩu mới...");
-  gtk_box_append(
-      GTK_BOX(cardBox),
-      UIComponents::createFormField("Mật khẩu mới",
-                                    UIComponents::createPasswordField(ePass)));
+  gtk_box_append(GTK_BOX(cardBox),
+                 UIComponents::createFormField(
+                     "Mật khẩu mới", UIComponents::createPasswordField(ePass)));
 
-      
   GtkWidget *btnRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
   gtk_widget_set_halign(btnRow, GTK_ALIGN_END);
   gtk_widget_set_margin_top(btnRow, 10);
@@ -401,7 +417,8 @@ void LoginScreen::showForgotPasswordDialog() {
             strlen(contact) == 0) {
           UIComponents::showWarningDialog(
               GTK_WINDOW(c->w), "Thiếu thông tin",
-              "Vui lòng nhập tên đăng nhập, SĐT/Email xác minh và mật khẩu mới!");
+              "Vui lòng nhập tên đăng nhập, SĐT/Email xác minh và mật khẩu "
+              "mới!");
           return;
         }
 
@@ -453,7 +470,17 @@ void LoginScreen::triggerLogin() {
     }
   } else {
     if (lblError) {
-      gtk_label_set_text(GTK_LABEL(lblError), resp.result.message.c_str());
+      std::string msg = resp.result.message;
+      if (msg.find("Mật khẩu không chính xác") != std::string::npos) {
+        msg = "⚠️ Sai mật khẩu đăng nhập. Vui lòng kiểm tra lại.";
+      } else if (msg.find("không tồn tại") != std::string::npos) {
+        msg = "⚠️ Tài khoản không tồn tại hoặc đã bị khóa trong hệ thống.";
+      } else if (msg.find("không được để trống") != std::string::npos) {
+        msg = "⚠️ Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";
+      } else if (!msg.empty() && msg.find("⚠️") == std::string::npos) {
+        msg = "⚠️ " + msg;
+      }
+      gtk_label_set_text(GTK_LABEL(lblError), msg.c_str());
       gtk_widget_set_visible(lblError, TRUE);
     }
   }

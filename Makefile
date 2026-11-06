@@ -8,8 +8,10 @@ CXXFLAGS = -std=c++17 -Wall -Wextra \
            -Wno-unused-parameter \
            -Wno-deprecated-declarations \
            -Wno-pedantic
+CXXFLAGS += $(shell pkg-config --cflags fontconfig)
 
 LDFLAGS  = $(shell pkg-config --libs gtk4)
+LDFLAGS += $(shell pkg-config --libs fontconfig)
 
 TARGET   = pbl2_gtk4
 
@@ -22,19 +24,33 @@ SRCS     = main.cpp \
            UI/screens/SalesScreens.cpp \
            UI/screens/WarehouseScreens.cpp \
            UI/screens/AdminScreens.cpp \
-           UI/AppRunner.cpp
+           UI/AppRunner.cpp \
+           UI/FontSetup.cpp
 
 OBJS     = $(SRCS:.cpp=.o)
 DEPS     = $(OBJS:.o=.d)
 
 CORE_HEADERS = source/PBL2.h
 
-.PHONY: all run clean info
+.PHONY: all run clean info assets check-emoji deps dist
 
 # Default target
-all: $(TARGET)
+all: assets $(TARGET)
 	@echo ""
 	@echo "=== Build thanh cong! Chay: mingw32-make run ==="
+
+# Kiểm tra tài nguyên font emoji
+assets:
+	@powershell -NoProfile -Command "if (-not (Test-Path 'UI\styles\NotoColorEmoji.ttf')) { Write-Warning 'Missing UI\styles\NotoColorEmoji.ttf; emoji font loading may fail.' }"
+
+# Kiểm tra fontconfig, Pango, Cairo và GTK4
+check-emoji:
+	@fc-list | findstr /i emoji
+	@pkg-config --modversion pango cairo gtk4
+
+# Cài các dependency cần thiết trong MSYS2 UCRT64
+deps:
+	pacman -S --needed mingw-w64-ucrt-x86_64-fontconfig mingw-w64-ucrt-x86_64-adwaita-icon-theme
 
 # Link
 $(TARGET): $(OBJS)
@@ -59,7 +75,7 @@ clean:
 	@echo "[PBL2] Da don dep sach!"
 
 # In thông tin môi trường build
-info:
+info: check-emoji
 	@echo "CXX:     $(CXX)"
 	@echo "GTK4:    $(shell pkg-config --modversion gtk4)"
 	@echo "TARGET:  $(TARGET)"

@@ -27,7 +27,10 @@
 class RealTimeManager {
 private:
     std::string currentSimulatedTime; // Format: "YYYY-MM-DD HH:MM:SS"
-    std::string filePath = PathHelper::resolveDataPath("data/realTime.txt");
+
+    std::string getFilePath() const {
+        return PathHelper::resolveDataPath("data/realTime.txt");
+    }
 
     RealTimeManager() {
         loadFromFile();
@@ -41,7 +44,7 @@ public:
 
     // Tải thời gian thực từ file data/realTime.txt
     void loadFromFile() {
-        std::ifstream file(filePath);
+        std::ifstream file(getFilePath());
         if (file.is_open()) {
             std::string line;
             if (std::getline(file, line) && line.length() >= 10) {
@@ -58,7 +61,7 @@ public:
 
     // Lưu thời gian thực vào file data/realTime.txt
     void saveToFile() {
-        std::ofstream file(filePath);
+        std::ofstream file(getFilePath());
         if (file.is_open()) {
             file << currentSimulatedTime << std::endl;
             file.close();
@@ -76,6 +79,34 @@ public:
             return currentSimulatedTime.substr(0, 10);
         }
         return "2026-10-17";
+    }
+
+    // Tăng thời gian thêm số giây (mặc định 1 giây cho đồng hồ thời gian thực)
+    void advanceSeconds(int seconds = 1) {
+        std::tm tmTime = {};
+        int y = 2026, m = 10, d = 17, hh = 11, mm = 30, ss = 0;
+        if (sscanf(currentSimulatedTime.c_str(), "%d-%d-%d %d:%d:%d", &y, &m, &d, &hh, &mm, &ss) >= 3) {
+            tmTime.tm_year = y - 1900;
+            tmTime.tm_mon = m - 1;
+            tmTime.tm_mday = d;
+            tmTime.tm_hour = hh;
+            tmTime.tm_min = mm;
+            tmTime.tm_sec = ss + seconds;
+            tmTime.tm_isdst = -1;
+
+            std::time_t nextTime = std::mktime(&tmTime);
+            if (nextTime != (std::time_t)(-1)) {
+                std::tm nextTm;
+#ifdef _WIN32
+                localtime_s(&nextTm, &nextTime);
+#else
+                localtime_r(&nextTime, &nextTm);
+#endif
+                std::ostringstream oss;
+                oss << std::put_time(&nextTm, "%Y-%m-%d %H:%M:%S");
+                currentSimulatedTime = oss.str();
+            }
+        }
     }
 
     // Thiết lập thời gian giả lập mới

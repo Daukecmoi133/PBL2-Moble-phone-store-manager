@@ -90,7 +90,7 @@ std::vector<std::string> collectIds(const Records& records) {
 
 // ==== Các hàm chuyển đổi Model <-> ViewModel ====
 
-ProductItemViewModel phoneToViewModel(const Phone& p) {
+ProductItemViewModel phoneToViewModel(const Phone& p, PhoneService* ps = nullptr) {
     ProductItemViewModel vm;
     vm.id = p.getID();
     vm.name = p.getName();
@@ -102,8 +102,16 @@ ProductItemViewModel phoneToViewModel(const Phone& p) {
     vm.reservedStock = 0;
     vm.manufacturer = p.getManufacturer();
     vm.specs = p.getSpecifications();
-    if (vm.id == "PHN-000101") {
-        vm.imageUrl = "data/Device/productImages/oppo_reno_16_f_5g_bac.png";
+
+    if (ps != nullptr) {
+        std::string img = ps->getProductImagePath(vm.id);
+        if (!img.empty()) {
+            vm.imageUrl = img;
+        }
+    }
+    // Tương thích ngược ảnh demo ban đầu nếu chưa được gán trong ProductImage.txt
+    if (vm.imageUrl.empty() && vm.id == "PHN-000101") {
+        vm.imageUrl = "Device/productImages/oppo_reno_16_f_5g_bac.png";
     }
     vm.calculateStockStatus();
     return vm;
@@ -338,7 +346,7 @@ AppController::AppController(
         store.products.clear();
         const Vector<Phone>& phones = phoneService->getAllPhones();
         for (int i = 0; i < phones.getSize(); ++i) {
-            store.products.push_back(phoneToViewModel(phones[i]));
+            store.products.push_back(phoneToViewModel(phones[i], phoneService));
         }
     }
 
@@ -663,6 +671,10 @@ OperationResult AppController::advanceSimulatedDays(int days) {
     return OperationResult::Ok("Đã điều chỉnh bước nhảy thời gian mô phỏng thành công!");
 }
 
+void AppController::advanceSimulatedSeconds(int seconds) {
+    RealTimeManager::getInstance().advanceSeconds(seconds);
+}
+
 OperationResult AppController::resetSimulatedTimeToNow() {
     RealTimeManager::getInstance().resetToSystemNow();
     return OperationResult::Ok("Đã đồng bộ lại thời gian theo đồng hồ thực của máy tính!");
@@ -855,6 +867,15 @@ OperationResult AppController::addProduct(const ProductItemViewModel& rawProduct
         if (!phoneService->addPhone(phone, serviceErr)) {
             return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu sản phẩm vào file dữ liệu!");
         }
+
+        // Lưu ảnh nếu có
+        std::string trimmedImg = trimCopy(newItem.imageUrl);
+        if (!trimmedImg.empty()) {
+            std::string imgErr;
+            if (phoneService->updateProductImage(newItem.id, trimmedImg, imgErr)) {
+                newItem.imageUrl = phoneService->getProductImagePath(newItem.id);
+            }
+        }
     }
 
     store.products.push_back(newItem);
@@ -882,6 +903,17 @@ OperationResult AppController::updateProduct(const ProductItemViewModel& rawProd
         std::string serviceErr;
         if (!phoneService->updatePhone(phone, serviceErr)) {
             return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật sản phẩm vào file dữ liệu!");
+        }
+
+        // Cập nhật ảnh nếu có thay đổi đường dẫn ảnh
+        std::string currentImg = phoneService->getProductImagePath(product.id);
+        std::string trimmedImg = trimCopy(product.imageUrl);
+        if (!trimmedImg.empty() && trimmedImg != currentImg && trimmedImg != ("data/" + currentImg)) {
+            std::string imgErr;
+            if (!phoneService->updateProductImage(product.id, trimmedImg, imgErr)) {
+                return OperationResult::Fail(!imgErr.empty() ? imgErr : "Lỗi khi cập nhật ảnh sản phẩm!");
+            }
+            product.imageUrl = phoneService->getProductImagePath(product.id);
         }
     }
 
@@ -950,6 +982,10 @@ OperationResult AppController::deleteProduct(const std::string& id) {
         if (!phoneService->deletePhone(id, serviceErr)) {
             return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi xóa sản phẩm khỏi file dữ liệu!");
         }
+        if (phoneService->getProductImageRepository() != nullptr) {
+            phoneService->getProductImageRepository()->removeImagePath(id);
+            phoneService->getProductImageRepository()->saveToFile();
+        }
     }
 
     for (auto it = store.products.begin(); it != store.products.end(); ++it) {
@@ -961,6 +997,31 @@ OperationResult AppController::deleteProduct(const std::string& id) {
     }
 
     return OperationResult::Fail("Không tìm thấy sản phẩm để xóa!");
+}
+
+OperationResult AppController::updateProductImage(const std::string& productId, const std::string& imageFilePath) {
+    REQUIRE_ADMIN_ROLE();
+    if (!IdGenerator::isValidId(productId, "PHN")) {
+        return OperationResult::Fail("Mã sản phẩm không đúng định dạng PHN-000001!");
+    }
+    if (phoneService == nullptr) {
+        return OperationResult::Fail("Hệ thống quản lý sản phẩm chưa sẵn sàng!");
+    }
+
+    std::string serviceErr;
+    if (!phoneService->updateProductImage(productId, imageFilePath, serviceErr)) {
+        return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Không thể cập nhật ảnh sản phẩm!");
+    }
+
+    std::string newPath = phoneService->getProductImagePath(productId);
+    auto& store = MockDataStore::getInstance();
+    for (auto& p : store.products) {
+        if (p.id == productId) {
+            p.imageUrl = newPath;
+            break;
+        }
+    }
+    return OperationResult::Ok("Cập nhật ảnh sản phẩm thành công!");
 }
 
 // === GIỎ HÀNG & CHECKOUT ===
@@ -1525,7 +1586,10 @@ OperationResult AppController::createPosInvoice(const std::string& customerId, c
     // Mã giảm giá
     double discount = 0.0;
     if (!discountCode.empty()) {
-        validateDiscount(discountCode, subtotal, discount);
+        OperationResult dRes = validateDiscount(discountCode, subtotal, discount);
+        if (!dRes.success) {
+            return dRes;
+        }
     }
 
     double total = subtotal - discount;
@@ -1794,7 +1858,7 @@ OperationResult AppController::addCustomer(const CustomerFormRequest& req) {
     newC.firstName = req.firstName;
     newC.middleName = req.middleName;
     newC.lastName = req.lastName;
-    newC.fullName = req.lastName + " " + req.middleName + (req.middleName.empty() ? "" : " ") + req.firstName;
+    newC.fullName = Name(req.firstName, req.middleName, req.lastName).getFullName();
     newC.phone = req.phone;
     newC.email = req.email;
     newC.address = req.address;
@@ -1853,7 +1917,7 @@ OperationResult AppController::updateCustomer(const CustomerFormRequest& req) {
             c.firstName = req.firstName;
             c.middleName = req.middleName;
             c.lastName = req.lastName;
-            c.fullName = req.lastName + " " + req.middleName + (req.middleName.empty() ? "" : " ") + req.firstName;
+            c.fullName = Name(req.firstName, req.middleName, req.lastName).getFullName();
             c.phone = req.phone;
             c.email = req.email;
             c.address = req.address;
@@ -1955,7 +2019,7 @@ OperationResult AppController::addEmployee(const EmployeeFormRequest& req) {
     newE.firstName = req.firstName;
     newE.middleName = req.middleName;
     newE.lastName = req.lastName;
-    newE.fullName = req.lastName + " " + req.middleName + (req.middleName.empty() ? "" : " ") + req.firstName;
+    newE.fullName = Name(req.firstName, req.middleName, req.lastName).getFullName();
     newE.phone = req.phone;
     newE.email = req.email;
     newE.address = req.address;
@@ -2032,7 +2096,7 @@ OperationResult AppController::updateEmployee(const EmployeeFormRequest& req) {
             e.firstName = req.firstName;
             e.middleName = req.middleName;
             e.lastName = req.lastName;
-            e.fullName = req.lastName + " " + req.middleName + (req.middleName.empty() ? "" : " ") + req.firstName;
+            e.fullName = Name(req.firstName, req.middleName, req.lastName).getFullName();
             e.phone = req.phone;
             e.email = req.email;
             e.address = req.address;
@@ -2097,6 +2161,33 @@ std::vector<ProductItemViewModel> AppController::getInventory(bool lowStockOnly)
         }
     }
     return lowStock;
+}
+
+std::vector<ProductItemViewModel> AppController::getProductsBySupplier(const std::string& supplierId) {
+    std::vector<ProductItemViewModel> all = getProducts();
+    std::vector<ProductItemViewModel> filtered;
+    for (const auto& p : all) {
+        if (supplierService != nullptr) {
+            if (supplierService->isProductSuppliedBy(supplierId, p.id)) {
+                filtered.push_back(p);
+            }
+        } else {
+            bool foundInReceipts = false;
+            for (const auto& r : MockDataStore::getInstance().receipts) {
+                if (r.supplierId == supplierId) {
+                    for (const auto& d : r.details) {
+                        if (d.phoneId == p.id) {
+                            filtered.push_back(p);
+                            foundInReceipts = true;
+                            break;
+                        }
+                    }
+                }
+                if (foundInReceipts) break;
+            }
+        }
+    }
+    return filtered;
 }
 
 std::vector<SupplierItemViewModel> AppController::getSuppliers(const std::string& keyword) {
@@ -2252,6 +2343,9 @@ OperationResult AppController::createGoodsReceipt(const CreateReceiptRequest& re
             item.importPrice < 0 || getProductById(item.phoneId).id.empty()) {
             return OperationResult::Fail("Chi tiết phiếu nhập chứa sản phẩm hoặc số lượng không hợp lệ!");
         }
+        if (supplierService != nullptr && !supplierService->isProductSuppliedBy(req.supplierId, item.phoneId)) {
+            return OperationResult::Fail("Sản phẩm [" + item.phoneName + "] không thuộc danh mục cung cấp của nhà cung cấp đã chọn!");
+        }
     }
     std::time_t now = std::time(nullptr);
     std::tm* tm_now = std::localtime(&now);
@@ -2326,18 +2420,32 @@ std::vector<DiscountItemViewModel> AppController::getDiscounts() {
 
 OperationResult AppController::updateDiscount(const DiscountFormRequest& req) {
     REQUIRE_ADMIN_ROLE();
-    if (req.code.empty() || req.value <= 0) {
+    std::string codeTrim = StringHelper::trim(req.code);
+    if (codeTrim.empty() || req.value <= 0) {
         return OperationResult::Fail("Mã voucher và giá trị giảm phải lớn hơn 0!");
+    }
+    std::string expTrim = StringHelper::trim(req.expiryDate);
+    if (expTrim.empty()) {
+        return OperationResult::Fail("Ngày hết hạn của voucher không được để trống!");
+    }
+    if (!DateTime::isValidDateString(expTrim)) {
+        return OperationResult::Fail("Ngày hết hạn không hợp lệ theo lịch (định dạng chuẩn: DD/MM/YYYY)!");
+    }
+    if (req.minOrderValue < 0) {
+        return OperationResult::Fail("Giá trị đơn hàng tối thiểu không được âm!");
+    }
+    if (req.maxDiscountAmount < 0) {
+        return OperationResult::Fail("Mức giảm tối đa không được âm!");
     }
 
     // Cập nhật xuống file qua DiscountService
     if (discountService != nullptr) {
-        DiscountCode* existing = discountService->getByCode(req.code);
+        DiscountCode* existing = discountService->getByCode(codeTrim);
         DiscountType dtype = (req.type == 0) ? DiscountType::PERCENTAGE : DiscountType::FIXED_AMOUNT;
         DateTime startDate = existing ? existing->getStartDate() : DateTime::now();
-        DateTime endDate = req.expiryDate.empty() ? (existing ? existing->getEndDate() : DateTime(31, 12, 2026, 23, 59, 59)) : DateTime::fromDateString(req.expiryDate);
+        DateTime endDate = DateTime::fromDateString(expTrim);
         int used = existing ? existing->getUsedCount() : 0;
-        DiscountCode updated(req.code, dtype, req.value, startDate, endDate, req.minOrderValue, req.maxDiscountAmount, req.maxUsage, used);
+        DiscountCode updated(codeTrim, dtype, req.value, startDate, endDate, req.minOrderValue, req.maxDiscountAmount, req.maxUsage, used);
         std::string serviceErr;
         if (!discountService->updateDiscount(updated, serviceErr)) {
             return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật mã giảm giá vào file dữ liệu!");
@@ -2354,14 +2462,28 @@ OperationResult AppController::updateDiscount(const DiscountFormRequest& req) {
 
 OperationResult AppController::addDiscount(const DiscountFormRequest& req) {
     REQUIRE_ADMIN_ROLE();
-    if (req.code.empty() || req.value <= 0) {
+    std::string codeTrim = StringHelper::trim(req.code);
+    if (codeTrim.empty() || req.value <= 0) {
         return OperationResult::Fail("Mã voucher và giá trị giảm phải lớn hơn 0!");
+    }
+    std::string expTrim = StringHelper::trim(req.expiryDate);
+    if (expTrim.empty()) {
+        return OperationResult::Fail("Ngày hết hạn của voucher không được để trống!");
+    }
+    if (!DateTime::isValidDateString(expTrim)) {
+        return OperationResult::Fail("Ngày hết hạn không hợp lệ theo lịch (định dạng chuẩn: DD/MM/YYYY)!");
+    }
+    if (req.minOrderValue < 0) {
+        return OperationResult::Fail("Giá trị đơn hàng tối thiểu không được âm!");
+    }
+    if (req.maxDiscountAmount < 0) {
+        return OperationResult::Fail("Mức giảm tối đa không được âm!");
     }
 
     auto& store = MockDataStore::getInstance();
     for (const auto& d : store.discounts) {
-        if (d.code == req.code) {
-            return OperationResult::Fail("Mã giảm giá '" + req.code + "' đã tồn tại!");
+        if (d.code == codeTrim) {
+            return OperationResult::Fail("Mã giảm giá '" + codeTrim + "' đã tồn tại!");
         }
     }
 
@@ -2369,8 +2491,8 @@ OperationResult AppController::addDiscount(const DiscountFormRequest& req) {
     if (discountService != nullptr) {
         DiscountType dtype = (req.type == 0) ? DiscountType::PERCENTAGE : DiscountType::FIXED_AMOUNT;
         DateTime startDate = DateTime::now();
-        DateTime endDate = req.expiryDate.empty() ? DateTime(31, 12, 2026, 23, 59, 59) : DateTime::fromDateString(req.expiryDate);
-        DiscountCode dc(req.code, dtype, req.value, startDate, endDate, req.minOrderValue, req.maxDiscountAmount, req.maxUsage, 0);
+        DateTime endDate = DateTime::fromDateString(expTrim);
+        DiscountCode dc(codeTrim, dtype, req.value, startDate, endDate, req.minOrderValue, req.maxDiscountAmount, req.maxUsage, 0);
         std::string serviceErr;
         if (!discountService->addDiscount(dc, serviceErr)) {
             return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu mã giảm giá vào file dữ liệu!");
@@ -2378,22 +2500,22 @@ OperationResult AppController::addDiscount(const DiscountFormRequest& req) {
     }
 
     DiscountItemViewModel d;
-    d.id = req.code;
-    d.code = req.code;
+    d.id = codeTrim;
+    d.code = codeTrim;
     d.typeName = (req.type == 0) ? "Giảm phần trăm (%)" : "Số tiền cố định";
     d.value = req.value;
     d.formattedValue = (req.type == 0) ? (std::to_string(static_cast<int>(req.value)) + "%")
-                                        : (std::to_string(static_cast<long long>(req.value)) + " đ");
+                                        : StringHelper::formatCurrency(req.value);
     d.minOrderValue = req.minOrderValue;
     d.maxDiscountAmount = req.maxDiscountAmount;
-    d.expiryDate = req.expiryDate.empty() ? "31/12/2026" : req.expiryDate;
+    d.expiryDate = expTrim;
     d.usedCount = 0;
     d.maxUsage = req.maxUsage;
     d.isValid = true;
     d.description = req.description;
 
     store.discounts.push_back(d);
-    return OperationResult::Ok("Thêm mã giảm giá '" + req.code + "' thành công!");
+    return OperationResult::Ok("Thêm mã giảm giá '" + codeTrim + "' thành công!");
 }
 
 OperationResult AppController::deleteDiscount(const std::string& id) {

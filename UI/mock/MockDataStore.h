@@ -19,6 +19,7 @@
 
 #include <map>
 #include "RealTimeManager.h"
+#include "../../source/utils/StringHelper.h"
 
 /**
  * @file MockDataStore.h
@@ -116,7 +117,7 @@ public:
                     d.formattedValue = std::to_string(static_cast<int>(req.value)) + "%";
                 } else {
                     d.typeName = "Số tiền cố định";
-                    d.formattedValue = std::to_string(static_cast<long long>(req.value)) + " đ";
+                    d.formattedValue = StringHelper::formatCurrency(req.value);
                 }
                 d.isValid = !RealTimeManager::getInstance().isDateExpired(d.expiryDate);
                 return true;
@@ -162,7 +163,7 @@ private:
         p1.reservedStock = 2;
         p1.manufacturer = "Oppo Electronics";
         p1.specs = "6.57 inch AMOLED, 8GB RAM, 256GB ROM, Dimensity 7300-Energy, Pin 7000mAh, Sạc 45W";
-        p1.imageUrl = "data/Device/productImages/oppo_reno_16_f_5g_bac.png";
+        p1.imageUrl = "Device/productImages/oppo_reno_16_f_5g_bac.png";
         p1.calculateStockStatus();
         products.push_back(p1);
 

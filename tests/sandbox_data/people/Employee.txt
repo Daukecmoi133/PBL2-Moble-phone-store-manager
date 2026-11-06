@@ -1,4 +1,0 @@
-id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary|accountId
-EMP-000001|Admin|He|Thong|0900000001|admin@example.com|admin.demo|DemoOnly-Admin-2026|1|Hai Chau, Da Nang|15000000|ACC-000001
-EMP-000002|Tran|Khanh|Duy|0987654321|sales@example.com|sales.demo|DemoOnly-Sales-2026|2|Hoa Khanh, Da Nang|8000000|ACC-000002
-EMP-000003|Le|Van|Kho|0935123456|warehouse@example.com|warehouse.demo|DemoOnly-Warehouse-2026|3|Lien Chieu, Da Nang|7500000|ACC-000003

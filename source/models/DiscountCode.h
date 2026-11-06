@@ -128,11 +128,12 @@ inline DiscountCode DiscountCode::fromFileLine(const std::string& line) {
 
         std::string code   = StringHelper::trim(parts[0]);
         int typeInt        = std::stoi(StringHelper::trim(parts[1])); // 0=PERCENTAGE, 1=FIXED_AMOUNT
-        double value       = std::stod(StringHelper::trim(parts[2]));
+        double value       = (typeInt == 0) ? std::stod(StringHelper::trim(parts[2]))
+                                            : StringHelper::parsePrice(parts[2]);
         DateTime startDate = DateTime::fromDateString(StringHelper::trim(parts[3]));
         DateTime endDate   = DateTime::fromDateString(StringHelper::trim(parts[4]));
-        double minOrder    = std::stod(StringHelper::trim(parts[5]));
-        double maxDiscount = std::stod(StringHelper::trim(parts[6]));
+        double minOrder    = StringHelper::parsePrice(parts[5]);
+        double maxDiscount = StringHelper::parsePrice(parts[6]);
         int maxUsage       = std::stoi(StringHelper::trim(parts[7]));
         int usedCount      = std::stoi(StringHelper::trim(parts[8]));
 

@@ -40,6 +40,7 @@ private:
 
     // POS state
     std::string posSelectedCustomerId;
+    std::vector<std::string> posCustomerIds; // Danh sách ID tương ứng 1-1 với items trong posComboCustomer
     std::vector<CartItemViewModel> posCartItems;
     std::string posAppliedCoupon;
     GtkWidget* posCartListBox = nullptr;
@@ -49,6 +50,9 @@ private:
     GtkWidget* posLblGrandTotal = nullptr;
     GtkWidget* posEntryCash = nullptr;
     GtkWidget* posEntrySearch = nullptr;
+    GtkWidget* posSearchPopover = nullptr;
+    GtkWidget* posSearchListBox = nullptr;
+    GtkWidget* posSearchStatusLbl = nullptr;
     GtkWidget* posBtnPay = nullptr;
     GtkWidget* posLblChange = nullptr;
     GtkWidget* posComboCustomer = nullptr;
@@ -71,6 +75,7 @@ private:
 
 public:
     SalesScreens(AppController* ctrl, MainShellWindow* parentShell);
+    ~SalesScreens();
 
     GtkWidget* getDashboardView() { return dashboardView; }
     GtkWidget* getPosView() { return posView; }
@@ -83,12 +88,20 @@ public:
     void refreshAll();
     void refreshDashboard();
     void refreshPos();
+    void refreshPosCustomers();
+    bool addProductToPosCart(const ProductItemViewModel& prod);
+    void updatePosSearchSuggestions(const std::string& keyword);
     void refreshProductLookup(const std::string& keyword = "");
     void refreshCustomers(const std::string& keyword = "");
     void refreshInvoices(const std::string& keyword = "");
     void refreshOnlineOrders();
     void refreshWarrantyIntake();
     void focusPosSearch();
+
+    // Getters phục vụ kiểm thử và kiểm soát trạng thái POS
+    const std::string& getPosSelectedCustomerId() const { return posSelectedCustomerId; }
+    const std::vector<std::string>& getPosCustomerIds() const { return posCustomerIds; }
+    const std::vector<CartItemViewModel>& getPosCartItems() const { return posCartItems; }
 
 private:
     void buildDashboardView();

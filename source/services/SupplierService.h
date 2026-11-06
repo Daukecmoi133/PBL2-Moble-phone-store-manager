@@ -6,12 +6,14 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <fstream>
 #include "../models/Supplier.h"
 #include "../models/ImportReceipt.h"
 #include "../core/Vector.h"
 #include "../repositories/SupplierRepository.h"
 #include "../repositories/StockReceiptRepository.h"
 #include "../utils/StringHelper.h"
+#include "../utils/PathHelper.h"
 #include "Check.h"
 #include "PhoneService.h"
 #include "../utils/TransactionCoordinator.h"
@@ -60,8 +62,12 @@ public:
     ImportReceipt* getReceiptById(const std::string& id);
     Vector<ImportReceipt> getReceiptsBySupplierId(const std::string& supplierId) const;
 
+    // ==== SUPPLIER - PRODUCT RELATIONSHIP (BUG-CRITICAL-05) ====
+    bool isProductSuppliedBy(const std::string& supplierId, const std::string& phoneId) const;
+    Vector<Phone> getProductsBySupplier(const std::string& supplierId) const;
+
     // Nghiệp vụ nhập kho:
-    //  1. Validate: supplier tồn tại, employee tồn tại, tất cả detail hợp lệ
+    //  1. Validate: supplier tồn tại, employee tồn tại, tất cả detail hợp lệ, thuộc danh mục NCC
     //  2. Lưu phiếu nhập vào repository
     //  3. Tăng tồn kho từng sản phẩm qua PhoneService
     //  4. Rollback (xóa phiếu + hoàn tồn kho) nếu bất kỳ bước nào thất bại
@@ -198,6 +204,59 @@ inline Vector<ImportReceipt> SupplierService::getReceiptsBySupplierId(const std:
     return receiptRepo.findBySupplierId(supplierId);
 }
 
+// ==== SUPPLIER - PRODUCT RELATIONSHIP (BUG-HIGH-04) ====
+// Xác thực quyền cung cấp:
+// 1. Confirmed Mapping: Có bản ghi xác nhận trong Device/SupplierProducts.txt
+// 2. Historical Receipts: Có giao dịch nhập kho đã được ghi nhận trong StockReceipts.txt
+// LƯU Ý: Brand affinity chỉ mang tính chất gợi ý UI, TUYỆT ĐỐI không xem là bằng chứng xác thực.
+inline bool SupplierService::isProductSuppliedBy(const std::string& supplierId, const std::string& phoneId) const {
+    Supplier* sup = const_cast<SupplierRepository&>(supplierRepo).findById(supplierId);
+    if (sup == nullptr) return false;
+
+    // 1. Kiểm tra File cấu hình liên kết xác nhận Device/SupplierProducts.txt (Confirmed Mapping)
+    std::string mappingPath = PathHelper::resolveDataPath("Device/SupplierProducts.txt");
+    std::ifstream mf(mappingPath);
+    if (mf.is_open()) {
+        std::string line;
+        while (std::getline(mf, line)) {
+            line = StringHelper::trim(line);
+            if (line.empty() || line[0] == '#') continue;
+            Vector<std::string> parts = StringHelper::split(line, '|');
+            if (parts.getSize() >= 2) {
+                if (StringHelper::trim(parts[0]) == supplierId && StringHelper::trim(parts[1]) == phoneId) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    // 2. Kiểm tra lịch sử giao dịch nhập hàng thực tế (Historical Receipts)
+    Vector<ImportReceipt> receipts = receiptRepo.findBySupplierId(supplierId);
+    for (int i = 0; i < receipts.getSize(); ++i) {
+        const Vector<OrderDetail>& details = receipts[i].getDetails();
+        for (int j = 0; j < details.getSize(); ++j) {
+            if (details[j].getPhoneId() == phoneId) {
+                return true;
+            }
+        }
+    }
+
+    // Không tự gán nhà cung cấp khi chưa có bằng chứng (Không dùng Brand affinity làm bằng chứng)
+    return false;
+}
+
+inline Vector<Phone> SupplierService::getProductsBySupplier(const std::string& supplierId) const {
+    Vector<Phone> result;
+    if (phoneService == nullptr) return result;
+    const Vector<Phone>& allPhones = phoneService->getAllPhones();
+    for (int i = 0; i < allPhones.getSize(); ++i) {
+        if (isProductSuppliedBy(supplierId, allPhones[i].getID())) {
+            result.push_back(allPhones[i]);
+        }
+    }
+    return result;
+}
+
 // Nghiệp vụ nhập kho - GIAO DỊCH NGUYÊN TỬ (Atomic Transaction)
 // Bước 1: Validate tất cả detail trước khi thực hiện bất kỳ thay đổi nào
 // Bước 2: Lưu phiếu nhập
@@ -260,6 +319,12 @@ inline bool SupplierService::receiveStock(ImportReceipt& receipt, std::string& e
                 errorMessage = "San pham ID [" + details[i].getPhoneId() + "] khong ton tai trong he thong!";
                 return false;
             }
+        }
+        // Kiểm tra ràng buộc nhà cung cấp - sản phẩm (BUG-CRITICAL-05)
+        if (!isProductSuppliedBy(receipt.getSupplierId(), details[i].getPhoneId())) {
+            errorMessage = "Sản phẩm [" + details[i].getPhoneName() + "] (" + details[i].getPhoneId() + 
+                           ") không thuộc danh mục cung cấp của nhà cung cấp [" + receipt.getSupplierId() + "]!";
+            return false;
         }
     }
 

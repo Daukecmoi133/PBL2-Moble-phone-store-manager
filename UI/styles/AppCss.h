@@ -22,8 +22,10 @@
  *    - MÀU SẮC: toàn bộ màu được khai báo MỘT LẦN bằng @define-color ở đầu
  * chuỗi CSS (tiền tố pbl_), các quy tắc phía dưới chỉ tham chiếu @pbl_xxx. Đổi
  * 1 dòng @define-color là đổi cả ứng dụng.
- *    - CỠ CHỮ: tiêu đề trang 24px, tiêu đề thẻ 18px, nội dung 15px, chú thích
- * 13px, tổng tiền POS 32px.
+ *    - CỠ CHỮ (TỐI ƯU CHO NGƯỜI GIÀ & NGƯỜI MẮT YẾU): mặc định toàn cục 18px,
+ * tiêu đề trang 28px, tiêu đề thẻ 22px, nội dung/nút/ô nhập 18px, nhãn/số liệu
+ * 17px, tiêu đề bảng/huy hiệu/chú thích 16px, chỉ số KPI 32px, tổng tiền POS
+ * 38px.
  *    - KHOẢNG CÁCH: bội số của 8px (8/16/24/32); khoảng cách nhỏ dùng nửa bước
  * 4px.
  *    - BO GÓC: 8px cho nút/ô nhập, 12px cho thẻ/hộp thoại.
@@ -65,22 +67,25 @@
 // HẰNG SỐ DESIGN TOKENS C++ CHO BỐ CỤC GTK4 (4PX BASE / 8PX RHYTHM)
 // =========================================================================
 namespace DesignTokens {
-    // Quy tắc 4px base / 8px rhythm:
-    // - Nhịp chính (8px rhythm): 8, 16, 24, 32, 40, 48
-    // - Bước phụ (4px half-step): 4, 12, 20
-    constexpr int SPACE_XS  = 4;   // 0.5x (4px)  - Khoảng cách nội bộ nhỏ, dòng bảng
-    constexpr int SPACE_SM  = 8;   // 1.0x (8px)  - Khoảng cách nút bấm, padding nhỏ
-    constexpr int SPACE_MD  = 12;  // 1.5x (12px) - Khoảng cách giữa các trường form / cột
-    constexpr int SPACE_LG  = 16;  // 2.0x (16px) - Khoảng cách lưới thẻ KPI, padding chuẩn
-    constexpr int SPACE_XL  = 20;  // 2.5x (20px) - Padding thẻ nội dung vừa
-    constexpr int SPACE_2XL = 24;  // 3.0x (24px) - Padding khung trang chính (.page-container)
-    constexpr int SPACE_3XL = 32;  // 4.0x (32px) - Khoảng cách phân vùng lớn
+// Quy tắc 4px base / 8px rhythm:
+// - Nhịp chính (8px rhythm): 8, 16, 24, 32, 40, 48
+// - Bước phụ (4px half-step): 4, 12, 20
+constexpr int SPACE_XS = 4; // 0.5x (4px)  - Khoảng cách nội bộ nhỏ, dòng bảng
+constexpr int SPACE_SM = 8; // 1.0x (8px)  - Khoảng cách nút bấm, padding nhỏ
+constexpr int SPACE_MD =
+    12; // 1.5x (12px) - Khoảng cách giữa các trường form / cột
+constexpr int SPACE_LG =
+    16; // 2.0x (16px) - Khoảng cách lưới thẻ KPI, padding chuẩn
+constexpr int SPACE_XL = 20; // 2.5x (20px) - Padding thẻ nội dung vừa
+constexpr int SPACE_2XL =
+    24; // 3.0x (24px) - Padding khung trang chính (.page-container)
+constexpr int SPACE_3XL = 32; // 4.0x (32px) - Khoảng cách phân vùng lớn
 
-    // Kích thước khung điều hướng & bảng dữ liệu (bội số của 8px)
-    constexpr int SIDEBAR_WIDTH      = 240; // 30 * 8px — thống nhất với MainShellWindow
-    constexpr int TABLE_ROW_SPACING  = 4;   // 1 * 4px
-    constexpr int TABLE_CELL_SPACING = 12;  // 3 * 4px
-    constexpr int KPI_GRID_SPACING   = 16;  // 2 * 8px
+// Kích thước khung điều hướng & bảng dữ liệu (bội số của 8px)
+constexpr int SIDEBAR_WIDTH = 296;     // 37 * 8px — rộng rãi cho chữ to dễ đọc
+constexpr int TABLE_ROW_SPACING = 4;   // 1 * 4px
+constexpr int TABLE_CELL_SPACING = 12; // 3 * 4px
+constexpr int KPI_GRID_SPACING = 16;   // 2 * 8px
 } // namespace DesignTokens
 
 // Bộ CSS chuẩn giao diện hiện đại cho GTK4 Phone Store Manager
@@ -158,8 +163,8 @@ inline const char *APP_CSS_STYLES = R"CSS(
    GLOBAL
    ========================================================================= */
 * {
-    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-    font-size: 16px;
+    font-family: "Segoe UI", "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
+    font-size: 18px;
 }
 
 window {
@@ -176,26 +181,28 @@ window {
 }
 
 .app-brand-title {
-    font-size: 20px;
+    font-family: "Segoe UI", "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
+    font-size: 24px;
     font-weight: 800;
     color: @pbl_accent;
     letter-spacing: 0.5px;
 }
 
 .header-screen-title {
-    font-size: 16px;
+    font-size: 20px;
     font-weight: 700;
     color: @pbl_navy_text;
     padding: 0 8px;
 }
 
 .user-profile-badge {
+    font-family: "Segoe UI", "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
     background-color: @pbl_navy_3;
     color: @pbl_text_inverse;
     border-radius: 20px;
     padding: 8px 16px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 17px;
     border: 1px solid @pbl_border_strong;
 }
 
@@ -204,8 +211,8 @@ window {
     color: #dbeafe;
     border: 1px solid @pbl_primary;
     border-radius: 20px;
-    padding: 4px 16px;
-    font-size: 13px;
+    padding: 6px 16px;
+    font-size: 16px;
     font-weight: 700;
 }
 
@@ -213,8 +220,8 @@ window {
     background-color: @pbl_danger;
     color: #ffffff;
     border-radius: 12px;
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: 4px 10px;
+    font-size: 15px;
     font-weight: 700;
 }
 
@@ -222,8 +229,8 @@ window {
     background-color: @pbl_primary;
     color: #ffffff;
     border-radius: 12px;
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: 4px 10px;
+    font-size: 15px;
     font-weight: 700;
 }
 
@@ -231,8 +238,8 @@ window {
     background-color: @pbl_warning;
     color: #ffffff;
     border-radius: 12px;
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: 4px 10px;
+    font-size: 15px;
     font-weight: 700;
 }
 
@@ -240,8 +247,8 @@ window {
     background-color: @pbl_success;
     color: #ffffff;
     border-radius: 12px;
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: 4px 10px;
+    font-size: 15px;
     font-weight: 700;
 }
 
@@ -254,7 +261,7 @@ window {
 
 .sidebar-category-label {
     color: @pbl_border_strong;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -268,8 +275,9 @@ window {
 }
 
 .sidebar-icon-slot {
-    min-width: 24px;
-    font-size: 15px;
+    font-family: "Segoe UI", "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
+    min-width: 28px;
+    font-size: 19px;
 }
 
 button.sidebar-btn, .sidebar-btn {
@@ -279,8 +287,8 @@ button.sidebar-btn, .sidebar-btn {
     color: @pbl_navy_text;
     border: none;
     border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 14px;
+    padding: 10px 14px;
+    font-size: 17px;
     font-weight: 600;
     margin-bottom: 4px;
     transition: all 150ms ease;
@@ -302,7 +310,7 @@ button.sidebar-btn-active, .sidebar-btn-active {
     background-image: none;
     box-shadow: none;
     color: #ffffff;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 button.sidebar-btn-active:hover, .sidebar-btn-active:hover {
@@ -320,8 +328,8 @@ button.sidebar-btn-active:focus, .sidebar-btn-active:focus {
     background-color: @pbl_danger;
     color: #ffffff;
     border-radius: 12px;
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: 4px 10px;
+    font-size: 15px;
     font-weight: 800;
 }
 
@@ -335,13 +343,14 @@ button.sidebar-btn-active:focus, .sidebar-btn-active:focus {
 }
 
 .page-title {
-    font-size: 22px;
+    font-family: "Segoe UI", "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
+    font-size: 28px;
     font-weight: 800;
     color: @pbl_text;
 }
 
 .page-subtitle {
-    font-size: 14px;
+    font-size: 17px;
     color: @pbl_text_muted;
     margin-top: 4px;
 }
@@ -356,7 +365,8 @@ button.sidebar-btn-active:focus, .sidebar-btn-active:focus {
 }
 
 .card-title {
-    font-size: 17px;
+    font-family: "Segoe UI", "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
+    font-size: 22px;
     font-weight: 700;
     color: @pbl_text;
     margin-bottom: 12px;
@@ -397,9 +407,10 @@ button.sidebar-btn-active:focus, .sidebar-btn-active:focus {
 }
 
 .stat-icon-box {
+    font-family: "Segoe UI", "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
     border-radius: 8px;
     padding: 4px 8px;
-    font-size: 15px;
+    font-size: 19px;
     font-weight: 700;
     background-color: @pbl_info_bg;
     color: @pbl_primary;
@@ -436,7 +447,7 @@ button.sidebar-btn-active:focus, .sidebar-btn-active:focus {
 }
 
 .stat-label {
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 700;
     color: @pbl_text_muted;
     text-transform: uppercase;
@@ -444,7 +455,7 @@ button.sidebar-btn-active:focus, .sidebar-btn-active:focus {
 }
 
 .stat-value {
-    font-size: 26px;
+    font-size: 32px;
     font-weight: 800;
     color: @pbl_text;
     margin: 8px 0;
@@ -452,7 +463,7 @@ button.sidebar-btn-active:focus, .sidebar-btn-active:focus {
 }
 
 .stat-trend {
-    font-size: 13px;
+    font-size: 16px;
     color: @pbl_text_muted;
     font-weight: 600;
 }
@@ -471,7 +482,7 @@ button.sidebar-btn-active:focus, .sidebar-btn-active:focus {
 
 /* === BUTTONS === */
 button {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
     background-image: none;
     box-shadow: none;
     text-shadow: none;
@@ -493,9 +504,9 @@ button.btn-primary, .btn-primary {
     color: #ffffff;
     border: none;
     border-radius: 8px;
-    padding: 8px 24px;
-    min-height: 24px;
-    font-size: 15px;
+    padding: 10px 24px;
+    min-height: 32px;
+    font-size: 18px;
     font-weight: 700;
     transition: all 120ms ease;
 }
@@ -516,9 +527,9 @@ button.btn-success, .btn-success {
     color: #ffffff;
     border: none;
     border-radius: 8px;
-    padding: 8px 24px;
-    min-height: 24px;
-    font-size: 15px;
+    padding: 10px 24px;
+    min-height: 32px;
+    font-size: 18px;
     font-weight: 700;
     transition: all 120ms ease;
 }
@@ -539,9 +550,9 @@ button.btn-danger, .btn-danger {
     color: #ffffff;
     border: none;
     border-radius: 8px;
-    padding: 8px 24px;
-    min-height: 24px;
-    font-size: 15px;
+    padding: 10px 24px;
+    min-height: 32px;
+    font-size: 18px;
     font-weight: 700;
     transition: all 120ms ease;
 }
@@ -562,9 +573,9 @@ button.btn-secondary, .btn-secondary {
     color: @pbl_text;
     border: none;
     border-radius: 8px;
-    padding: 8px 24px;
-    min-height: 24px;
-    font-size: 15px;
+    padding: 10px 24px;
+    min-height: 32px;
+    font-size: 18px;
     font-weight: 700;
     transition: all 120ms ease;
 }
@@ -585,9 +596,9 @@ button.btn-outline, .btn-outline {
     color: @pbl_navy_2;
     border: 2px solid @pbl_border_strong;
     border-radius: 8px;
-    padding: 6px 24px;
-    min-height: 24px;
-    font-size: 15px;
+    padding: 8px 24px;
+    min-height: 32px;
+    font-size: 18px;
     font-weight: 700;
     transition: all 120ms ease;
 }
@@ -609,9 +620,9 @@ button.btn-back, .btn-back {
     color: @pbl_navy_2;
     border: 1px solid @pbl_border;
     border-radius: 8px;
-    padding: 8px 16px;
-    min-height: 24px;
-    font-size: 15px;
+    padding: 10px 18px;
+    min-height: 32px;
+    font-size: 18px;
     font-weight: 700;
     transition: all 120ms ease;
 }
@@ -624,9 +635,9 @@ button.btn-back:hover, .btn-back:hover {
 
 /* Nút thanh toán lớn của màn POS */
 button.btn-pay, .btn-pay {
-    padding: 16px 24px;
-    min-height: 32px;
-    font-size: 18px;
+    padding: 16px 28px;
+    min-height: 40px;
+    font-size: 22px;
     font-weight: 800;
     border-radius: 8px;
 }
@@ -636,9 +647,9 @@ entry {
     background-color: @pbl_surface;
     border: 2px solid @pbl_border_strong;
     border-radius: 8px;
-    padding: 8px 16px;
-    min-height: 24px;
-    font-size: 15px;
+    padding: 10px 16px;
+    min-height: 32px;
+    font-size: 18px;
     color: @pbl_text;
     transition: border-color 150ms ease;
 }
@@ -648,6 +659,12 @@ entry:focus {
     outline: 2px solid alpha(@pbl_primary, 0.22);
     outline-offset: 0px;
     box-shadow: none;
+}
+
+dropdown button {
+    padding: 8px 14px;
+    min-height: 32px;
+    font-size: 18px;
 }
 
 dropdown button:focus {
@@ -669,28 +686,28 @@ dropdown button:focus {
     color: @pbl_text_muted;
     border: 1px solid @pbl_border;
     border-radius: 12px;
-    padding: 4px 12px;
-    font-size: 13px;
+    padding: 6px 14px;
+    font-size: 16px;
     font-weight: 700;
 }
 
 /* Ô tìm kiếm / quét mã của POS: to hơn, luôn nổi bật */
 entry.pos-search {
-    font-size: 18px;
+    font-size: 22px;
     padding: 16px;
-    min-height: 32px;
+    min-height: 38px;
     border: 2px solid @pbl_primary;
 }
 
 .form-label {
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 700;
     color: @pbl_navy_2;
     margin-bottom: 4px;
 }
 
 .form-error-label {
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 600;
     color: @pbl_danger;
     margin-top: 3px;
@@ -712,8 +729,8 @@ dropdown.input-error:focus {
 /* === STATUS BADGES === */
 .badge {
     border-radius: 12px;
-    padding: 4px 12px;
-    font-size: 13px;
+    padding: 6px 14px;
+    font-size: 16px;
     font-weight: 800;
 }
 
@@ -813,8 +830,8 @@ dropdown.input-error:focus {
     color: @pbl_orange;
     border: 2px solid #ea580c;
     border-radius: 12px;
-    padding: 4px 12px;
-    font-size: 13px;
+    padding: 6px 14px;
+    font-size: 16px;
     font-weight: 800;
 }
 
@@ -823,8 +840,8 @@ dropdown.input-error:focus {
     color: @pbl_silver;
     border: 2px solid @pbl_silver_border;
     border-radius: 12px;
-    padding: 4px 12px;
-    font-size: 13px;
+    padding: 6px 14px;
+    font-size: 16px;
     font-weight: 800;
 }
 
@@ -833,8 +850,8 @@ dropdown.input-error:focus {
     color: @pbl_gold;
     border: 2px solid @pbl_gold_border;
     border-radius: 12px;
-    padding: 4px 12px;
-    font-size: 13px;
+    padding: 6px 14px;
+    font-size: 16px;
     font-weight: 800;
 }
 
@@ -843,8 +860,8 @@ dropdown.input-error:focus {
     color: @pbl_diamond;
     border: 2px solid @pbl_diamond_border;
     border-radius: 12px;
-    padding: 4px 12px;
-    font-size: 13px;
+    padding: 6px 14px;
+    font-size: 16px;
     font-weight: 800;
 }
 
@@ -862,19 +879,19 @@ dropdown.input-error:focus {
 }
 
 .product-name {
-    font-size: 17px;
+    font-size: 21px;
     font-weight: 700;
     color: @pbl_text;
 }
 
 .product-brand {
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 700;
     color: @pbl_text_muted;
 }
 
 .product-price {
-    font-size: 19px;
+    font-size: 23px;
     font-weight: 800;
     color: @pbl_danger;
 }
@@ -890,9 +907,10 @@ dropdown.input-error:focus {
     background-color: @pbl_bg;
     border-bottom: 2px solid @pbl_border;
     border-radius: 8px 8px 0 0;
-    padding: 10px 16px;
+    padding: 12px 16px;
+    border-left: 3px solid transparent;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 16px;
     color: @pbl_navy_3;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -900,7 +918,7 @@ dropdown.input-error:focus {
 
 .table-header-cell {
     font-weight: 700;
-    font-size: 13px;
+    font-size: 16px;
     color: @pbl_navy_3;
     text-transform: uppercase;
 }
@@ -908,7 +926,8 @@ dropdown.input-error:focus {
 .table-row {
     background-color: @pbl_surface;
     border-bottom: 1px solid @pbl_divider;
-    padding: 10px 16px;
+    padding: 12px 16px;
+    border-left: 3px solid transparent;
     transition: background-color 100ms ease;
 }
 
@@ -929,30 +948,52 @@ dropdown.input-error:focus {
 .mono-num, .tabular-num, .cell-number {
     font-family: "Cascadia Mono", "Consolas", "Segoe UI", monospace;
     font-variant-numeric: tabular-nums;
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 700;
     color: @pbl_text;
 }
 
 .cell-code {
     font-family: "Cascadia Mono", "Consolas", "Segoe UI", monospace;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 700;
     color: @pbl_navy_2;
     background-color: @pbl_surface_alt;
     border: 1px solid @pbl_border;
     border-radius: 8px;
-    padding: 4px 8px;
+    padding: 4px 10px;
+}
+
+.cell-code-ord {
+    font-family: "Cascadia Mono", "Consolas", "Segoe UI", monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: @pbl_silver;
+    background-color: @pbl_silver_bg;
+    border: 1px solid @pbl_silver_border;
+    border-radius: 8px;
+    padding: 4px 10px;
+}
+
+.cell-code-inv {
+    font-family: "Cascadia Mono", "Consolas", "Segoe UI", monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: @pbl_primary_hover;
+    background-color: @pbl_blue_bg;
+    border: 1px solid @pbl_blue_border;
+    border-radius: 8px;
+    padding: 4px 10px;
 }
 
 .cell-title {
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 700;
     color: @pbl_text;
 }
 
 .cell-subtitle {
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 500;
     color: @pbl_text_muted;
 }
@@ -979,19 +1020,20 @@ dropdown.input-error:focus {
 progressbar trough {
     background-color: @pbl_bg;
     border-radius: 6px;
-    min-height: 8px;
+    min-height: 10px;
 }
 
 progressbar progress {
     background-color: @pbl_primary;
     border-radius: 6px;
-    min-height: 8px;
+    min-height: 10px;
 }
 
-button.btn-action-sm, .btn-action-sm {
-    min-height: 28px;
-    padding: 4px 10px;
-    font-size: 13px;
+button.btn-action-sm, .btn-action-sm,
+button.btn-table-action, .btn-table-action {
+    min-height: 34px;
+    padding: 6px 12px;
+    font-size: 16px;
     font-weight: 600;
     border-radius: 6px;
 }
@@ -1001,9 +1043,9 @@ button.btn-action-view, .btn-action-view {
     color: @pbl_navy_2;
     border: 1px solid @pbl_border;
     border-radius: 6px;
-    padding: 4px 10px;
-    min-height: 28px;
-    font-size: 13px;
+    padding: 6px 12px;
+    min-height: 34px;
+    font-size: 16px;
     font-weight: 600;
 }
 button.btn-action-view:hover, .btn-action-view:hover {
@@ -1017,9 +1059,9 @@ button.btn-action-edit, .btn-action-edit {
     color: @pbl_primary;
     border: 1px solid @pbl_blue_border;
     border-radius: 6px;
-    padding: 4px 10px;
-    min-height: 28px;
-    font-size: 13px;
+    padding: 6px 12px;
+    min-height: 34px;
+    font-size: 16px;
     font-weight: 600;
 }
 button.btn-action-edit:hover, .btn-action-edit:hover {
@@ -1032,9 +1074,9 @@ button.btn-action-delete, .btn-action-delete {
     color: @pbl_danger;
     border: 1px solid @pbl_danger_border;
     border-radius: 6px;
-    padding: 4px 10px;
-    min-height: 28px;
-    font-size: 13px;
+    padding: 6px 12px;
+    min-height: 34px;
+    font-size: 16px;
     font-weight: 600;
 }
 button.btn-action-delete:hover, .btn-action-delete:hover {
@@ -1048,14 +1090,15 @@ button.btn-action-delete:hover, .btn-action-delete:hover {
 }
 
 .state-title {
-    font-size: 20px;
+    font-family: "Segoe UI", "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
+    font-size: 24px;
     font-weight: 800;
     color: @pbl_navy_2;
     margin: 8px 0;
 }
 
 .state-desc {
-    font-size: 15px;
+    font-size: 18px;
     color: @pbl_text_muted;
     margin-bottom: 16px;
 }
@@ -1065,10 +1108,10 @@ button.btn-action-delete:hover, .btn-action-delete:hover {
     background: #0f172a;
     color: #ffffff;
     border-radius: 12px;
-    padding: 14px 20px;
+    padding: 16px 22px;
     box-shadow: none;
     border: 1px solid rgba(255, 255, 255, 0.12);
-    min-width: 280px;
+    min-width: 320px;
     margin: 16px;
 }
 
@@ -1085,7 +1128,7 @@ button.btn-action-delete:hover, .btn-action-delete:hover {
 }
 
 .toast-text {
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 600;
     color: #f8fafc;
 }
@@ -1094,12 +1137,12 @@ button.btn-action-delete:hover, .btn-action-delete:hover {
     background: transparent;
     border: none;
     color: #94a3b8;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 700;
-    padding: 2px 6px;
+    padding: 4px 8px;
     border-radius: 6px;
-    min-height: 20px;
-    min-width: 20px;
+    min-height: 28px;
+    min-width: 28px;
 }
 
 .toast-close-btn:hover {
@@ -1116,7 +1159,7 @@ button.btn-action-delete:hover, .btn-action-delete:hover {
 
 .pos-total-label {
     color: @pbl_navy_text;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -1124,12 +1167,12 @@ button.btn-action-delete:hover, .btn-action-delete:hover {
 
 .pos-total-value {
     color: @pbl_accent;
-    font-size: 32px;
+    font-size: 38px;
     font-weight: 800;
 }
 
 .shortcut-hint {
-    font-size: 13px;
+    font-size: 16px;
     color: @pbl_text_muted;
 }
 
@@ -1137,8 +1180,8 @@ button.btn-action-delete:hover, .btn-action-delete:hover {
     background-color: @pbl_surface_alt;
     border: 1px solid @pbl_border;
     border-radius: 4px;
-    padding: 0 8px;
-    font-size: 12px;
+    padding: 2px 8px;
+    font-size: 15px;
     font-weight: 700;
     color: @pbl_navy_2;
 }
@@ -1156,16 +1199,26 @@ button.btn-action-delete:hover, .btn-action-delete:hover {
 }
 
 .login-title {
-    font-size: 26px;
+    font-size: 30px;
     font-weight: 800;
     color: @pbl_text;
 }
 
 .login-subtitle {
-    font-size: 14px;
+    font-size: 17px;
     color: @pbl_text_muted;
     margin-top: 4px;
     margin-bottom: 16px;
+}
+
+.login-alert {
+    background-color: @pbl_danger_bg;
+    color: @pbl_danger;
+    border: 1px solid @pbl_danger_border;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 button.login-quick-pill, .login-quick-pill {
@@ -1174,8 +1227,8 @@ button.login-quick-pill, .login-quick-pill {
     color: @pbl_navy_2;
     border: 1px solid @pbl_border;
     border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 13px;
+    padding: 10px 16px;
+    font-size: 16px;
     font-weight: 700;
     transition: all 120ms ease;
 }
@@ -1191,7 +1244,7 @@ button.login-corner-btn, .login-corner-btn {
     background-image: none;
     border: none;
     color: @pbl_primary;
-    font-size: 14px;
+    font-size: 17px;
     font-weight: 700;
     padding: 4px 8px;
 }
@@ -1212,7 +1265,7 @@ button.login-corner-btn:hover, .login-corner-btn:hover {
 }
 
 .realtime-clock-display {
-    font-size: 38px;
+    font-size: 44px;
     font-weight: 900;
     color: @pbl_accent;
     letter-spacing: 2px;
@@ -1227,14 +1280,15 @@ button.login-corner-btn:hover, .login-corner-btn:hover {
 }
 
 .dialog-title {
-    font-size: 20px;
+    font-family: "Segoe UI", "Noto Color Emoji", "Segoe UI Emoji", sans-serif;
+    font-size: 24px;
     font-weight: 800;
     color: @pbl_text;
     margin-bottom: 8px;
 }
 
 .dialog-message {
-    font-size: 15px;
+    font-size: 18px;
     color: @pbl_navy_3;
     margin-bottom: 24px;
 }

@@ -4,13 +4,19 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <filesystem>
+#include <algorithm>
 #include "../models/Phone.h"
 #include "../core/Vector.h"
 #include "../core/HashTable.h"
 #include "../core/BST.h"
 #include "../repositories/PhoneRepository.h"
+#include "../repositories/ProductImageRepository.h"
 #include "../utils/IdGenerator.h"
 #include "../utils/StringHelper.h"
+#include "../utils/PathHelper.h"
+#include "../utils/FileHelper.h"
 #include "Check.h"
 
 // FIX LỖI: Key tổ hợp (Composite Key) cho BST để hỗ trợ nhiều sản phẩm có cùng giá bán
@@ -42,11 +48,15 @@ private:
     HashTable<std::string, Phone> idTable;        // Bảng băm để tìm kiếm theo ID với O(1)
     BST<PhonePriceKey, Phone> priceTree;          // FIX LỖI: Cây BST dùng PhonePriceKey để không mất sản phẩm trùng giá
     ReferenceChecker* refChecker;                 // FIX LỖI: Ràng buộc toàn vẹn tham chiếu trước khi xóa
+    ProductImageRepository* imgRepo;              // Quản lý ánh xạ ảnh sản phẩm (BUG-HIGH-05)
 
 public:
-    PhoneService(PhoneRepository& repository, ReferenceChecker* checker = nullptr);
+    PhoneService(PhoneRepository& repository, ReferenceChecker* checker = nullptr, ProductImageRepository* imageRepository = nullptr);
 
     void setReferenceChecker(ReferenceChecker* checker);
+    void setProductImageRepository(ProductImageRepository* imageRepository) { imgRepo = imageRepository; }
+    ProductImageRepository* getProductImageRepository() { return imgRepo; }
+    const ProductImageRepository* getProductImageRepository() const { return imgRepo; }
 
     // Tái cấu trúc các chỉ mục DSA (HashTable, BST) từ dữ liệu kho
     void rebuildIndices();
@@ -67,6 +77,10 @@ public:
 
     // Tìm kiếm theo thương hiệu
     Vector<Phone> searchByBrand(const std::string& brand) const;
+
+    // Quản lý ảnh sản phẩm (BUG-HIGH-05)
+    std::string getProductImagePath(const std::string& productId) const;
+    bool updateProductImage(const std::string& productId, const std::string& sourceFilePath, std::string& errorMessage);
 
     // Nghiệp vụ thêm sản phẩm: Kiểm tra trùng ID, kiểm tra giá > 0, số lượng >= 0
     bool addPhone(const Phone& phone, std::string& errorMessage);
@@ -90,13 +104,131 @@ public:
 
 // ================= IMPLEMENTATION =================
 
-inline PhoneService::PhoneService(PhoneRepository& repository, ReferenceChecker* checker) 
-    : repo(repository), refChecker(checker) {
+inline PhoneService::PhoneService(PhoneRepository& repository, ReferenceChecker* checker, ProductImageRepository* imageRepository) 
+    : repo(repository), refChecker(checker), imgRepo(imageRepository) {
     rebuildIndices();
 }
 
 inline void PhoneService::setReferenceChecker(ReferenceChecker* checker) {
     refChecker = checker;
+}
+
+inline std::string PhoneService::getProductImagePath(const std::string& productId) const {
+    if (imgRepo) {
+        return imgRepo->getImagePath(productId);
+    }
+    return "";
+}
+
+inline bool PhoneService::updateProductImage(const std::string& productId, const std::string& sourceFilePath, std::string& errorMessage) {
+    if (imgRepo == nullptr) {
+        errorMessage = "Hệ thống quản lý ảnh sản phẩm chưa sẵn sàng!";
+        return false;
+    }
+    if (productId.empty()) {
+        errorMessage = "Mã sản phẩm không được để trống!";
+        return false;
+    }
+    if (sourceFilePath.empty()) {
+        errorMessage = "Đường dẫn file ảnh nguồn không được để trống!";
+        return false;
+    }
+
+    std::string trimmedSrc = StringHelper::trim(sourceFilePath);
+
+    // 1. Nếu file đã là ảnh hiện tại của sản phẩm thì không cần làm lại
+    std::string currentRel = imgRepo->getImagePath(productId);
+    if (!currentRel.empty() && (trimmedSrc == currentRel || trimmedSrc == ("data/" + currentRel))) {
+        return true;
+    }
+
+    // 2. Xác định đường dẫn file nguồn vật lý
+    std::string actualSrcPath = trimmedSrc;
+    std::error_code ec;
+    std::filesystem::path srcP(trimmedSrc);
+    if (!std::filesystem::exists(srcP, ec)) {
+        std::string resolved = PathHelper::resolveDataPath(trimmedSrc);
+        if (std::filesystem::exists(std::filesystem::path(resolved), ec)) {
+            actualSrcPath = resolved;
+            srcP = std::filesystem::path(resolved);
+        } else {
+            errorMessage = "File ảnh nguồn không tồn tại: " + trimmedSrc;
+            return false;
+        }
+    }
+
+    if (!std::filesystem::is_regular_file(srcP, ec)) {
+        errorMessage = "Đường dẫn nguồn không phải là file hợp lệ: " + trimmedSrc;
+        return false;
+    }
+
+    // 3. Kiểm tra định dạng phần mở rộng (.png, .jpg, .jpeg, .webp)
+    std::string ext = srcP.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
+    if (ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".webp") {
+        errorMessage = "Định dạng file không được hỗ trợ (" + ext + ")! Chỉ chấp nhận .png, .jpg, .jpeg, .webp.";
+        return false;
+    }
+
+    // 4. Kiểm tra file đọc được và kích thước > 0
+    {
+        std::ifstream in(actualSrcPath, std::ios::binary);
+        if (!in.is_open()) {
+            errorMessage = "Không thể mở file ảnh nguồn để đọc: " + actualSrcPath;
+            return false;
+        }
+    }
+    auto sz = std::filesystem::file_size(srcP, ec);
+    if (ec || sz == 0) {
+        errorMessage = "File ảnh rỗng hoặc không có dữ liệu!";
+        return false;
+    }
+
+    // 5. Chuẩn bị thư mục đích data/Device/productImages/
+    std::string targetDir = PathHelper::resolveDataPath("data/Device/productImages");
+    std::filesystem::create_directories(targetDir, ec);
+    if (ec) {
+        errorMessage = "Không thể tạo thư mục lưu ảnh: " + targetDir + " (" + ec.message() + ")";
+        return false;
+    }
+
+    // 6. Tạo tên file duy nhất tránh xung đột
+    std::string cleanId = productId;
+    for (char& ch : cleanId) {
+        if (ch == '-' || ch == ' ' || ch == '/' || ch == '\\') ch = '_';
+    }
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    std::string uniqueFileName = "prod_" + cleanId + "_" + std::to_string(ms) + ext;
+
+    std::filesystem::path destPhysical = std::filesystem::path(targetDir) / uniqueFileName;
+    std::string newRelativePath = "Device/productImages/" + uniqueFileName;
+
+    // 7. Thực hiện sao chép file vật lý
+    std::filesystem::copy_file(srcP, destPhysical, std::filesystem::copy_options::overwrite_existing, ec);
+    if (ec) {
+        errorMessage = "Không thể sao chép file ảnh vào hệ thống: " + ec.message();
+        return false;
+    }
+    FileHelper::flushFile(destPhysical.string());
+
+    // 8. Cập nhật mapping trong ProductImageRepository (Transaction & Rollback)
+    std::string oldRelative = imgRepo->getImagePath(productId);
+    imgRepo->setImagePath(productId, newRelativePath);
+
+    if (!imgRepo->saveToFile()) {
+        // ROLLBACK:
+        if (oldRelative.empty()) {
+            imgRepo->removeImagePath(productId);
+        } else {
+            imgRepo->setImagePath(productId, oldRelative);
+        }
+        std::filesystem::remove(destPhysical, ec);
+        errorMessage = "Lỗi khi lưu ánh xạ ảnh vào ProductImage.txt!";
+        return false;
+    }
+
+    return true;
 }
 
 inline void PhoneService::rebuildIndices() {

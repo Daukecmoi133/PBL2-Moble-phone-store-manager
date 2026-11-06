@@ -1,4 +1,0 @@
-id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address
-CUS-000001|Nguyen|Van|B|0912345678|customer001@example.com|customer001.demo|DemoOnly-Customer-001|729|Da Nang|ACC-000004
-CUS-000002|Tran|Thi|Mai|0905111222|customer002@example.com|customer002.demo|DemoOnly-Customer-002|80|Thanh Khe, Da Nang|ACC-000005
-CUS-000003|Le|Hoang|Nam|0988777666|customer003@example.com|customer003.demo|DemoOnly-Customer-003|0|Hai Chau, Da Nang|ACC-000006

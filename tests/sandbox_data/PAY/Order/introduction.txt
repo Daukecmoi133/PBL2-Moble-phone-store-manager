@@ -1,9 +1,0 @@
-ORDER DATA
-
-Orders.txt chua mot don hang tren moi dong. Header va enum codes phai khop voi
-DATA_FORMAT_GUIDE.md tai thu muc data goc.
-
-Order detail snapshot luu phoneId, phoneName, quantity va unitPrice tai thoi
-diem ban. Khong dung dau phay trong phoneName/detail va khong trung order ID.
-Hoa don nam tai ../Invoices.txt va tham chieu den order da hoan tat trong bo
-data demo.

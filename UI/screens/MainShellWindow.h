@@ -62,6 +62,9 @@ private:
 
     GtkWidget* toastOverlay;
 
+    // Real-time Simulation Clock Timer (single global source)
+    guint clockTimerId = 0;
+
 public:
     MainShellWindow(GtkApplication* gapp, AppController* ctrl, LogoutCallback onLogout, gpointer userData);
     ~MainShellWindow();
@@ -76,6 +79,11 @@ public:
     void refreshCurrentRoleUI();
 
 private:
+    void startClockTimer();
+    void stopClockTimer();
+    void handleClockTick();
+    static gboolean on_clock_tick(gpointer data);
+
     void buildHeader();
     void buildSidebar();
     void buildStack();
