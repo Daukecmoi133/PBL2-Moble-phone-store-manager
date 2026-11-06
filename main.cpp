@@ -5,7 +5,7 @@
 #include <glib.h>
 #include "source/PBL2.h"
 #include "source/controllers/AppController.h"
-#include "source/ui/AppRunner.h"
+#include "UI/AppRunner.h"
 
 int main(int argc, char *argv[]) {
     // Tránh crash 'GTK_IS_IM_CONTEXT_IME' khi gõ tiếng Việt trên Windows: dùng IM module "simple".

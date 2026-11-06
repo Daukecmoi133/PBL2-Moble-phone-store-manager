@@ -100,28 +100,23 @@ main.o: main.cpp C:/msys64/ucrt64/include/glib-2.0/glib.h \
  source/models/Invoice.h source/models/Order.h \
  source/models/ImportReceipt.h source/models/DiscountCode.h \
  source/repositories/AccountRepository.h \
- source/repositories/../models/Account.h \
- source/repositories/../models/Customer.h \
- source/repositories/../models/Employee.h \
- source/repositories/../core/Vector.h \
- source/repositories/PhoneRepository.h \
- source/repositories/../models/Phone.h \
- source/repositories/../utils/StringHelper.h \
+ C:/DUY/PBL2/source/models/Account.h C:/DUY/PBL2/source/models/Customer.h \
+ C:/DUY/PBL2/source/models/Employee.h C:/DUY/PBL2/source/core/Vector.h \
+ source/repositories/PhoneRepository.h C:/DUY/PBL2/source/models/Phone.h \
+ C:/DUY/PBL2/source/utils/StringHelper.h \
  source/repositories/CustomerRepository.h \
  source/repositories/EmployeeRepository.h \
  source/repositories/SupplierRepository.h \
- source/repositories/../models/Supplier.h \
+ C:/DUY/PBL2/source/models/Supplier.h \
  source/repositories/DiscountRepository.h \
- source/repositories/../models/DiscountCode.h \
- source/repositories/OrderRepository.h \
- source/repositories/../models/Order.h \
+ C:/DUY/PBL2/source/models/DiscountCode.h \
+ source/repositories/OrderRepository.h C:/DUY/PBL2/source/models/Order.h \
  source/repositories/InvoiceRepository.h \
- source/repositories/../models/Invoice.h \
+ C:/DUY/PBL2/source/models/Invoice.h \
  source/repositories/StockReceiptRepository.h \
- source/repositories/../models/ImportReceipt.h \
- source/services/PhoneService.h source/services/../models/Phone.h \
- source/services/../core/Vector.h source/services/../core/HashTable.h \
- source/services/../core/BST.h \
+ C:/DUY/PBL2/source/models/ImportReceipt.h source/services/PhoneService.h \
+ source/services/../models/Phone.h source/services/../core/Vector.h \
+ source/services/../core/HashTable.h source/services/../core/BST.h \
  source/services/../repositories/PhoneRepository.h \
  source/services/../utils/IdGenerator.h \
  source/services/../utils/StringHelper.h source/services/Check.h \
@@ -144,24 +139,24 @@ main.o: main.cpp C:/msys64/ucrt64/include/glib-2.0/glib.h \
  source/services/AuthService.h source/services/EmployeeService.h \
  source/services/CustomerService.h source/services/ReportService.h \
  source/services/../utils/DateTime.h source/controllers/AppController.h \
- source/controllers/../ui/viewmodels/OperationResult.h \
- source/controllers/../ui/viewmodels/AuthViewModels.h \
- source/controllers/../ui/viewmodels/OperationResult.h \
- source/controllers/../ui/viewmodels/../../models/Common.h \
- source/controllers/../ui/viewmodels/ProductViewModel.h \
- source/controllers/../ui/viewmodels/CustomerViewModel.h \
- source/controllers/../ui/viewmodels/EmployeeViewModel.h \
- source/controllers/../ui/viewmodels/CartViewModel.h \
- source/controllers/../ui/viewmodels/OrderViewModel.h \
- source/controllers/../ui/viewmodels/InvoiceViewModel.h \
- source/controllers/../ui/viewmodels/OrderViewModel.h \
- source/controllers/../ui/viewmodels/GoodsReceiptViewModel.h \
- source/controllers/../ui/viewmodels/SupplierViewModel.h \
- source/controllers/../ui/viewmodels/DiscountViewModel.h \
- source/controllers/../ui/viewmodels/WarrantyViewModel.h \
- source/controllers/../ui/viewmodels/StatisticsViewModel.h \
- source/controllers/../ui/viewmodels/AccountViewModel.h \
- source/ui/AppRunner.h C:/msys64/ucrt64/include/gtk-4.0/gtk/gtk.h \
+ C:/DUY/PBL2/UI/viewmodels/OperationResult.h \
+ C:/DUY/PBL2/UI/viewmodels/AuthViewModels.h \
+ C:/DUY/PBL2/UI/viewmodels/OperationResult.h \
+ C:/DUY/PBL2/source/models/Common.h \
+ C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/CustomerViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/EmployeeViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/CartViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/InvoiceViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/GoodsReceiptViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/SupplierViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/DiscountViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/StatisticsViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/AccountViewModel.h UI/AppRunner.h \
+ C:/msys64/ucrt64/include/gtk-4.0/gtk/gtk.h \
  C:/msys64/ucrt64/include/gtk-4.0/gtk/css/gtkcss.h \
  C:/msys64/ucrt64/include/gtk-4.0/gdk/version/gdkversionmacros.h \
  C:/msys64/ucrt64/include/gtk-4.0/gdk/version/gdk-visibility.h \
@@ -836,9 +831,9 @@ main.o: main.cpp C:/msys64/ucrt64/include/glib-2.0/glib.h \
  C:/msys64/ucrt64/include/gtk-4.0/gtk/gtkwindowcontrols.h \
  C:/msys64/ucrt64/include/gtk-4.0/gtk/gtkwindowgroup.h \
  C:/msys64/ucrt64/include/gtk-4.0/gtk/gtkwindowhandle.h \
- source/ui/../controllers/AppController.h source/ui/screens/LoginScreen.h \
- source/ui/screens/../../controllers/AppController.h \
- source/ui/screens/MainShellWindow.h
+ UI/../source/controllers/AppController.h UI/screens/LoginScreen.h \
+ C:/DUY/PBL2/source/controllers/AppController.h \
+ UI/screens/MainShellWindow.h
 C:/msys64/ucrt64/include/glib-2.0/glib.h:
 C:/msys64/ucrt64/include/glib-2.0/glib/galloca.h:
 C:/msys64/ucrt64/include/glib-2.0/glib/gtypes.h:
@@ -960,25 +955,25 @@ source/models/Order.h:
 source/models/ImportReceipt.h:
 source/models/DiscountCode.h:
 source/repositories/AccountRepository.h:
-source/repositories/../models/Account.h:
-source/repositories/../models/Customer.h:
-source/repositories/../models/Employee.h:
-source/repositories/../core/Vector.h:
+C:/DUY/PBL2/source/models/Account.h:
+C:/DUY/PBL2/source/models/Customer.h:
+C:/DUY/PBL2/source/models/Employee.h:
+C:/DUY/PBL2/source/core/Vector.h:
 source/repositories/PhoneRepository.h:
-source/repositories/../models/Phone.h:
-source/repositories/../utils/StringHelper.h:
+C:/DUY/PBL2/source/models/Phone.h:
+C:/DUY/PBL2/source/utils/StringHelper.h:
 source/repositories/CustomerRepository.h:
 source/repositories/EmployeeRepository.h:
 source/repositories/SupplierRepository.h:
-source/repositories/../models/Supplier.h:
+C:/DUY/PBL2/source/models/Supplier.h:
 source/repositories/DiscountRepository.h:
-source/repositories/../models/DiscountCode.h:
+C:/DUY/PBL2/source/models/DiscountCode.h:
 source/repositories/OrderRepository.h:
-source/repositories/../models/Order.h:
+C:/DUY/PBL2/source/models/Order.h:
 source/repositories/InvoiceRepository.h:
-source/repositories/../models/Invoice.h:
+C:/DUY/PBL2/source/models/Invoice.h:
 source/repositories/StockReceiptRepository.h:
-source/repositories/../models/ImportReceipt.h:
+C:/DUY/PBL2/source/models/ImportReceipt.h:
 source/services/PhoneService.h:
 source/services/../models/Phone.h:
 source/services/../core/Vector.h:
@@ -1016,24 +1011,24 @@ source/services/CustomerService.h:
 source/services/ReportService.h:
 source/services/../utils/DateTime.h:
 source/controllers/AppController.h:
-source/controllers/../ui/viewmodels/OperationResult.h:
-source/controllers/../ui/viewmodels/AuthViewModels.h:
-source/controllers/../ui/viewmodels/OperationResult.h:
-source/controllers/../ui/viewmodels/../../models/Common.h:
-source/controllers/../ui/viewmodels/ProductViewModel.h:
-source/controllers/../ui/viewmodels/CustomerViewModel.h:
-source/controllers/../ui/viewmodels/EmployeeViewModel.h:
-source/controllers/../ui/viewmodels/CartViewModel.h:
-source/controllers/../ui/viewmodels/OrderViewModel.h:
-source/controllers/../ui/viewmodels/InvoiceViewModel.h:
-source/controllers/../ui/viewmodels/OrderViewModel.h:
-source/controllers/../ui/viewmodels/GoodsReceiptViewModel.h:
-source/controllers/../ui/viewmodels/SupplierViewModel.h:
-source/controllers/../ui/viewmodels/DiscountViewModel.h:
-source/controllers/../ui/viewmodels/WarrantyViewModel.h:
-source/controllers/../ui/viewmodels/StatisticsViewModel.h:
-source/controllers/../ui/viewmodels/AccountViewModel.h:
-source/ui/AppRunner.h:
+C:/DUY/PBL2/UI/viewmodels/OperationResult.h:
+C:/DUY/PBL2/UI/viewmodels/AuthViewModels.h:
+C:/DUY/PBL2/UI/viewmodels/OperationResult.h:
+C:/DUY/PBL2/source/models/Common.h:
+C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/CustomerViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/EmployeeViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/CartViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/InvoiceViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/GoodsReceiptViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/SupplierViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/DiscountViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/StatisticsViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/AccountViewModel.h:
+UI/AppRunner.h:
 C:/msys64/ucrt64/include/gtk-4.0/gtk/gtk.h:
 C:/msys64/ucrt64/include/gtk-4.0/gtk/css/gtkcss.h:
 C:/msys64/ucrt64/include/gtk-4.0/gdk/version/gdkversionmacros.h:
@@ -1709,7 +1704,7 @@ C:/msys64/ucrt64/include/gtk-4.0/gtk/gtkwidgetpaintable.h:
 C:/msys64/ucrt64/include/gtk-4.0/gtk/gtkwindowcontrols.h:
 C:/msys64/ucrt64/include/gtk-4.0/gtk/gtkwindowgroup.h:
 C:/msys64/ucrt64/include/gtk-4.0/gtk/gtkwindowhandle.h:
-source/ui/../controllers/AppController.h:
-source/ui/screens/LoginScreen.h:
-source/ui/screens/../../controllers/AppController.h:
-source/ui/screens/MainShellWindow.h:
+UI/../source/controllers/AppController.h:
+UI/screens/LoginScreen.h:
+C:/DUY/PBL2/source/controllers/AppController.h:
+UI/screens/MainShellWindow.h:

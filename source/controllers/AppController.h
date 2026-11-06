@@ -3,20 +3,20 @@
 
 #include <string>
 #include <vector>
-#include "../ui/viewmodels/OperationResult.h"
-#include "../ui/viewmodels/AuthViewModels.h"
-#include "../ui/viewmodels/ProductViewModel.h"
-#include "../ui/viewmodels/CustomerViewModel.h"
-#include "../ui/viewmodels/EmployeeViewModel.h"
-#include "../ui/viewmodels/CartViewModel.h"
-#include "../ui/viewmodels/OrderViewModel.h"
-#include "../ui/viewmodels/InvoiceViewModel.h"
-#include "../ui/viewmodels/GoodsReceiptViewModel.h"
-#include "../ui/viewmodels/SupplierViewModel.h"
-#include "../ui/viewmodels/DiscountViewModel.h"
-#include "../ui/viewmodels/WarrantyViewModel.h"
-#include "../ui/viewmodels/StatisticsViewModel.h"
-#include "../ui/viewmodels/AccountViewModel.h"
+#include "../../UI/viewmodels/OperationResult.h"
+#include "../../UI/viewmodels/AuthViewModels.h"
+#include "../../UI/viewmodels/ProductViewModel.h"
+#include "../../UI/viewmodels/CustomerViewModel.h"
+#include "../../UI/viewmodels/EmployeeViewModel.h"
+#include "../../UI/viewmodels/CartViewModel.h"
+#include "../../UI/viewmodels/OrderViewModel.h"
+#include "../../UI/viewmodels/InvoiceViewModel.h"
+#include "../../UI/viewmodels/GoodsReceiptViewModel.h"
+#include "../../UI/viewmodels/SupplierViewModel.h"
+#include "../../UI/viewmodels/DiscountViewModel.h"
+#include "../../UI/viewmodels/WarrantyViewModel.h"
+#include "../../UI/viewmodels/StatisticsViewModel.h"
+#include "../../UI/viewmodels/AccountViewModel.h"
 
 // Forward declarations of Core Services
 class PhoneService;

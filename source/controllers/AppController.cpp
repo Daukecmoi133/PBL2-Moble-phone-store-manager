@@ -1,6 +1,6 @@
 #include "AppController.h"
-#include "../ui/mock/MockDataStore.h"
-#include "../ui/mock/RealTimeManager.h"
+#include "../../UI/mock/MockDataStore.h"
+#include "../../UI/mock/RealTimeManager.h"
 #include "../utils/IdGenerator.h"
 #include "../utils/Utf8Helper.h"
 #include <algorithm>

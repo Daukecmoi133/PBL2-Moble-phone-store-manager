@@ -1,39 +1,39 @@
 source/controllers/AppController.o: source/controllers/AppController.cpp \
  source/controllers/AppController.h \
- source/controllers/../ui/viewmodels/OperationResult.h \
- source/controllers/../ui/viewmodels/AuthViewModels.h \
- source/controllers/../ui/viewmodels/OperationResult.h \
- source/controllers/../ui/viewmodels/../../models/Common.h \
- source/controllers/../ui/viewmodels/ProductViewModel.h \
- source/controllers/../ui/viewmodels/CustomerViewModel.h \
- source/controllers/../ui/viewmodels/EmployeeViewModel.h \
- source/controllers/../ui/viewmodels/CartViewModel.h \
- source/controllers/../ui/viewmodels/OrderViewModel.h \
- source/controllers/../ui/viewmodels/InvoiceViewModel.h \
- source/controllers/../ui/viewmodels/OrderViewModel.h \
- source/controllers/../ui/viewmodels/GoodsReceiptViewModel.h \
- source/controllers/../ui/viewmodels/SupplierViewModel.h \
- source/controllers/../ui/viewmodels/DiscountViewModel.h \
- source/controllers/../ui/viewmodels/WarrantyViewModel.h \
- source/controllers/../ui/viewmodels/StatisticsViewModel.h \
- source/controllers/../ui/viewmodels/AccountViewModel.h \
- source/controllers/../ui/mock/MockDataStore.h \
- source/controllers/../ui/mock/../viewmodels/ProductViewModel.h \
- source/controllers/../ui/mock/../viewmodels/CustomerViewModel.h \
- source/controllers/../ui/mock/../viewmodels/EmployeeViewModel.h \
- source/controllers/../ui/mock/../viewmodels/CartViewModel.h \
- source/controllers/../ui/mock/../viewmodels/OrderViewModel.h \
- source/controllers/../ui/mock/../viewmodels/InvoiceViewModel.h \
- source/controllers/../ui/mock/../viewmodels/GoodsReceiptViewModel.h \
- source/controllers/../ui/mock/../viewmodels/SupplierViewModel.h \
- source/controllers/../ui/mock/../viewmodels/DiscountViewModel.h \
- source/controllers/../ui/mock/../viewmodels/WarrantyViewModel.h \
- source/controllers/../ui/mock/../viewmodels/StatisticsViewModel.h \
- source/controllers/../ui/mock/../viewmodels/AccountViewModel.h \
- source/controllers/../ui/mock/RealTimeManager.h \
- source/controllers/../ui/mock/RealTimeManager.h \
- source/controllers/../utils/IdGenerator.h \
- source/controllers/../utils/Utf8Helper.h \
+ C:/DUY/PBL2/UI/viewmodels/OperationResult.h \
+ C:/DUY/PBL2/UI/viewmodels/AuthViewModels.h \
+ C:/DUY/PBL2/UI/viewmodels/OperationResult.h \
+ C:/DUY/PBL2/source/models/Common.h \
+ C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/CustomerViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/EmployeeViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/CartViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/InvoiceViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/GoodsReceiptViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/SupplierViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/DiscountViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/StatisticsViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/AccountViewModel.h \
+ C:/DUY/PBL2/UI/mock/MockDataStore.h \
+ C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/CustomerViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/EmployeeViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/CartViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/InvoiceViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/GoodsReceiptViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/SupplierViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/DiscountViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/StatisticsViewModel.h \
+ C:/DUY/PBL2/UI/viewmodels/AccountViewModel.h \
+ C:/DUY/PBL2/UI/mock/RealTimeManager.h \
+ C:/DUY/PBL2/UI/mock/RealTimeManager.h \
+ C:/DUY/PBL2/source/utils/IdGenerator.h \
+ C:/DUY/PBL2/source/utils/Utf8Helper.h \
  C:/msys64/ucrt64/include/glib-2.0/glib.h \
  C:/msys64/ucrt64/include/glib-2.0/glib/galloca.h \
  C:/msys64/ucrt64/include/glib-2.0/glib/gtypes.h \
@@ -123,40 +123,40 @@ source/controllers/AppController.o: source/controllers/AppController.cpp \
  C:/msys64/ucrt64/include/glib-2.0/glib/deprecated/gthread.h \
  C:/msys64/ucrt64/include/glib-2.0/glib/glib-autocleanups.h
 source/controllers/AppController.h:
-source/controllers/../ui/viewmodels/OperationResult.h:
-source/controllers/../ui/viewmodels/AuthViewModels.h:
-source/controllers/../ui/viewmodels/OperationResult.h:
-source/controllers/../ui/viewmodels/../../models/Common.h:
-source/controllers/../ui/viewmodels/ProductViewModel.h:
-source/controllers/../ui/viewmodels/CustomerViewModel.h:
-source/controllers/../ui/viewmodels/EmployeeViewModel.h:
-source/controllers/../ui/viewmodels/CartViewModel.h:
-source/controllers/../ui/viewmodels/OrderViewModel.h:
-source/controllers/../ui/viewmodels/InvoiceViewModel.h:
-source/controllers/../ui/viewmodels/OrderViewModel.h:
-source/controllers/../ui/viewmodels/GoodsReceiptViewModel.h:
-source/controllers/../ui/viewmodels/SupplierViewModel.h:
-source/controllers/../ui/viewmodels/DiscountViewModel.h:
-source/controllers/../ui/viewmodels/WarrantyViewModel.h:
-source/controllers/../ui/viewmodels/StatisticsViewModel.h:
-source/controllers/../ui/viewmodels/AccountViewModel.h:
-source/controllers/../ui/mock/MockDataStore.h:
-source/controllers/../ui/mock/../viewmodels/ProductViewModel.h:
-source/controllers/../ui/mock/../viewmodels/CustomerViewModel.h:
-source/controllers/../ui/mock/../viewmodels/EmployeeViewModel.h:
-source/controllers/../ui/mock/../viewmodels/CartViewModel.h:
-source/controllers/../ui/mock/../viewmodels/OrderViewModel.h:
-source/controllers/../ui/mock/../viewmodels/InvoiceViewModel.h:
-source/controllers/../ui/mock/../viewmodels/GoodsReceiptViewModel.h:
-source/controllers/../ui/mock/../viewmodels/SupplierViewModel.h:
-source/controllers/../ui/mock/../viewmodels/DiscountViewModel.h:
-source/controllers/../ui/mock/../viewmodels/WarrantyViewModel.h:
-source/controllers/../ui/mock/../viewmodels/StatisticsViewModel.h:
-source/controllers/../ui/mock/../viewmodels/AccountViewModel.h:
-source/controllers/../ui/mock/RealTimeManager.h:
-source/controllers/../ui/mock/RealTimeManager.h:
-source/controllers/../utils/IdGenerator.h:
-source/controllers/../utils/Utf8Helper.h:
+C:/DUY/PBL2/UI/viewmodels/OperationResult.h:
+C:/DUY/PBL2/UI/viewmodels/AuthViewModels.h:
+C:/DUY/PBL2/UI/viewmodels/OperationResult.h:
+C:/DUY/PBL2/source/models/Common.h:
+C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/CustomerViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/EmployeeViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/CartViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/InvoiceViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/GoodsReceiptViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/SupplierViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/DiscountViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/StatisticsViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/AccountViewModel.h:
+C:/DUY/PBL2/UI/mock/MockDataStore.h:
+C:/DUY/PBL2/UI/viewmodels/ProductViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/CustomerViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/EmployeeViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/CartViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/OrderViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/InvoiceViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/GoodsReceiptViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/SupplierViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/DiscountViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/WarrantyViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/StatisticsViewModel.h:
+C:/DUY/PBL2/UI/viewmodels/AccountViewModel.h:
+C:/DUY/PBL2/UI/mock/RealTimeManager.h:
+C:/DUY/PBL2/UI/mock/RealTimeManager.h:
+C:/DUY/PBL2/source/utils/IdGenerator.h:
+C:/DUY/PBL2/source/utils/Utf8Helper.h:
 C:/msys64/ucrt64/include/glib-2.0/glib.h:
 C:/msys64/ucrt64/include/glib-2.0/glib/galloca.h:
 C:/msys64/ucrt64/include/glib-2.0/glib/gtypes.h:

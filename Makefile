@@ -15,14 +15,14 @@ TARGET   = pbl2_gtk4
 
 SRCS     = main.cpp \
            source/controllers/AppController.cpp \
-           source/ui/components/UIComponents.cpp \
-           source/ui/screens/LoginScreen.cpp \
-           source/ui/screens/MainShellWindow.cpp \
-           source/ui/screens/CustomerScreens.cpp \
-           source/ui/screens/SalesScreens.cpp \
-           source/ui/screens/WarehouseScreens.cpp \
-           source/ui/screens/AdminScreens.cpp \
-           source/ui/AppRunner.cpp
+           UI/components/UIComponents.cpp \
+           UI/screens/LoginScreen.cpp \
+           UI/screens/MainShellWindow.cpp \
+           UI/screens/CustomerScreens.cpp \
+           UI/screens/SalesScreens.cpp \
+           UI/screens/WarehouseScreens.cpp \
+           UI/screens/AdminScreens.cpp \
+           UI/AppRunner.cpp
 
 OBJS     = $(SRCS:.cpp=.o)
 DEPS     = $(OBJS:.o=.d)
