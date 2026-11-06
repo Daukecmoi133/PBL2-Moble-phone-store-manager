@@ -402,6 +402,100 @@ int main(int argc, char* argv[]) {
     std::cout << "\n";
 
     // =========================================================================
+    // TEST 5b: POS MULTI-FILE TRANSACTION - LỖI Ở BƯỚC 4 (TIÊU THỤ DISCOUNT.TXT)
+    // =========================================================================
+    std::cout << "--- [TEST 5b] POS Multi-file Transaction: Lỗi ở Bước 4 (Cập nhật voucher Discount.txt) ---\n";
+    {
+        SandboxAppSession session(sandboxDir);
+        std::string pId = "PHN-000101";
+        Phone* phone = session.repos.phoneRepo.findById(pId);
+        int initialStock = phone->getQuantity();
+        int initialOrders = countFileLines(sandboxDir + "/PAY/Order/Orders.txt");
+        int initialInvoices = countFileLines(sandboxDir + "/PAY/Invoices.txt");
+        DiscountCode* dc = session.repos.discountRepo.findByCode("SALE10");
+        int initialUsedCount = dc ? dc->getUsedCount() : 0;
+
+        std::vector<CartItemViewModel> cart;
+        CartItemViewModel item;
+        item.phoneId = pId;
+        item.phoneName = phone->getName();
+        item.quantity = 1;
+        item.unitPrice = phone->getSellingPrice();
+        item.subtotal = item.quantity * item.unitPrice;
+        cart.push_back(item);
+
+        // Mô phỏng lỗi ở Discount.txt (Products, Orders, Invoices đã ghi, nhưng phải rollback toàn bộ!)
+        FileHelper::simulateFailureOn("Discount.txt");
+
+        double outChange = 0.0;
+        std::string outInvoiceId;
+        OperationResult res = session.controller.createPosInvoice("WALK-IN", "EMP-000002", cart, "SALE10",
+                                                                 PaymentMethod::CASH, 100000000.0,
+                                                                 outChange, outInvoiceId);
+        TEST_ASSERT_FAIL(res, "createPosInvoice() từ chối khi cập nhật Discount.txt thất bại");
+
+        FileHelper::clearSimulatedFailure();
+
+        // Kiểm tra ROLLBACK đa file toàn diện khi bước 4 thất bại:
+        TEST_ASSERT(session.repos.phoneRepo.findById(pId)->getQuantity() == initialStock,
+                    "ROLLBACK BƯỚC 4: Tồn kho Products.txt được hoàn nguyên");
+        TEST_ASSERT(countFileLines(sandboxDir + "/PAY/Order/Orders.txt") == initialOrders,
+                    "ROLLBACK BƯỚC 4: Đơn hàng đã được xóa khỏi Orders.txt");
+        TEST_ASSERT(countFileLines(sandboxDir + "/PAY/Invoices.txt") == initialInvoices,
+                    "ROLLBACK BƯỚC 4: Hóa đơn đã được xóa khỏi Invoices.txt");
+        TEST_ASSERT(session.repos.discountRepo.findByCode("SALE10")->getUsedCount() == initialUsedCount,
+                    "ROLLBACK BƯỚC 4: Lượt dùng voucher không bị trừ sai");
+    }
+    std::cout << "\n";
+
+    // =========================================================================
+    // TEST 5c: POS MULTI-FILE TRANSACTION - LỖI Ở BƯỚC 5 (TÍCH ĐIỂM CUSTOMERS.TXT)
+    // =========================================================================
+    std::cout << "--- [TEST 5c] POS Multi-file Transaction: Lỗi ở Bước 5 (Tích điểm Customers.txt) ---\n";
+    {
+        SandboxAppSession session(sandboxDir);
+        std::string pId = "PHN-000101";
+        Phone* phone = session.repos.phoneRepo.findById(pId);
+        int initialStock = phone->getQuantity();
+        int initialOrders = countFileLines(sandboxDir + "/PAY/Order/Orders.txt");
+        int initialInvoices = countFileLines(sandboxDir + "/PAY/Invoices.txt");
+        Customer* cust = session.repos.customerRepo.findById("CUS-000001");
+        int initialPoints = cust ? cust->getPoints() : 0;
+
+        std::vector<CartItemViewModel> cart;
+        CartItemViewModel item;
+        item.phoneId = pId;
+        item.phoneName = phone->getName();
+        item.quantity = 1;
+        item.unitPrice = phone->getSellingPrice();
+        item.subtotal = item.quantity * item.unitPrice;
+        cart.push_back(item);
+
+        // Mô phỏng lỗi ở Customers.txt (Products, Orders, Invoices đã ghi, nhưng phải rollback!)
+        FileHelper::simulateFailureOn("Customers.txt");
+
+        double outChange = 0.0;
+        std::string outInvoiceId;
+        OperationResult res = session.controller.createPosInvoice("CUS-000001", "EMP-000002", cart, "",
+                                                                 PaymentMethod::CASH, 100000000.0,
+                                                                 outChange, outInvoiceId);
+        TEST_ASSERT_FAIL(res, "createPosInvoice() từ chối khi cập nhật Customers.txt thất bại");
+
+        FileHelper::clearSimulatedFailure();
+
+        // Kiểm tra ROLLBACK toàn diện khi bước 5 thất bại:
+        TEST_ASSERT(session.repos.phoneRepo.findById(pId)->getQuantity() == initialStock,
+                    "ROLLBACK BƯỚC 5: Tồn kho Products.txt được hoàn nguyên");
+        TEST_ASSERT(countFileLines(sandboxDir + "/PAY/Order/Orders.txt") == initialOrders,
+                    "ROLLBACK BƯỚC 5: Đơn hàng đã được xóa khỏi Orders.txt");
+        TEST_ASSERT(countFileLines(sandboxDir + "/PAY/Invoices.txt") == initialInvoices,
+                    "ROLLBACK BƯỚC 5: Hóa đơn đã được xóa khỏi Invoices.txt");
+        TEST_ASSERT(session.repos.customerRepo.findById("CUS-000001")->getPoints() == initialPoints,
+                    "ROLLBACK BƯỚC 5: Điểm khách hàng giữ nguyên");
+    }
+    std::cout << "\n";
+
+    // =========================================================================
     // TEST 6: THỬ LẠI GIAO DỊCH POS SAU KHI SỬA LỖI (RETRY WITHOUT DUPLICATES)
     // =========================================================================
     std::cout << "--- [TEST 6] Thử lại POS sau sự cố: Ghi thành công, không tạo trùng lặp ---\n";
@@ -480,6 +574,43 @@ int main(int argc, char* argv[]) {
     std::cout << "\n";
 
     // =========================================================================
+    // TEST 7b: NHẬP KHO MULTI-FILE TRANSACTION - LỖI NGAY BƯỚC 1 (STOCKRECEIPTS.TXT)
+    // =========================================================================
+    std::cout << "--- [TEST 7b] Nhập kho Multi-file Transaction: Lỗi ở Bước 1 (Ghi StockReceipts.txt) ---\n";
+    {
+        SandboxAppSession session(sandboxDir);
+        std::string pId = "PHN-000101";
+        Phone* phone = session.repos.phoneRepo.findById(pId);
+        int initialStock = phone->getQuantity();
+        int initialReceipts = countFileLines(sandboxDir + "/Device/StockReceipts.txt");
+
+        CreateReceiptRequest req;
+        req.supplierId = "SUP-000001";
+        req.employeeId = "EMP-000003";
+        GoodsReceiptDetailViewModel item;
+        item.phoneId = pId;
+        item.phoneName = phone->getName();
+        item.quantity = 20;
+        item.importPrice = 18000000.0;
+        req.items.push_back(item);
+
+        // Mô phỏng lỗi ở StockReceipts.txt
+        FileHelper::simulateFailureOn("StockReceipts.txt");
+
+        OperationResult res = session.controller.createGoodsReceipt(req);
+        TEST_ASSERT_FAIL(res, "createGoodsReceipt() từ chối khi lưu StockReceipts.txt thất bại");
+
+        FileHelper::clearSimulatedFailure();
+
+        // Kiểm tra: Kho chưa hề bị tăng, không có phiếu rác
+        TEST_ASSERT(countFileLines(sandboxDir + "/Device/StockReceipts.txt") == initialReceipts,
+                    "StockReceipts.txt không có phiếu nhập rác");
+        TEST_ASSERT(session.repos.phoneRepo.findById(pId)->getQuantity() == initialStock,
+                    "Tồn kho sản phẩm không bị tăng sai khi bước 1 thất bại");
+    }
+    std::cout << "\n";
+
+    // =========================================================================
     // TEST 8: THỬ LẠI NHẬP KHO THÀNH CÔNG VÀ ĐỒNG BỘ NHẤT QUÁN
     // =========================================================================
     std::cout << "--- [TEST 8] Thử lại nhập kho thành công sau khi sửa lỗi ---\n";
@@ -544,38 +675,135 @@ int main(int argc, char* argv[]) {
     std::cout << "\n";
 
     // =========================================================================
-    // TEST 10: TỰ ĐỘNG KHÔI PHỤC SAU SỰ CỐ (CRASH RECOVERY CỦA .TX_BAK)
+    // TEST 10: TỰ ĐỘNG KHÔI PHỤC SAU SỰ CỐ DỰA TRÊN MANIFEST
     // =========================================================================
-    std::cout << "--- [TEST 10] Crash Recovery: Tự động khôi phục giao dịch dở dang do sập nguồn/crash ---\n";
+    std::cout << "--- [TEST 10] Crash Recovery: Xác thực 3 kịch bản sập nguồn/crash quan trọng ---\n";
     {
-        std::string testFile = sandboxDir + "/RecoveryTest.txt";
-        std::string bakFile = testFile + ".tx_bak";
+        // Kịch bản 10a: Crash sau khi Commit nhưng trước khi Cleanup (STATUS=COMMITTED)
+        // Hệ thống TUYỆT ĐỐI KHÔNG ĐƯỢC rollback nhầm dữ liệu mới!
+        {
+            std::string mainFile = sandboxDir + "/CommitMarkerTest.txt";
+            std::string bakFile = mainFile + ".tx_bak";
+            std::string manifestFile = sandboxDir + "/.tx_manifest";
 
-        // Tạo file gốc và file backup dở dang
-        FileHelper::atomicWrite(bakFile, [](std::ofstream& out) {
-            out << "ORIGINAL_INTACT_DATA_BEFORE_CRASH\n";
-            return true;
-        });
+            // File chính đã mang dữ liệu MỚI đã commit
+            FileHelper::atomicWrite(mainFile, [](std::ofstream& out) {
+                out << "COMMITTED_NEW_DATA_MUST_BE_PRESERVED\n";
+                return true;
+            });
 
-        // Giả lập crash: file chính bị ghi đè dở dang
-        FileHelper::atomicWrite(testFile, [](std::ofstream& out) {
-            out << "CORRUPTED_INCOMPLETE_WRITE_DURING_CRASH\n";
-            return true;
-        });
+            // File backup cũ còn sót lại do crash trong cleanup
+            FileHelper::atomicWrite(bakFile, [](std::ofstream& out) {
+                out << "OLD_STALE_BACKUP_SHOULD_NOT_OVERWRITE\n";
+                return true;
+            });
 
-        // Gọi crash recovery tự động
-        FileTransaction::recoverPendingTransactions(sandboxDir);
+            // Manifest ghi nhận rõ STATUS=COMMITTED
+            FileHelper::atomicWrite(manifestFile, [&](std::ofstream& out) {
+                out << "STATUS=COMMITTED\n";
+                out << "PARTICIPANT|" << mainFile << "|" << bakFile << "|1\n";
+                return true;
+            });
 
-        // Xác nhận file chính đã được hoàn nguyên về bản trước khi crash
-        std::string recoveredContent = readFileContents(testFile);
-        TEST_ASSERT(recoveredContent.find("ORIGINAL_INTACT_DATA_BEFORE_CRASH") != std::string::npos,
-                    "Crash Recovery đã tự động khôi phục nội dung an toàn trước khi crash");
+            // Khởi động lại ứng dụng -> Crash recovery chạy
+            FileTransaction::recoverPendingTransactions(sandboxDir);
 
-        std::error_code ec;
-        TEST_ASSERT(!std::filesystem::exists(bakFile, ec),
-                    "File .tx_bak dở dang đã được dọn sạch sau khi khôi phục");
+            // Xác nhận: Dữ liệu mới đã commit được bảo toàn 100%, backup thừa đã bị xóa!
+            std::string contentAfter = readFileContents(mainFile);
+            TEST_ASSERT(contentAfter.find("COMMITTED_NEW_DATA_MUST_BE_PRESERVED") != std::string::npos,
+                        "Kịch bản 10a: Dữ liệu đã commit được bảo toàn, KHÔNG bị rollback nhầm!");
+            std::error_code ec;
+            TEST_ASSERT(!std::filesystem::exists(bakFile, ec),
+                        "Kịch bản 10a: File .tx_bak thừa đã được dọn sạch");
+            TEST_ASSERT(!std::filesystem::exists(manifestFile, ec),
+                        "Kịch bản 10a: Manifest đã được dọn sạch");
 
-        std::filesystem::remove(testFile, ec);
+            std::filesystem::remove(mainFile, ec);
+        }
+
+        // Kịch bản 10b: Crash trong khi đang tạo snapshot (STATUS=PREPARING)
+        // File backup có thể bị hỏng/truncate, nhưng file gốc an toàn -> KHÔNG restore từ backup hỏng!
+        {
+            std::string mainFile = sandboxDir + "/SnapshotCrashTest.txt";
+            std::string bakFile = mainFile + ".tx_bak";
+            std::string manifestFile = sandboxDir + "/.tx_manifest";
+
+            // File chính nguyên bản lành lặn
+            FileHelper::atomicWrite(mainFile, [](std::ofstream& out) {
+                out << "INTACT_ORIGINAL_DATA_FILE\n";
+                return true;
+            });
+
+            // File backup bị ghi dở dang/corrupted khi crash
+            FileHelper::atomicWrite(bakFile, [](std::ofstream& out) {
+                out << "CORRUPTED_INCOMPLETE_SNAPSHOT\n";
+                return true;
+            });
+
+            // Manifest đang ở trạng thái PREPARING
+            FileHelper::atomicWrite(manifestFile, [&](std::ofstream& out) {
+                out << "STATUS=PREPARING\n";
+                out << "PARTICIPANT|" << mainFile << "|" << bakFile << "|1\n";
+                return true;
+            });
+
+            // Khởi động lại ứng dụng -> Crash recovery chạy
+            FileTransaction::recoverPendingTransactions(sandboxDir);
+
+            // Xác nhận: File chính không bị ghi đè bởi backup hỏng!
+            std::string contentAfter = readFileContents(mainFile);
+            TEST_ASSERT(contentAfter.find("INTACT_ORIGINAL_DATA_FILE") != std::string::npos,
+                        "Kịch bản 10b: File gốc được bảo toàn, không bị ghi đè bởi snapshot hỏng!");
+            std::error_code ec;
+            TEST_ASSERT(!std::filesystem::exists(bakFile, ec),
+                        "Kịch bản 10b: Snapshot dở dang đã được dọn sạch");
+            TEST_ASSERT(!std::filesystem::exists(manifestFile, ec),
+                        "Kịch bản 10b: Manifest đã được dọn sạch");
+
+            std::filesystem::remove(mainFile, ec);
+        }
+
+        // Kịch bản 10c: Crash giữa chừng khi giao dịch chưa commit (STATUS=ACTIVE)
+        // File chính bị ghi dở dang -> BẮT BUỘC ROLLBACK từ snapshot
+        {
+            std::string mainFile = sandboxDir + "/ActiveCrashTest.txt";
+            std::string bakFile = mainFile + ".tx_bak";
+            std::string manifestFile = sandboxDir + "/.tx_manifest";
+
+            // File backup an toàn trước giao dịch
+            FileHelper::atomicWrite(bakFile, [](std::ofstream& out) {
+                out << "SAFE_ORIGINAL_DATA_BEFORE_TRANSACTION\n";
+                return true;
+            });
+
+            // File chính bị hỏng/dở dang do crash giữa chừng
+            FileHelper::atomicWrite(mainFile, [](std::ofstream& out) {
+                out << "PARTIAL_UNCOMMITTED_GARBAGE_DATA\n";
+                return true;
+            });
+
+            // Manifest ở trạng thái ACTIVE
+            FileHelper::atomicWrite(manifestFile, [&](std::ofstream& out) {
+                out << "STATUS=ACTIVE\n";
+                out << "PARTICIPANT|" << mainFile << "|" << bakFile << "|1\n";
+                return true;
+            });
+
+            // Khởi động lại ứng dụng -> Crash recovery chạy
+            FileTransaction::recoverPendingTransactions(sandboxDir);
+
+            // Xác nhận: File chính được rollback an toàn về trạng thái trước giao dịch!
+            std::string contentAfter = readFileContents(mainFile);
+            TEST_ASSERT(contentAfter.find("SAFE_ORIGINAL_DATA_BEFORE_TRANSACTION") != std::string::npos,
+                        "Kịch bản 10c: Rollback thành công file chính về dữ liệu an toàn trước crash!");
+            std::error_code ec;
+            TEST_ASSERT(!std::filesystem::exists(bakFile, ec),
+                        "Kịch bản 10c: File snapshot đã được dọn sạch");
+            TEST_ASSERT(!std::filesystem::exists(manifestFile, ec),
+                        "Kịch bản 10c: Manifest đã được dọn sạch");
+
+            std::filesystem::remove(mainFile, ec);
+        }
     }
     std::cout << "\n";
 

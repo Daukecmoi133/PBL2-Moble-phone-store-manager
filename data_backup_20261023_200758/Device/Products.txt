@@ -1,8 +1,0 @@
-id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications
-PHN-000101|Oppo Reno 16F 5G|Oppo|Android - ColorOS 16|10600000|14000000|42|Oppo Electronics|6.57 inch AMOLED, 8GB RAM, 256GB, Dimensity 7300-Energy, 7000mAh
-PHN-000102|iPhone 15 Pro Max 256GB|Apple|iOS 17|27500000|31990000|18|Apple Inc.|6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
-PHN-000103|Samsung Galaxy S24 Ultra 256GB|Samsung|Android 14 - One UI 6.1|25000000|29990000|25|Samsung Electronics|6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
-PHN-000104|Xiaomi 14 Ultra 512GB|Xiaomi|Android 14 - HyperOS|21000000|25490000|15|Xiaomi Corporation|6.73 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh
-PHN-000105|iPhone 13 128GB|Apple|iOS 15|11200000|13890000|30|Apple Inc.|6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
-PHN-000106|Samsung Galaxy A55 5G 128GB|Samsung|Android 14 - One UI 6.1|7500000|9690000|50|Samsung Electronics|6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh
-PHN-000107|Oppo Find X7 Ultra 256GB|Oppo|Android 14 - ColorOS 14|18500000|22900000|12|Oppo Electronics|6.82 inch AMOLED, 16GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
