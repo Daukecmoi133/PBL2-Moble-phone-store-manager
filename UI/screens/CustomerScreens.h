@@ -2,6 +2,7 @@
 #define CUSTOMER_SCREENS_H
 
 #include <gtk/gtk.h>
+#include <set>
 #include "../../source/controllers/AppController.h"
 
 class MainShellWindow; // Forward declaration
@@ -35,6 +36,7 @@ private:
     GtkWidget* productsView;
     GtkWidget* cartView;
     GtkWidget* ordersView;
+    GtkWidget* discountsView;
     GtkWidget* profileView;
     GtkWidget* warrantyView;
 
@@ -46,15 +48,31 @@ private:
     GtkWidget* cartSummaryBox;
     GtkWidget* ordersListBox;
     GtkWidget* ordersCountBadge = nullptr;
+    GtkWidget* discountsListBox;
+    GtkWidget* discountsCountBadge = nullptr;
     GtkWidget* warrantyListBox;
     GtkWidget* warrantyCountBadge = nullptr;
 
     // Search & Filter state
     std::string currentSearchKeyword;
     std::string currentBrandFilter;
+    std::string currentStockFilter;
     std::string currentSortBy;
     std::string ordersKeyword;
+    std::string ordersFilterStatus;
+    std::string ordersFilterPayment;
+    std::string ordersSortBy;
+    std::string discountsKeyword;
+    std::string discountsFilterType;
+    std::string discountsFilterStatus;
+    std::string discountsSortBy;
     std::string warrantyKeyword;
+    std::string warrantyFilterStatus;
+    std::string warrantySortBy;
+
+    // Cart selection state
+    std::set<std::string> selectedCartPhoneIds;
+    bool cartSelectionInitialized = false;
 
     // Cart / Checkout inputs
     GtkWidget* entryCoupon;
@@ -63,6 +81,7 @@ private:
     GtkWidget* entryDeliveryAddress;
     GtkWidget* comboDeliveryMethod;
     GtkWidget* comboPaymentMethod;
+    GtkWidget* btnCheckoutAction = nullptr;
 
 public:
     CustomerScreens(AppController* ctrl, MainShellWindow* parentShell);
@@ -71,6 +90,7 @@ public:
     GtkWidget* getProductsView() { return productsView; }
     GtkWidget* getCartView() { return cartView; }
     GtkWidget* getOrdersView() { return ordersView; }
+    GtkWidget* getDiscountsView() { return discountsView; }
     GtkWidget* getProfileView() { return profileView; }
     GtkWidget* getWarrantyView() { return warrantyView; }
 
@@ -79,6 +99,7 @@ public:
     void refreshProducts();
     void refreshCart();
     void refreshOrders();
+    void refreshDiscounts();
     void refreshProfile();
     void refreshWarranty();
 
@@ -87,6 +108,7 @@ private:
     void buildProductsView();
     void buildCartView();
     void buildOrdersView();
+    void buildDiscountsView();
     void buildProfileView();
     void buildWarrantyView();
 

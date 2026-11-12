@@ -53,6 +53,7 @@ private:
     GtkWidget* posSearchPopover = nullptr;
     GtkWidget* posSearchListBox = nullptr;
     GtkWidget* posSearchStatusLbl = nullptr;
+    GtkWidget* posBtnAddProd = nullptr;
     GtkWidget* posBtnPay = nullptr;
     GtkWidget* posLblChange = nullptr;
     GtkWidget* posComboCustomer = nullptr;
@@ -62,16 +63,35 @@ private:
     // Dynamic containers & record count badges
     GtkWidget* productLookupListBox = nullptr;
     GtkWidget* lookupCountBadge = nullptr;
+    std::string productLookupKeyword;
+    int productLookupBrand = 0;
+    int productLookupStock = 0;
+    int productLookupSort = 0;
+
     GtkWidget* customerListBox = nullptr;
     GtkWidget* customerCountBadge = nullptr;
+    std::string customerFilterKeyword;
+    guint customerFilterTier = 0;
+    guint customerSortBy = 0;
+
     GtkWidget* invoiceListBox = nullptr;
     GtkWidget* invoiceCountBadge = nullptr;
+    std::string invoiceFilterKeyword;
+    guint invoiceFilterPayMethod = 0;
+    guint invoiceSortBy = 0;
+
     GtkWidget* ordersListBox = nullptr;
     GtkWidget* ordersCountBadge = nullptr;
     std::string onlineOrderKeyword;
+    int onlineOrderFilterStatus = -1;
+    int onlineOrderFilterPayment = -1;
+    guint onlineOrderSortBy = 0;
+
     GtkWidget* warrantyListBox = nullptr;
     GtkWidget* warrantyCountBadge = nullptr;
     std::string warrantyKeyword;
+    int warrantyFilterStatus = -1;
+    guint warrantySortBy = 0;
 
 public:
     SalesScreens(AppController* ctrl, MainShellWindow* parentShell);

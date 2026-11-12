@@ -66,6 +66,8 @@ private:
     DateTime orderTime;
     double discountAmount;
     InventoryState inventoryState; // // FIX LỖI: trạng thái tồn kho của đơn (đặc tả mục 7); CHỈ OrderService được đổi
+    bool customerConfirmed;        // Khách hàng xác nhận đã nhận hàng
+    std::string discountCode;      // Mã giảm giá đã áp dụng
 
 public:
     Order();
@@ -81,15 +83,24 @@ public:
     ShippingInfo getShippingInfo() const;
     OrderStatus getStatus() const;
     DateTime getOrderTime() const;
+    DateTime getCreatedAt() const;
     double getDiscountAmount() const;
     InventoryState getInventoryState() const; // // FIX LỖI: đặc tả mục 7
+    bool isCustomerConfirmed() const;
+    std::string getDiscountCode() const;
 
     void setID(const std::string& orderId);
     void setCustomerId(const std::string& custId);
+    void setDeliveryMethod(DeliveryMethod m);
+    void setPaymentMethod(PaymentMethod p);
+    void setShippingInfo(const ShippingInfo& s);
     void setStatus(OrderStatus s);
     void setDiscountAmount(double d);
     void setOrderTime(const DateTime& dt);
+    void setCreatedAt(const DateTime& dt);
     void setInventoryState(InventoryState s); // // FIX LỖI: đặc tả mục 7
+    void setCustomerConfirmed(bool c);
+    void setDiscountCode(const std::string& code);
 
     void addDetail(const OrderDetail& detail);
     double calculateSubtotal() const;
@@ -141,14 +152,16 @@ inline double OrderDetail::getSubtotal() const {
 inline Order::Order() 
     : id(""), customerId(""), deliveryMethod(DeliveryMethod::PICKUP),
       paymentMethod(PaymentMethod::CASH), status(OrderStatus::PENDING),
-      orderTime(), discountAmount(0.0), inventoryState(InventoryState::NONE) {}
+      orderTime(), discountAmount(0.0), inventoryState(InventoryState::NONE),
+      customerConfirmed(false), discountCode("") {}
 
 inline Order::Order(std::string id, std::string customerId, DeliveryMethod deliv, 
                     PaymentMethod pay, ShippingInfo ship)
     : id(id), customerId(customerId), deliveryMethod(deliv),
       paymentMethod(pay), shippingInfo(ship),
       status(OrderStatus::PENDING), orderTime(DateTime::now()),
-      discountAmount(0.0), inventoryState(InventoryState::NONE) {}
+      discountAmount(0.0), inventoryState(InventoryState::NONE),
+      customerConfirmed(false), discountCode("") {}
 
 inline std::string Order::getID() const { return id; }
 inline std::string Order::getCustomerId() const { return customerId; }
@@ -159,15 +172,24 @@ inline Vector<OrderDetail>& Order::getDetails() { return details; }
 inline ShippingInfo Order::getShippingInfo() const { return shippingInfo; }
 inline OrderStatus Order::getStatus() const { return status; }
 inline DateTime Order::getOrderTime() const { return orderTime; }
+inline DateTime Order::getCreatedAt() const { return orderTime; }
 inline double Order::getDiscountAmount() const { return discountAmount; }
 inline InventoryState Order::getInventoryState() const { return inventoryState; }
+inline bool Order::isCustomerConfirmed() const { return customerConfirmed; }
+inline std::string Order::getDiscountCode() const { return discountCode; }
 
 inline void Order::setID(const std::string& orderId) { id = orderId; }
 inline void Order::setCustomerId(const std::string& custId) { customerId = custId; }
+inline void Order::setDeliveryMethod(DeliveryMethod m) { deliveryMethod = m; }
+inline void Order::setPaymentMethod(PaymentMethod p) { paymentMethod = p; }
+inline void Order::setShippingInfo(const ShippingInfo& s) { shippingInfo = s; }
 inline void Order::setStatus(OrderStatus s) { status = s; }
 inline void Order::setDiscountAmount(double d) { discountAmount = d; }
 inline void Order::setOrderTime(const DateTime& dt) { orderTime = dt; }
+inline void Order::setCreatedAt(const DateTime& dt) { orderTime = dt; }
 inline void Order::setInventoryState(InventoryState s) { inventoryState = s; }
+inline void Order::setCustomerConfirmed(bool c) { customerConfirmed = c; }
+inline void Order::setDiscountCode(const std::string& code) { discountCode = code; }
 
 inline void Order::addDetail(const OrderDetail& detail) {
     details.push_back(detail);
@@ -194,7 +216,7 @@ inline void Order::cancel() {
     status = OrderStatus::CANCELLED;
 }
 
-// Format: id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details
+// Format: id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details|inventoryState|customerConfirmed|discountCode
 // details: phoneId,phoneName,quantity,unitPrice;phoneId,phoneName,...
 inline std::string Order::toFileString() const {
     std::string line = id + "|" + customerId + "|" +
@@ -212,6 +234,9 @@ inline std::string Order::toFileString() const {
                 std::to_string(static_cast<long long>(details[i].getUnitPrice()));
         if (i < details.getSize() - 1) line += ";";
     }
+    line += "|" + std::to_string(static_cast<int>(inventoryState)) + "|" +
+            (customerConfirmed ? "1" : "0") + "|" +
+            discountCode;
     return line;
 }
 
@@ -228,9 +253,8 @@ inline Order Order::fromFileLine(const std::string& line) {
     // paymentMethod: 0=CASH, 1=BANK_TRANSFER, 2=CREDIT_CARD
     int pay   = std::stoi(StringHelper::trim(parts[3]));
     int stat  = std::stoi(StringHelper::trim(parts[4]));
-    // FIX LỖI: tránh cảnh báo -Wunused-variable. deliv/pay chưa được gán vào Order (bug cũ, CHƯA sửa; ghi trong docs/MIGRATION.md).
-    (void)deliv;
-    (void)pay;
+    o.setDeliveryMethod(static_cast<DeliveryMethod>(deliv));
+    o.setPaymentMethod(static_cast<PaymentMethod>(pay));
     o.setOrderTime(DateTime::fromString(StringHelper::trim(parts[5])));
     o.setDiscountAmount(std::stod(StringHelper::trim(parts[6])));
 
@@ -239,6 +263,7 @@ inline Order Order::fromFileLine(const std::string& line) {
         StringHelper::trim(parts[8]),
         StringHelper::trim(parts[9])
     );
+    o.setShippingInfo(ship);
 
     // Parse details: phoneId,phoneName,quantity,unitPrice;...
     if (!StringHelper::trim(parts[10]).empty()) {
@@ -258,6 +283,24 @@ inline Order Order::fromFileLine(const std::string& line) {
     }
 
     o.setStatus(static_cast<OrderStatus>(stat));
+
+    if (parts.getSize() >= 12) {
+        try {
+            o.setInventoryState(static_cast<InventoryState>(std::stoi(StringHelper::trim(parts[11]))));
+        } catch (...) {
+            o.setInventoryState(InventoryState::NONE);
+        }
+    }
+    if (parts.getSize() >= 13) {
+        std::string confStr = StringHelper::trim(parts[12]);
+        o.setCustomerConfirmed(confStr == "1" || StringHelper::toLower(confStr) == "true");
+    } else {
+        o.setCustomerConfirmed(static_cast<OrderStatus>(stat) == OrderStatus::COMPLETED);
+    }
+    if (parts.getSize() >= 14) {
+        o.setDiscountCode(StringHelper::trim(parts[13]));
+    }
+
     return o;
 }
 

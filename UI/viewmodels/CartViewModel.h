@@ -57,6 +57,7 @@ struct CheckoutRequest {
     int deliveryMethod; // 0: Pickup (Nhận tại shop), 1: Delivery (Giao tận nơi)
     int paymentMethod;  // 0: Cash (Tiền mặt), 1: Bank Transfer (Chuyển khoản)
     std::string discountCode;
+    std::vector<std::string> selectedPhoneIds; // Danh sách ID sản phẩm được tick chọn (rỗng = chọn tất cả)
 };
 
 #endif // CART_VIEWMODEL_H

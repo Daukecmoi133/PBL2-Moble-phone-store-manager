@@ -51,7 +51,7 @@ inline AuthService::AuthService(EmployeeService& es, CustomerService& cs)
     : empService(es), custService(cs) {}
 
 // Đăng nhập: kiểm tra nhân viên trước, sau đó khách hàng
-// Không tiết lộ lý do cụ thể (sai username hay sai password) để bảo mật
+// Phân biệt rõ lý do thất bại (tài khoản không tồn tại, bị vô hiệu hóa, sai mật khẩu, lỗi I/O)
 inline LoginResult AuthService::login(const std::string& username, const std::string& password) {
     LoginResult result;
 
@@ -62,34 +62,55 @@ inline LoginResult AuthService::login(const std::string& username, const std::st
     while (!uname.empty() && (uname.back() == ' ' || uname.back() == '\t')) uname.pop_back();
 
     if (uname.empty() || password.empty()) {
-        result.errorMessage = "Ten dang nhap va mat khau khong duoc de trong!";
+        result.errorMessage = "Tên đăng nhập và mật khẩu không được để trống!";
         return result;
     }
 
-    // 1. Tìm trong nhân viên trước (gọi EmployeeService::authenticate)
-    Employee* emp = empService.authenticate(uname, password);
+    if (empService.hasLoadError() || custService.hasLoadError()) {
+        result.errorMessage = "Lỗi đọc dữ liệu tài khoản từ tệp tin!";
+        return result;
+    }
+
+    // 1. Tìm trong nhân viên trước
+    Employee* emp = empService.getEmployeeByUsername(uname);
     if (emp != nullptr) {
+        if (!emp->getAccount().isActive()) {
+            result.errorMessage = "Tài khoản đã bị vô hiệu hóa!";
+            return result;
+        }
+        if (!emp->getAccount().verifyPassword(password)) {
+            result.errorMessage = "Mật khẩu không chính xác!";
+            return result;
+        }
         result.success = true;
         result.role = emp->getRoleType();
         result.userId = emp->getID();
         result.fullName = emp->getName().getFullName();
-        result.errorMessage = "Dang nhap thanh cong!";
+        result.errorMessage = "Đăng nhập thành công!";
         return result;
     }
 
-    // 2. Tìm trong khách hàng (gọi CustomerService::authenticate)
-    Customer* cust = custService.authenticate(uname, password);
+    // 2. Tìm trong khách hàng
+    Customer* cust = custService.getCustomerByUsername(uname);
     if (cust != nullptr) {
+        if (!cust->getAccount().isActive()) {
+            result.errorMessage = "Tài khoản đã bị vô hiệu hóa!";
+            return result;
+        }
+        if (!cust->getAccount().verifyPassword(password)) {
+            result.errorMessage = "Mật khẩu không chính xác!";
+            return result;
+        }
         result.success = true;
         result.role = RoleType::CUSTOMER;
         result.userId = cust->getID();
         result.fullName = cust->getName().getFullName();
-        result.errorMessage = "Dang nhap thanh cong!";
+        result.errorMessage = "Đăng nhập thành công!";
         return result;
     }
 
-    // Không tìm thấy ở đâu → thất bại (không nói rõ lý do)
-    result.errorMessage = "Ten dang nhap hoac mat khau khong chinh xac!";
+    // Không tìm thấy ở đâu → thất bại
+    result.errorMessage = "Tài khoản không tồn tại hoặc đã bị khóa!";
     return result;
 }
 

@@ -21,13 +21,15 @@ private:
   double sellingPrice;         // Giá bán lẻ
   int quantity;                // Số lượng tồn kho
   int reservedQuantity;        // // FIX LỖI: số lượng đang giữ chỗ cho đơn PENDING (đặc tả mục 7)
+  bool listed;                 // Cờ đăng bán: true = hiển thị cho khách, false = bản nháp
 
 public:
   Phone(); // Hàm dựng mặc định
   Phone(std::string id, std::string name, std::string brand, std::string os,
         double importPrice, double sellingPrice, int quantity,
         std::string manufacturer = "",
-        std::string specs = ""); // Hàm dựng đủ tham số
+        std::string specs = "",
+        bool listed = true); // Hàm dựng đủ tham số
 
   // Getters
   std::string getID() const;              // Hàm trả về mã sản phẩm
@@ -42,6 +44,7 @@ public:
   int getQuantity() const;                // Hàm trả về số lượng tồn kho
   int getReservedQuantity() const;        // // FIX LỖI: số lượng đang giữ chỗ
   int availableQuantity() const;          // // FIX LỖI: available = quantity - reservedQuantity
+  bool isListed() const;                  // Kiểm tra cờ đăng bán
 
   // Setters
   void setID(const std::string &id);       // Hàm thiết lập mã sản phẩm
@@ -57,6 +60,7 @@ public:
   void setSellingPrice(double price); // Hàm thiết lập giá bán
   void setQuantity(int qty);          // Hàm thiết lập số lượng tồn kho
   void setReservedQuantity(int qty);  // // FIX LỖI: thiết lập số lượng giữ chỗ
+  void setListed(bool l);             // Thiết lập cờ đăng bán
 
   // Nghiệp vụ tồn kho
   bool isAvailable() const; // Hàm kiểm tra sản phẩm còn hàng để bán không
@@ -77,16 +81,17 @@ public:
 inline Phone::Phone()
     : id(""), name(""), brand(""), manufacturer(""), operatingSystem(""),
       specifications(""), detailedSpecifications(""), importPrice(0.0),
-      sellingPrice(0.0), quantity(0), reservedQuantity(0) {}
+      sellingPrice(0.0), quantity(0), reservedQuantity(0), listed(true) {}
 
 // Hàm dựng đủ tham số
 inline Phone::Phone(std::string id, std::string name, std::string brand,
                     std::string os, double importPrice, double sellingPrice,
-                    int quantity, std::string manufacturer, std::string specs)
+                    int quantity, std::string manufacturer, std::string specs,
+                    bool listed)
     : id(id), name(name), brand(brand), manufacturer(manufacturer),
       operatingSystem(os), specifications(specs), detailedSpecifications(""),
       importPrice(importPrice), sellingPrice(sellingPrice), quantity(quantity),
-      reservedQuantity(0) {}
+      reservedQuantity(0), listed(listed) {}
 
 // Hàm getter các thuộc tính
 inline std::string Phone::getID() const { return id; }
@@ -104,6 +109,7 @@ inline int Phone::getQuantity() const { return quantity; }
 // FIX LỖI: getter/setter reservedQuantity + availableQuantity theo đặc tả mục 7
 inline int Phone::getReservedQuantity() const { return reservedQuantity; }
 inline int Phone::availableQuantity() const { return quantity - reservedQuantity; }
+inline bool Phone::isListed() const { return listed; }
 
 // Hàm setter các thuộc tính
 inline void Phone::setID(const std::string &id) { this->id = id; }
@@ -125,6 +131,7 @@ inline void Phone::setImportPrice(double price) { this->importPrice = price; }
 inline void Phone::setSellingPrice(double price) { this->sellingPrice = price; }
 inline void Phone::setQuantity(int qty) { this->quantity = qty; }
 inline void Phone::setReservedQuantity(int qty) { this->reservedQuantity = qty; }
+inline void Phone::setListed(bool l) { this->listed = l; }
 
 // Kiểm tra số lượng tồn kho còn lớn hơn 0 không
 inline bool Phone::isAvailable() const { return quantity > 0; }
@@ -146,17 +153,18 @@ inline void Phone::addStock(int qty) {
 }
 
 // Định dạng lưu trữ dữ liệu dòng vào tệp tin Products.txt
-// Format: id|name|brand|os|importPrice|sellingPrice|quantity|manufacturer|specifications
+// Format: id|name|brand|os|importPrice|sellingPrice|quantity|manufacturer|specifications|listed
 inline std::string Phone::toFileString() const {
   return id + "|" + name + "|" + brand + "|" + operatingSystem + "|" +
          StringHelper::formatCurrency(importPrice) + "|" +
          StringHelper::formatCurrency(sellingPrice) + "|" +
          std::to_string(quantity) + "|" +
-         manufacturer + "|" + specifications;
+         manufacturer + "|" + specifications + "|" +
+         (listed ? "1" : "0");
 }
 
 // Phân tích dòng dữ liệu từ Products.txt thành đối tượng Phone
-// Hỗ trợ cả định dạng 7 trường (cũ) và 9 trường (mới có manufacturer, specs)
+// Hỗ trợ cả định dạng 7 trường (cũ), 8/9 trường và 10 trường (có listed)
 inline Phone Phone::fromFileLine(const std::string& line) {
   Vector<std::string> parts = StringHelper::split(line, '|');
   if (parts.getSize() < 7) return Phone(); // Dòng không hợp lệ
@@ -171,6 +179,12 @@ inline Phone Phone::fromFileLine(const std::string& line) {
   p.setQuantity(std::stoi(StringHelper::trim(parts[6])));
   if (parts.getSize() >= 8) p.setManufacturer(StringHelper::trim(parts[7]));
   if (parts.getSize() >= 9) p.setSpecifications(StringHelper::trim(parts[8]));
+  if (parts.getSize() >= 10) {
+    std::string lStr = StringHelper::trim(parts[9]);
+    p.setListed(lStr == "1" || StringHelper::toLower(lStr) == "true");
+  } else {
+    p.setListed(true); // Thiếu trường thứ 10 thì listed = true
+  }
   return p;
 }
 

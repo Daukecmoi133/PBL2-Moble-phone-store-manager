@@ -17,24 +17,43 @@ Result<Order> OrderRepository::deserialize(const std::string& line) const {
 }
 
 void OrderRepository::rebuildIndexes() {
-    // TODO(logic): dựng index theo khách hàng và gọi rebuildPendingQueue().
+    rebuildPendingQueue();
 }
 
-Result<Vector<Order>> OrderRepository::findByCustomer(const std::string&) const {
-    // TODO(logic): lọc các đơn của khách, trả bản sao.
-    return Result<Vector<Order>>::fail(ErrorCode::NotImplemented, "TODO: OrderRepository::findByCustomer");
+Result<Vector<Order>> OrderRepository::findByCustomer(const std::string& customerId) const {
+    Vector<Order> result;
+    for (int i = 0; i < items.getSize(); ++i) {
+        if (items[i].getCustomerId() == customerId) {
+            result.push_back(items[i]);
+        }
+    }
+    return Result<Vector<Order>>::ok(result);
 }
 
-Result<Vector<Order>> OrderRepository::findByStatus(OrderStatus) const {
-    // TODO(logic): lọc đơn theo trạng thái, trả bản sao.
-    return Result<Vector<Order>>::fail(ErrorCode::NotImplemented, "TODO: OrderRepository::findByStatus");
+Result<Vector<Order>> OrderRepository::findByStatus(OrderStatus status) const {
+    Vector<Order> result;
+    for (int i = 0; i < items.getSize(); ++i) {
+        if (items[i].getStatus() == status) {
+            result.push_back(items[i]);
+        }
+    }
+    return Result<Vector<Order>>::ok(result);
 }
 
 Result<Order> OrderRepository::peekNextPending() const {
-    // TODO(logic): lấy ID từ pendingQueue, đọc lại trạng thái, bỏ qua đơn không còn PENDING.
-    return Result<Order>::fail(ErrorCode::NotImplemented, "TODO: OrderRepository::peekNextPending");
+    for (int i = 0; i < items.getSize(); ++i) {
+        if (items[i].getStatus() == OrderStatus::PENDING) {
+            return Result<Order>::ok(items[i]);
+        }
+    }
+    return Result<Order>::fail(ErrorCode::NotFound, "Không có đơn hàng PENDING nào");
 }
 
 void OrderRepository::rebuildPendingQueue() {
-    // TODO(logic): xóa pendingQueue rồi đẩy ID các đơn PENDING theo thứ tự thời gian đặt.
+    pendingQueue.clear();
+    for (int i = 0; i < items.getSize(); ++i) {
+        if (items[i].getStatus() == OrderStatus::PENDING) {
+            pendingQueue.push(items[i].getID());
+        }
+    }
 }

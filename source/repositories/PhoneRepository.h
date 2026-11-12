@@ -55,6 +55,9 @@ public:
     bool updatePhone(const Phone& updatedPhone);
     bool deletePhone(const std::string& id);
 
+    // Lưu thông số kỹ thuật chi tiết ra file Thongsokythuat.txt
+    bool saveDetailedSpecifications() const;
+
     // Kiểm tra ID có tồn tại không (tiện cho validation)
     bool existsById(const std::string& id) const;
 };
@@ -280,11 +283,30 @@ inline bool PhoneRepository::updatePhone(const Phone& updatedPhone) {
                 phones = backup; // Rollback
                 return false;
             }
+            saveDetailedSpecifications();
             return true;
         }
     }
     std::cerr << "[Canh bao] Khong tim thay ID de cap nhat: " << updatedPhone.getID() << std::endl;
     return false;
+}
+
+// Lưu thông số kỹ thuật chi tiết ra file Thongsokythuat.txt
+inline bool PhoneRepository::saveDetailedSpecifications() const {
+    if (specificationsFilePath.empty()) return true;
+    return FileHelper::atomicWrite(specificationsFilePath, [&](std::ofstream& file) {
+        for (int i = 0; i < phones.getSize(); ++i) {
+            const std::string& specs = phones[i].getDetailedSpecifications();
+            if (!specs.empty()) {
+                file << phones[i].getID() << "|\n";
+                file << specs;
+                if (specs.back() != '\n') {
+                    file << "\n";
+                }
+            }
+        }
+        return file.good();
+    });
 }
 
 // Xóa sản phẩm theo ID và lưu ngay

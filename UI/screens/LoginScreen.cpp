@@ -17,6 +17,12 @@
 
 #include "LoginScreen.h"
 #include "../components/UIComponents.h"
+#include <cstring>
+#include <gdk/gdkkeysyms.h>
+
+static LoginScreen *s_activeLoginScreen = nullptr;
+
+LoginScreen *LoginScreen::getActiveInstance() { return s_activeLoginScreen; }
 
 struct QuickFillData {
   LoginScreen *screen;
@@ -29,12 +35,20 @@ LoginScreen::LoginScreen(AppController *ctrl,
     : controller(ctrl), entryUsername(nullptr), entryPassword(nullptr),
       lblError(nullptr), btnLogin(nullptr), successCallback(onLoginSuccess),
       callbackData(userData) {
+  s_activeLoginScreen = this;
 
-  // Root Container with dark gradient background
-  rootWidget = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_widget_add_css_class(rootWidget, "login-bg");
+  // Root Overlay Container (hỗ trợ cả overlay dialog và toast ngay trên màn đăng nhập)
+  rootWidget = gtk_overlay_new();
   gtk_widget_set_hexpand(rootWidget, TRUE);
   gtk_widget_set_vexpand(rootWidget, TRUE);
+
+  // Scrolled Container with dark gradient background
+  bgScroll = gtk_scrolled_window_new();
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(bgScroll),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_widget_add_css_class(bgScroll, "login-bg");
+  gtk_widget_set_hexpand(bgScroll, TRUE);
+  gtk_widget_set_vexpand(bgScroll, TRUE);
 
   // Center Alignment Box
   centerBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -43,22 +57,79 @@ LoginScreen::LoginScreen(AppController *ctrl,
   gtk_widget_set_margin_top(centerBox, 40);
   gtk_widget_set_margin_bottom(centerBox, 40);
 
-  card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 16);
-  gtk_widget_add_css_class(card, "login-card");
-  gtk_widget_set_size_request(card, 540, -1);
+  // GtkStack chuyển cảnh mượt mà giữa Đăng nhập / Đăng ký / Quên mật khẩu
+  authStack = gtk_stack_new();
+  gtk_stack_set_transition_type(GTK_STACK(authStack),
+                                GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT_RIGHT);
+  gtk_stack_set_transition_duration(GTK_STACK(authStack), 260);
+  gtk_stack_set_vhomogeneous(GTK_STACK(authStack), FALSE);
 
-  gtk_box_append(GTK_BOX(centerBox), card);
-  gtk_box_append(GTK_BOX(rootWidget), centerBox);
+  loginCard = gtk_box_new(GTK_ORIENTATION_VERTICAL, 16);
+  gtk_widget_add_css_class(loginCard, "login-card");
+  gtk_widget_set_size_request(loginCard, 540, -1);
+
+  registerCard = gtk_box_new(GTK_ORIENTATION_VERTICAL, 14);
+  gtk_widget_add_css_class(registerCard, "login-card");
+  gtk_widget_set_size_request(registerCard, 540, -1);
+
+  forgotCard = gtk_box_new(GTK_ORIENTATION_VERTICAL, 14);
+  gtk_widget_add_css_class(forgotCard, "login-card");
+  gtk_widget_set_size_request(forgotCard, 540, -1);
+
+  gtk_stack_add_named(GTK_STACK(authStack), loginCard, "login");
+  gtk_stack_add_named(GTK_STACK(authStack), registerCard, "register");
+  gtk_stack_add_named(GTK_STACK(authStack), forgotCard, "forgot");
+
+  gtk_box_append(GTK_BOX(centerBox), authStack);
+  gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(bgScroll), centerBox);
+  gtk_overlay_set_child(GTK_OVERLAY(rootWidget), bgScroll);
+
+  // Phím Esc: đóng overlay dialog nếu đang mở, hoặc quay lại trang Đăng nhập
+  GtkEventController *keyCtrl = gtk_event_controller_key_new();
+  gtk_event_controller_set_propagation_phase(keyCtrl, GTK_PHASE_CAPTURE);
+  g_signal_connect(
+      keyCtrl, "key-pressed",
+      G_CALLBACK(+[](GtkEventControllerKey *, guint keyval, guint,
+                     GdkModifierType, gpointer d) -> gboolean {
+        LoginScreen *self = static_cast<LoginScreen *>(d);
+        if (!self)
+          return GDK_EVENT_PROPAGATE;
+        if (keyval == GDK_KEY_Escape) {
+          if (self->isOverlayDialogOpen()) {
+            self->closeOverlayDialog();
+            return GDK_EVENT_STOP;
+          }
+          const char *vis =
+              gtk_stack_get_visible_child_name(GTK_STACK(self->authStack));
+          if (vis && std::strcmp(vis, "login") != 0) {
+            self->showLoginForm();
+            return GDK_EVENT_STOP;
+          }
+        }
+        return GDK_EVENT_PROPAGATE;
+      }),
+      this);
+  gtk_widget_add_controller(rootWidget, keyCtrl);
 
   showLoginForm();
 }
 
+LoginScreen::~LoginScreen() {
+  if (activeToastTimerId > 0) {
+    g_source_remove(activeToastTimerId);
+    activeToastTimerId = 0;
+  }
+  if (s_activeLoginScreen == this) {
+    s_activeLoginScreen = nullptr;
+  }
+}
+
 void LoginScreen::showLoginForm() {
-  // Clear card
-  GtkWidget *child = gtk_widget_get_first_child(card);
+  // Clear loginCard
+  GtkWidget *child = gtk_widget_get_first_child(loginCard);
   while (child != nullptr) {
     GtkWidget *next = gtk_widget_get_next_sibling(child);
-    gtk_box_remove(GTK_BOX(card), child);
+    gtk_box_remove(GTK_BOX(loginCard), child);
     child = next;
   }
 
@@ -67,7 +138,7 @@ void LoginScreen::showLoginForm() {
   GtkWidget *lblLogo = gtk_label_new("📱");
   gtk_widget_set_margin_bottom(lblLogo, 4);
 
-  GtkWidget *lblTitle = gtk_label_new("PHONE STORE MANAGER");
+  GtkWidget *lblTitle = gtk_label_new("D&A STORE");
   gtk_widget_add_css_class(lblTitle, "login-title");
 
   GtkWidget *lblSubtitle =
@@ -77,14 +148,14 @@ void LoginScreen::showLoginForm() {
   gtk_box_append(GTK_BOX(brandBox), lblLogo);
   gtk_box_append(GTK_BOX(brandBox), lblTitle);
   gtk_box_append(GTK_BOX(brandBox), lblSubtitle);
-  gtk_box_append(GTK_BOX(card), brandBox);
+  gtk_box_append(GTK_BOX(loginCard), brandBox);
 
   // Form: Username
   entryUsername = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(entryUsername),
                                  "Nhập tên đăng nhập...");
   gtk_widget_set_name(entryUsername, "login_username_entry");
-  gtk_box_append(GTK_BOX(card),
+  gtk_box_append(GTK_BOX(loginCard),
                  UIComponents::createFormField("Tên đăng nhập", entryUsername));
 
   // Form: Password
@@ -92,7 +163,7 @@ void LoginScreen::showLoginForm() {
   gtk_entry_set_placeholder_text(GTK_ENTRY(entryPassword), "Nhập mật khẩu...");
   gtk_widget_set_name(entryPassword, "login_password_entry");
   gtk_box_append(
-      GTK_BOX(card),
+      GTK_BOX(loginCard),
       UIComponents::createFormField(
           "Mật khẩu", UIComponents::createPasswordField(entryPassword)));
 
@@ -109,6 +180,18 @@ void LoginScreen::showLoginForm() {
                                gtk_widget_set_visible(s->lblError, FALSE);
                            }),
                            this);
+  g_signal_connect_swapped(
+      entryUsername, "activate",
+      G_CALLBACK(+[](LoginScreen *s) {
+        if (s->entryPassword)
+          gtk_widget_grab_focus(s->entryPassword);
+      }),
+      this);
+  g_signal_connect_swapped(entryPassword, "activate",
+                           G_CALLBACK(+[](LoginScreen *s) {
+                             s->triggerLogin();
+                           }),
+                           this);
 
   // Corner Action 1: Quên mật khẩu (gọn ở góc phải bên dưới ô mật khẩu)
   GtkWidget *forgotBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -120,14 +203,14 @@ void LoginScreen::showLoginForm() {
       btnForgot, "clicked",
       G_CALLBACK(+[](LoginScreen *s) { s->showForgotPasswordDialog(); }), this);
   gtk_box_append(GTK_BOX(forgotBox), btnForgot);
-  gtk_box_append(GTK_BOX(card), forgotBox);
+  gtk_box_append(GTK_BOX(loginCard), forgotBox);
 
   // Inline Alert message box
   lblError = gtk_label_new("");
   gtk_widget_add_css_class(lblError, "login-alert");
   gtk_label_set_wrap(GTK_LABEL(lblError), TRUE);
   gtk_widget_set_visible(lblError, FALSE);
-  gtk_box_append(GTK_BOX(card), lblError);
+  gtk_box_append(GTK_BOX(loginCard), lblError);
 
   // Login Button
   btnLogin = gtk_button_new_with_label("Đăng nhập hệ thống");
@@ -136,7 +219,7 @@ void LoginScreen::showLoginForm() {
   UIComponents::setButtonCursor(btnLogin);
   gtk_widget_set_margin_top(btnLogin, 6);
   g_signal_connect(btnLogin, "clicked", G_CALLBACK(on_login_btn_clicked), this);
-  gtk_box_append(GTK_BOX(card), btnLogin);
+  gtk_box_append(GTK_BOX(loginCard), btnLogin);
 
   // Corner Action 2: Đăng ký tài khoản (gọn ở góc phải bên dưới nút đăng nhập)
   GtkWidget *regBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
@@ -154,18 +237,18 @@ void LoginScreen::showLoginForm() {
 
   gtk_box_append(GTK_BOX(regBox), lblNoAcc);
   gtk_box_append(GTK_BOX(regBox), btnToRegister);
-  gtk_box_append(GTK_BOX(card), regBox);
+  gtk_box_append(GTK_BOX(loginCard), regBox);
 
   // Quick Login Demo Helpers
   GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
   gtk_widget_set_margin_top(sep, 14);
   gtk_widget_set_margin_bottom(sep, 6);
-  gtk_box_append(GTK_BOX(card), sep);
+  gtk_box_append(GTK_BOX(loginCard), sep);
 
   GtkWidget *lblQuick = gtk_label_new("Tài khoản mẫu dùng thử hệ thống:");
   gtk_widget_add_css_class(lblQuick, "stat-label");
   gtk_label_set_xalign(GTK_LABEL(lblQuick), 0.0f);
-  gtk_box_append(GTK_BOX(card), lblQuick);
+  gtk_box_append(GTK_BOX(loginCard), lblQuick);
 
   GtkWidget *quickGrid = gtk_grid_new();
   gtk_grid_set_row_spacing(GTK_GRID(quickGrid), 8);
@@ -200,15 +283,19 @@ void LoginScreen::showLoginForm() {
   gtk_grid_attach(GTK_GRID(quickGrid), bWarehouse, 0, 1, 1, 1);
   gtk_grid_attach(GTK_GRID(quickGrid), bCust, 1, 1, 1, 1);
 
-  gtk_box_append(GTK_BOX(card), quickGrid);
+  gtk_box_append(GTK_BOX(loginCard), quickGrid);
+
+  gtk_stack_set_transition_type(GTK_STACK(authStack),
+                                GTK_STACK_TRANSITION_TYPE_SLIDE_RIGHT);
+  gtk_stack_set_visible_child_name(GTK_STACK(authStack), "login");
 }
 
 void LoginScreen::showRegisterForm() {
-  // Clear card
-  GtkWidget *child = gtk_widget_get_first_child(card);
+  // Clear registerCard
+  GtkWidget *child = gtk_widget_get_first_child(registerCard);
   while (child != nullptr) {
     GtkWidget *next = gtk_widget_get_next_sibling(child);
-    gtk_box_remove(GTK_BOX(card), child);
+    gtk_box_remove(GTK_BOX(registerCard), child);
     child = next;
   }
 
@@ -221,7 +308,7 @@ void LoginScreen::showRegisterForm() {
       btnBack, "clicked",
       G_CALLBACK(+[](LoginScreen *s) { s->showLoginForm(); }), this);
   gtk_box_append(GTK_BOX(topBar), btnBack);
-  gtk_box_append(GTK_BOX(card), topBar);
+  gtk_box_append(GTK_BOX(registerCard), topBar);
 
   GtkWidget *titleBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
   GtkWidget *lblTitle = gtk_label_new("ĐĂNG KÝ TÀI KHOẢN MỚI");
@@ -231,42 +318,42 @@ void LoginScreen::showRegisterForm() {
   gtk_widget_add_css_class(lblSub, "login-subtitle");
   gtk_box_append(GTK_BOX(titleBox), lblTitle);
   gtk_box_append(GTK_BOX(titleBox), lblSub);
-  gtk_box_append(GTK_BOX(card), titleBox);
+  gtk_box_append(GTK_BOX(registerCard), titleBox);
 
   // Fields
   GtkWidget *eFullName = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(eFullName), "Ví dụ: Nguyễn Văn An");
-  gtk_box_append(GTK_BOX(card),
+  gtk_box_append(GTK_BOX(registerCard),
                  UIComponents::createFormField("Họ và tên *", eFullName));
 
   GtkWidget *ePhone = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(ePhone), "Ví dụ: 0912345678");
-  gtk_box_append(GTK_BOX(card),
+  gtk_box_append(GTK_BOX(registerCard),
                  UIComponents::createFormField("Số điện thoại *", ePhone));
 
   GtkWidget *eEmail = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(eEmail),
                                  "Ví dụ: an.nguyen@example.com");
-  gtk_box_append(GTK_BOX(card),
+  gtk_box_append(GTK_BOX(registerCard),
                  UIComponents::createFormField("Email liên hệ", eEmail));
 
   GtkWidget *eUser = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(eUser),
                                  "Tên đăng nhập (chữ cái & số)...");
-  gtk_box_append(GTK_BOX(card),
+  gtk_box_append(GTK_BOX(registerCard),
                  UIComponents::createFormField("Tên đăng nhập *", eUser));
 
   GtkWidget *ePass = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(ePass),
                                  "Nhập mật khẩu (tối thiểu 4 ký tự)...");
-  gtk_box_append(GTK_BOX(card),
+  gtk_box_append(GTK_BOX(registerCard),
                  UIComponents::createFormField(
                      "Mật khẩu *", UIComponents::createPasswordField(ePass)));
 
   GtkWidget *ePassConfirm = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(ePassConfirm),
                                  "Nhập lại mật khẩu...");
-  gtk_box_append(GTK_BOX(card),
+  gtk_box_append(GTK_BOX(registerCard),
                  UIComponents::createFormField(
                      "Xác nhận mật khẩu *",
                      UIComponents::createPasswordField(ePassConfirm)));
@@ -274,7 +361,7 @@ void LoginScreen::showRegisterForm() {
   GtkWidget *lblRegMsg = gtk_label_new("");
   gtk_widget_add_css_class(lblRegMsg, "badge-cancelled");
   gtk_widget_set_visible(lblRegMsg, FALSE);
-  gtk_box_append(GTK_BOX(card), lblRegMsg);
+  gtk_box_append(GTK_BOX(registerCard), lblRegMsg);
 
   struct RegCtx {
     LoginScreen *s;
@@ -336,49 +423,64 @@ void LoginScreen::showRegisterForm() {
       ctx, [](gpointer d, GClosure *) { delete static_cast<RegCtx *>(d); },
       (GConnectFlags)0);
 
-  gtk_box_append(GTK_BOX(card), btnSubmitReg);
+  gtk_box_append(GTK_BOX(registerCard), btnSubmitReg);
+
+  gtk_stack_set_transition_type(GTK_STACK(authStack),
+                                GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT);
+  gtk_stack_set_visible_child_name(GTK_STACK(authStack), "register");
+  gtk_widget_grab_focus(eFullName);
 }
 
 void LoginScreen::showForgotPasswordDialog() {
-  GtkWidget *win = gtk_window_new();
-  gtk_window_set_title(GTK_WINDOW(win), "Khôi phục mật khẩu");
-  gtk_window_set_default_size(GTK_WINDOW(win), 520, 480);
-  gtk_window_set_modal(GTK_WINDOW(win), TRUE);
+  // Clear forgotCard
+  GtkWidget *child = gtk_widget_get_first_child(forgotCard);
+  while (child != nullptr) {
+    GtkWidget *next = gtk_widget_get_next_sibling(child);
+    gtk_box_remove(GTK_BOX(forgotCard), child);
+    child = next;
+  }
 
-  GtkWidget *cardBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 14);
-  gtk_widget_add_css_class(cardBox, "dialog-content");
+  // Top Navigation: Back to login
+  GtkWidget *topBar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  GtkWidget *btnBack = gtk_button_new_with_label("← Quay lại Đăng nhập");
+  gtk_widget_add_css_class(btnBack, "btn-back");
+  UIComponents::setButtonCursor(btnBack);
+  g_signal_connect_swapped(
+      btnBack, "clicked",
+      G_CALLBACK(+[](LoginScreen *s) { s->showLoginForm(); }), this);
+  gtk_box_append(GTK_BOX(topBar), btnBack);
+  gtk_box_append(GTK_BOX(forgotCard), topBar);
 
-  GtkWidget *title = gtk_label_new("🔑 Khôi phục Mật khẩu");
-  gtk_widget_add_css_class(title, "dialog-title");
-  gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
-  gtk_box_append(GTK_BOX(cardBox), title);
-
+  GtkWidget *titleBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+  GtkWidget *title = gtk_label_new("🔑 KHÔI PHỤC MẬT KHẨU");
+  gtk_widget_add_css_class(title, "login-title");
   GtkWidget *desc =
       gtk_label_new("Tính năng mô phỏng cho đồ án PBL2: Nhập tên "
                     "tài khoản, SĐT hoặc Email đã đăng ký để xác minh "
                     "và mật khẩu mới (tối thiểu 4 ký tự):");
-  gtk_widget_add_css_class(desc, "page-subtitle");
+  gtk_widget_add_css_class(desc, "login-subtitle");
   gtk_label_set_wrap(GTK_LABEL(desc), TRUE);
-  gtk_label_set_xalign(GTK_LABEL(desc), 0.0f);
-  gtk_box_append(GTK_BOX(cardBox), desc);
+  gtk_box_append(GTK_BOX(titleBox), title);
+  gtk_box_append(GTK_BOX(titleBox), desc);
+  gtk_box_append(GTK_BOX(forgotCard), titleBox);
 
   GtkWidget *eUser = gtk_entry_new();
   gtk_entry_set_placeholder_text(
       GTK_ENTRY(eUser),
       "Tên đăng nhập (ví dụ: customer001.demo, admin.demo)...");
-  gtk_box_append(GTK_BOX(cardBox), UIComponents::createFormField(
-                                       "Tên đăng nhập tài khoản", eUser));
+  gtk_box_append(GTK_BOX(forgotCard), UIComponents::createFormField(
+                                          "Tên đăng nhập tài khoản", eUser));
 
   GtkWidget *eContact = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(eContact),
                                  "SĐT hoặc Email đã đăng ký với tài khoản...");
-  gtk_box_append(GTK_BOX(cardBox),
+  gtk_box_append(GTK_BOX(forgotCard),
                  UIComponents::createFormField(
                      "Xác minh danh tính (SĐT / Email)", eContact));
 
   GtkWidget *ePass = gtk_entry_new();
   gtk_entry_set_placeholder_text(GTK_ENTRY(ePass), "Nhập mật khẩu mới...");
-  gtk_box_append(GTK_BOX(cardBox),
+  gtk_box_append(GTK_BOX(forgotCard),
                  UIComponents::createFormField(
                      "Mật khẩu mới", UIComponents::createPasswordField(ePass)));
 
@@ -389,18 +491,18 @@ void LoginScreen::showForgotPasswordDialog() {
   GtkWidget *btnCancel = gtk_button_new_with_label("Hủy");
   gtk_widget_add_css_class(btnCancel, "btn-secondary");
   UIComponents::setButtonCursor(btnCancel);
-  g_signal_connect_swapped(btnCancel, "clicked", G_CALLBACK(gtk_window_destroy),
-                           win);
+  g_signal_connect_swapped(
+      btnCancel, "clicked",
+      G_CALLBACK(+[](LoginScreen *s) { s->showLoginForm(); }), this);
   gtk_box_append(GTK_BOX(btnRow), btnCancel);
 
   struct ForgotCtx {
     LoginScreen *s;
-    GtkWidget *w;
     GtkWidget *u;
     GtkWidget *p;
     GtkWidget *contact;
   };
-  ForgotCtx *ctx = new ForgotCtx{this, win, eUser, ePass, eContact};
+  ForgotCtx *ctx = new ForgotCtx{this, eUser, ePass, eContact};
 
   GtkWidget *btnConfirm = gtk_button_new_with_label("Đặt lại mật khẩu");
   gtk_widget_add_css_class(btnConfirm, "btn-primary");
@@ -416,7 +518,7 @@ void LoginScreen::showForgotPasswordDialog() {
         if (!u || strlen(u) == 0 || !p || strlen(p) == 0 || !contact ||
             strlen(contact) == 0) {
           UIComponents::showWarningDialog(
-              GTK_WINDOW(c->w), "Thiếu thông tin",
+              nullptr, "Thiếu thông tin",
               "Vui lòng nhập tên đăng nhập, SĐT/Email xác minh và mật khẩu "
               "mới!");
           return;
@@ -425,21 +527,168 @@ void LoginScreen::showForgotPasswordDialog() {
         OperationResult res =
             c->s->controller->resetPasswordSimulation(u, p, contact);
         if (res.success) {
-          c->s->setQuickCredentials(u, p);
+          std::string savedUser = u;
+          std::string savedPass = p;
+          c->s->showLoginForm();
+          c->s->setQuickCredentials(savedUser, savedPass);
           UIComponents::showSuccessDialog(nullptr, "Thành công", res.message);
-          gtk_window_destroy(GTK_WINDOW(c->w));
         } else {
-          UIComponents::showErrorDialog(GTK_WINDOW(c->w), "Lỗi", res.message);
+          UIComponents::showErrorDialog(nullptr, "Lỗi", res.message);
         }
       }),
       ctx, [](gpointer d, GClosure *) { delete static_cast<ForgotCtx *>(d); },
       (GConnectFlags)0);
 
   gtk_box_append(GTK_BOX(btnRow), btnConfirm);
-  gtk_box_append(GTK_BOX(cardBox), btnRow);
+  gtk_box_append(GTK_BOX(forgotCard), btnRow);
 
-  gtk_window_set_child(GTK_WINDOW(win), cardBox);
-  gtk_window_present(GTK_WINDOW(win));
+  UIComponents::setupDialogShortcuts(forgotCard, btnConfirm, btnCancel);
+
+  gtk_stack_set_transition_type(GTK_STACK(authStack),
+                                GTK_STACK_TRANSITION_TYPE_SLIDE_LEFT);
+  gtk_stack_set_visible_child_name(GTK_STACK(authStack), "forgot");
+  gtk_widget_grab_focus(eUser);
+}
+
+void LoginScreen::showOverlayDialog(GtkWidget *dialogCard) {
+  if (!rootWidget || !dialogCard)
+    return;
+
+  closeOverlayDialog();
+
+  currentOverlayWrapper = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class(currentOverlayWrapper, "overlay-scrim");
+  gtk_widget_add_css_class(currentOverlayWrapper, "overlay-entering");
+  gtk_widget_set_hexpand(currentOverlayWrapper, TRUE);
+  gtk_widget_set_vexpand(currentOverlayWrapper, TRUE);
+  gtk_widget_set_halign(currentOverlayWrapper, GTK_ALIGN_FILL);
+  gtk_widget_set_valign(currentOverlayWrapper, GTK_ALIGN_FILL);
+
+  currentOverlayCard = dialogCard;
+  gtk_widget_add_css_class(dialogCard, "overlay-card");
+  gtk_widget_set_halign(dialogCard, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(dialogCard, GTK_ALIGN_CENTER);
+  gtk_widget_set_size_request(dialogCard, 800, -1);
+  gtk_widget_set_hexpand(dialogCard, TRUE);
+  gtk_widget_set_vexpand(dialogCard, TRUE);
+  gtk_box_append(GTK_BOX(currentOverlayWrapper), dialogCard);
+
+  GtkGesture *click = gtk_gesture_click_new();
+  gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(click), GDK_BUTTON_PRIMARY);
+  g_signal_connect(
+      click, "pressed",
+      G_CALLBACK(+[](GtkGestureClick *, int, double x, double y, gpointer d) {
+        LoginScreen *self = static_cast<LoginScreen *>(d);
+        if (!self || !self->currentOverlayWrapper)
+          return;
+        GtkWidget *picked = gtk_widget_pick(self->currentOverlayWrapper, x, y,
+                                            GTK_PICK_DEFAULT);
+        if (picked == self->currentOverlayWrapper) {
+          self->closeOverlayDialog();
+        }
+      }),
+      this);
+  gtk_widget_add_controller(currentOverlayWrapper, GTK_EVENT_CONTROLLER(click));
+
+  gtk_overlay_add_overlay(GTK_OVERLAY(rootWidget), currentOverlayWrapper);
+
+  GtkWidget *scrimRef = GTK_WIDGET(g_object_ref(currentOverlayWrapper));
+  g_idle_add(
+      +[](gpointer d) -> gboolean {
+        GtkWidget *w = GTK_WIDGET(d);
+        if (w && GTK_IS_WIDGET(w)) {
+          gtk_widget_remove_css_class(w, "overlay-entering");
+          g_object_unref(w);
+        }
+        return G_SOURCE_REMOVE;
+      },
+      scrimRef);
+
+  gtk_widget_child_focus(dialogCard, GTK_DIR_TAB_FORWARD);
+}
+
+void LoginScreen::closeOverlayDialog() {
+  if (!currentOverlayWrapper)
+    return;
+
+  GtkWidget *wrapper = currentOverlayWrapper;
+  currentOverlayWrapper = nullptr;
+  currentOverlayCard = nullptr;
+
+  if (rootWidget && GTK_IS_OVERLAY(rootWidget) &&
+      gtk_widget_get_parent(wrapper) == rootWidget) {
+    gtk_overlay_remove_overlay(GTK_OVERLAY(rootWidget), wrapper);
+  }
+}
+
+void LoginScreen::showToast(const std::string &message,
+                            const std::string &type) {
+  if (!rootWidget)
+    return;
+
+  if (activeToastTimerId > 0) {
+    g_source_remove(activeToastTimerId);
+    activeToastTimerId = 0;
+  }
+  if (activeToastBox) {
+    if (gtk_widget_get_parent(activeToastBox) == rootWidget) {
+      gtk_overlay_remove_overlay(GTK_OVERLAY(rootWidget), activeToastBox);
+    }
+    activeToastBox = nullptr;
+  }
+
+  GtkWidget *toastBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_widget_add_css_class(toastBox, "in-app-toast");
+  if (type == "error") {
+    gtk_widget_add_css_class(toastBox, "in-app-toast-error");
+  } else if (type == "info") {
+    gtk_widget_add_css_class(toastBox, "in-app-toast-info");
+  } else {
+    gtk_widget_add_css_class(toastBox, "in-app-toast-success");
+  }
+
+  gtk_widget_set_halign(toastBox, GTK_ALIGN_END);
+  gtk_widget_set_valign(toastBox, GTK_ALIGN_START);
+  gtk_widget_set_margin_top(toastBox, 24);
+  gtk_widget_set_margin_end(toastBox, 24);
+
+  const char *iconStr = "✅";
+  if (type == "error")
+    iconStr = "❌";
+  else if (type == "info")
+    iconStr = "ℹ️";
+
+  GtkWidget *iconLbl = gtk_label_new(iconStr);
+  gtk_box_append(GTK_BOX(toastBox), iconLbl);
+
+  GtkWidget *msgLbl = gtk_label_new(message.c_str());
+  gtk_widget_add_css_class(msgLbl, "in-app-toast-text");
+  gtk_label_set_wrap(GTK_LABEL(msgLbl), TRUE);
+  gtk_label_set_max_width_chars(GTK_LABEL(msgLbl), 42);
+  gtk_label_set_xalign(GTK_LABEL(msgLbl), 0.0f);
+  gtk_box_append(GTK_BOX(toastBox), msgLbl);
+
+  gtk_overlay_add_overlay(GTK_OVERLAY(rootWidget), toastBox);
+  activeToastBox = toastBox;
+
+  activeToastTimerId = g_timeout_add(
+      2400,
+      +[](gpointer d) -> gboolean {
+        LoginScreen *self = static_cast<LoginScreen *>(d);
+        if (s_activeLoginScreen == self && self->activeToastBox &&
+            self->rootWidget) {
+          if (gtk_widget_get_parent(self->activeToastBox) == self->rootWidget) {
+            gtk_overlay_remove_overlay(GTK_OVERLAY(self->rootWidget),
+                                       self->activeToastBox);
+          }
+          self->activeToastBox = nullptr;
+        }
+        if (s_activeLoginScreen == self) {
+          self->activeToastTimerId = 0;
+        }
+        return G_SOURCE_REMOVE;
+      },
+      this);
 }
 
 void LoginScreen::setQuickCredentials(const std::string &username,
@@ -450,6 +699,32 @@ void LoginScreen::setQuickCredentials(const std::string &username,
     gtk_editable_set_text(GTK_EDITABLE(entryPassword), password.c_str());
   if (lblError)
     gtk_widget_set_visible(lblError, FALSE);
+}
+
+void LoginScreen::resetForm() {
+  closeOverlayDialog();
+  if (authStack && GTK_IS_STACK(authStack)) {
+    gtk_stack_set_visible_child_name(GTK_STACK(authStack), "login");
+  }
+  if (entryPassword && GTK_IS_EDITABLE(entryPassword)) {
+    gtk_editable_set_text(GTK_EDITABLE(entryPassword), "");
+  }
+  if (lblError && GTK_IS_WIDGET(lblError)) {
+    gtk_widget_set_visible(lblError, FALSE);
+  }
+  if (entryUsername && GTK_IS_WIDGET(entryUsername)) {
+    gtk_widget_grab_focus(entryUsername);
+    g_idle_add(
+        +[](gpointer d) -> gboolean {
+          LoginScreen *self = static_cast<LoginScreen *>(d);
+          if (s_activeLoginScreen == self && self->entryUsername &&
+              GTK_IS_WIDGET(self->entryUsername)) {
+            gtk_widget_grab_focus(self->entryUsername);
+          }
+          return G_SOURCE_REMOVE;
+        },
+        this);
+  }
 }
 
 void LoginScreen::triggerLogin() {
@@ -473,7 +748,9 @@ void LoginScreen::triggerLogin() {
       std::string msg = resp.result.message;
       if (msg.find("Mật khẩu không chính xác") != std::string::npos) {
         msg = "⚠️ Sai mật khẩu đăng nhập. Vui lòng kiểm tra lại.";
-      } else if (msg.find("không tồn tại") != std::string::npos) {
+      } else if (msg.find("vô hiệu hóa") != std::string::npos) {
+        msg = "⚠️ Tài khoản đã bị vô hiệu hóa hoặc đã bị khóa trong hệ thống.";
+      } else if (msg.find("không tồn tại") != std::string::npos || msg.find("bị khóa") != std::string::npos) {
         msg = "⚠️ Tài khoản không tồn tại hoặc đã bị khóa trong hệ thống.";
       } else if (msg.find("không được để trống") != std::string::npos) {
         msg = "⚠️ Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";

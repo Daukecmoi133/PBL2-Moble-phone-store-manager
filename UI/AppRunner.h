@@ -30,9 +30,11 @@ private:
     GtkApplication* app;       ///< Đối tượng GtkApplication quản lý event loop chính
     AppController* controller; ///< Con trỏ tham chiếu tầng Controller nghiệp vụ
 
-    GtkWidget* loginWindow;    ///< Cửa sổ top-level chứa màn hình đăng nhập
+    GtkWidget* mainWindow;     ///< Cửa sổ GtkApplicationWindow duy nhất toàn cục
+    GtkWidget* rootStack;      ///< GtkStack gốc quản lý chuyển cảnh giữa "login_view" và "shell_view"
+    GtkWidget* loginWindow;    ///< Con trỏ tương thích ngược trỏ về mainWindow
     LoginScreen* loginScreen;  ///< Thành phần giao diện đăng nhập (Login Screen component)
-    MainShellWindow* shellWindow; ///< Cửa sổ vỏ bọc chính sau khi đăng nhập thành công
+    MainShellWindow* shellWindow; ///< Giao diện vỏ bọc chính sau khi đăng nhập thành công
 
 public:
     /**

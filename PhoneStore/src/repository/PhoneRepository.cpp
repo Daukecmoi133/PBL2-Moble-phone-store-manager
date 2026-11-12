@@ -20,17 +20,32 @@ void PhoneRepository::rebuildIndexes() {
     // TODO(logic): dựng lại priceIndex (giá bán -> vị trí) sau mỗi thay đổi dữ liệu.
 }
 
-Result<Vector<Phone>> PhoneRepository::findByName(const std::string&) const {
-    // TODO(logic): duyệt items, so khớp tên không phân biệt hoa thường.
-    return Result<Vector<Phone>>::fail(ErrorCode::NotImplemented, "TODO: PhoneRepository::findByName");
+Result<Vector<Phone>> PhoneRepository::findByName(const std::string& keyword) const {
+    Vector<Phone> result;
+    for (int i = 0; i < items.getSize(); ++i) {
+        if (StringHelper::containsIgnoreCase(items[i].getName(), keyword)) {
+            result.push_back(items[i]);
+        }
+    }
+    return Result<Vector<Phone>>::ok(result);
 }
 
-Result<Vector<Phone>> PhoneRepository::findByBrand(const std::string&) const {
-    // TODO(logic): lọc theo hãng, không phân biệt hoa thường.
-    return Result<Vector<Phone>>::fail(ErrorCode::NotImplemented, "TODO: PhoneRepository::findByBrand");
+Result<Vector<Phone>> PhoneRepository::findByBrand(const std::string& keyword) const {
+    Vector<Phone> result;
+    for (int i = 0; i < items.getSize(); ++i) {
+        if (StringHelper::containsIgnoreCase(items[i].getBrand(), keyword)) {
+            result.push_back(items[i]);
+        }
+    }
+    return Result<Vector<Phone>>::ok(result);
 }
 
-Result<Vector<Phone>> PhoneRepository::findByPriceRange(Money, Money) const {
-    // TODO(logic): dùng priceIndex.findRange(min, max) rồi tra lại items theo vị trí.
-    return Result<Vector<Phone>>::fail(ErrorCode::NotImplemented, "TODO: PhoneRepository::findByPriceRange");
+Result<Vector<Phone>> PhoneRepository::findByPriceRange(Money minPrice, Money maxPrice) const {
+    Vector<Phone> result;
+    for (int i = 0; i < items.getSize(); ++i) {
+        if (items[i].getSellingPrice() >= minPrice && items[i].getSellingPrice() <= maxPrice) {
+            result.push_back(items[i]);
+        }
+    }
+    return Result<Vector<Phone>>::ok(result);
 }

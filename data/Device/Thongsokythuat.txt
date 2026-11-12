@@ -96,39 +96,33 @@ PHN-000101|
                             +Ốp lưng
                             +Que lấy SIM
                             +Sách HDSD
-
 PHN-000102|
 Tên thương mại: iPhone 15 Pro Max 256GB
 Thương hiệu: Apple
 Hệ điều hành theo catalog: iOS 17
 Thông số theo catalog: 6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
-
 PHN-000103|
 Tên thương mại: Samsung Galaxy S24 Ultra 256GB
 Thương hiệu: Samsung
 Hệ điều hành theo catalog: Android 14 - One UI 6.1
 Thông số theo catalog: 6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
-
 PHN-000104|
 Tên thương mại: Xiaomi 14 Ultra 512GB
 Thương hiệu: Xiaomi
 Hệ điều hành theo catalog: Android 14 - HyperOS
 Thông số theo catalog: 6.73 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh
-
 PHN-000105|
 Tên thương mại: iPhone 13 128GB
 Thương hiệu: Apple
 Hệ điều hành theo catalog: iOS 15
 Thông số theo catalog: 6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
-
 PHN-000106|
-Tên thương mại: Samsung Galaxy A55 5G 128GB
-Thương hiệu: Samsung
-Hệ điều hành theo catalog: Android 14 - One UI 6.1
-Thông số theo catalog: 6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh
-
+Tên thương mại:Samsung Galaxy A55 5G 128GB
+Thương hiệu:Samsung
+Hệ điều hành theo catalog:Android 14 - One UI 6.1
+Thông số theo catalog:6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh
 PHN-000107|
-Tên thương mại: Oppo Find X7 Ultra 256GB
-Thương hiệu: Oppo
-Hệ điều hành theo catalog: Android 14 - ColorOS 14
-Thông số theo catalog: 6.82 inch AMOLED, 16GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+Tên thương mại:Oppo Find X7 Ultra 256GB
+Thương hiệu:Oppo
+Hệ điều hành theo catalog:Android 14 - ColorOS 14
+Thông số theo catalog:6.82 inch AMOLED, 16GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh

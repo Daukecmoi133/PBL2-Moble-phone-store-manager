@@ -24,6 +24,8 @@ public:
     Result<void> addItem(const Actor& actor, const std::string& phoneId, int quantity);
     Result<void> removeItem(const Actor& actor, const std::string& phoneId);
     Result<void> updateQuantity(const Actor& actor, const std::string& phoneId, int newQuantity);
+    Result<void> setSelected(const Actor& actor, const std::string& phoneId, bool selected);
+    Result<void> setAllSelected(const Actor& actor, bool selected);
     Result<void> clear(const Actor& actor);
     Result<Money> calculateTotal(const Actor& actor, const std::string& discountCode = "") const;
     Result<std::string> checkout(const Actor& actor, const CheckoutInfo& info); // gọi OrderService::createOrder
@@ -32,5 +34,9 @@ private:
     OrderService& orderService;
     PhoneService& phoneService;
     DiscountService& discountService;
-    Vector<Cart> carts; // TODO(logic): giỏ hàng theo khách (chưa lưu file; xem docs/OPEN_QUESTIONS.md)
+    Vector<Cart> carts; // Giỏ hàng theo khách (lưu trong RAM; xem docs/OPEN_QUESTIONS.md)
+
+    Cart* findCart(const std::string& customerId);
+    const Cart* findCart(const std::string& customerId) const;
+    Cart& getOrCreateCart(const std::string& customerId);
 };

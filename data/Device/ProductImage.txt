@@ -1,17 +1,4 @@
-id link
-100 C:\Users\ASUS\OneDrive\Desktop\PBL2\data\Device\productImages
-101 oppo_reno_16_f_5g_bac.png
-102 oppo_reno_16_f_5g_den.png
-103 oppo_reno_16_f_5g_xam.png
-104 iphone_15_pro_max_256gb.png
-105 iphone_16_pro_max.png
-106 ip_27.png
-107 sumsung_a04.png
-108 sumsung_a15_4g_8gb.png
-109 sumsung_a34_8gb.png
-110 sumsung_s24_ultra.png
-111 xiaomi_redmi_14.png
-112 xiaomi_13_t.png
-113 xiaomi_13c.png
-114 xiaomi_12t.png
-115 xiaomi_13t_pro.png
+productId|imagePath|isPrimary|displayOrder
+PHN-000101|Device/productImages/prod_PHN_000101_1794025731457.png|1|1
+PHN-000101|Device/productImages/oppo_reno_16_f_5g_bac.png|0|2
+PHN-000102|Device/productImages/iphone_15_pro_max_256gb.png|1|1

@@ -23,9 +23,19 @@ class LoginScreen {
 private:
     AppController* controller;
     GtkWidget* rootWidget;
+    GtkWidget* bgScroll;
     GtkWidget* centerBox;
-    GtkWidget* card;
-    
+    GtkWidget* authStack;
+    GtkWidget* loginCard;
+    GtkWidget* registerCard;
+    GtkWidget* forgotCard;
+
+    // In-window overlay & toast on LoginScreen
+    GtkWidget* currentOverlayWrapper = nullptr;
+    GtkWidget* currentOverlayCard = nullptr;
+    GtkWidget* activeToastBox = nullptr;
+    guint activeToastTimerId = 0;
+
     // Login form widgets
     GtkWidget* entryUsername;
     GtkWidget* entryPassword;
@@ -38,15 +48,24 @@ private:
 
 public:
     LoginScreen(AppController* ctrl, LoginSuccessCallback onLoginSuccess, gpointer userData);
+    ~LoginScreen();
+
+    static LoginScreen* getActiveInstance();
 
     GtkWidget* getRootWidget() const { return rootWidget; }
 
     void triggerLogin();
     void setQuickCredentials(const std::string& username, const std::string& password);
+    void resetForm();
 
     void showLoginForm();
     void showRegisterForm();
     void showForgotPasswordDialog();
+
+    void showOverlayDialog(GtkWidget* dialogCard);
+    void closeOverlayDialog();
+    bool isOverlayDialogOpen() const { return currentOverlayWrapper != nullptr; }
+    void showToast(const std::string& message, const std::string& type = "success");
 
     // Callbacks
     static void on_login_btn_clicked(GtkButton* btn, gpointer data);

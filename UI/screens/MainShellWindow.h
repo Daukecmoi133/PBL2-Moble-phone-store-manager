@@ -4,6 +4,7 @@
 #include <gtk/gtk.h>
 #include <string>
 #include <map>
+#include <vector>
 #include "../../source/controllers/AppController.h"
 
 class CustomerScreens;
@@ -62,23 +63,66 @@ private:
 
     GtkWidget* toastOverlay;
 
+    // In-Window Page Stack Navigation
+    struct PageEntry {
+        std::string id;
+        std::string title;
+        std::string childName;
+        GtkWidget* pageBox;
+        GtkWidget* contentWidget;
+    };
+    GtkWidget* pageNavStack = nullptr;
+    std::vector<PageEntry> pageStack;
+    struct PageCleanupRecord {
+        guint timerId;
+        GtkWidget* stack;
+        GtkWidget* page;
+    };
+    std::vector<PageCleanupRecord> pendingCleanups;
+
+    // In-Window Overlay Dialog
+    GtkWidget* currentOverlayWrapper = nullptr;
+    GtkWidget* currentOverlayCard = nullptr;
+
     // Real-time Simulation Clock Timer (single global source)
     guint clockTimerId = 0;
+    bool ownsWindow = false;
+    GtkEventController* keyController = nullptr;
 
 public:
+    MainShellWindow(GtkWindow* parentWindow, AppController* ctrl, LogoutCallback onLogout, gpointer userData);
     MainShellWindow(GtkApplication* gapp, AppController* ctrl, LogoutCallback onLogout, gpointer userData);
     ~MainShellWindow();
 
-    GtkWindow* getWindow() const { return GTK_WINDOW(window); }
+    GtkWindow* getWindow() const { return window ? GTK_WINDOW(window) : nullptr; }
+    GtkWidget* getRootWidget() const { return toastOverlay; }
     GtkWidget* getToastOverlay() const { return toastOverlay; }
     void show();
+    void activateSession();
+    void deactivateSession();
     void showToast(const std::string& message, const std::string& type = "success");
     void navigateTo(const std::string& pageName);
     void updateCartBadge(int count);
     void updateSimulatedTimeBadge();
     void refreshCurrentRoleUI();
 
+    // In-Window Page Stack Navigation API
+    void pushPage(const std::string& id, GtkWidget* content, const std::string& title, bool showTopBack = true);
+    void popPage();
+    void clearPageStack();
+    bool hasPages() const { return !pageStack.empty(); }
+    size_t getPageStackDepth() const { return pageStack.size(); }
+
+    // In-Window Overlay Dialog API
+    void showOverlayDialog(GtkWidget* card);
+    void closeOverlayDialog();
+    bool isOverlayDialogOpen() const { return currentOverlayWrapper != nullptr; }
+
+    static MainShellWindow* getActiveInstance();
+
 private:
+    void initShellContent();
+    void flushPendingCleanups();
     void startClockTimer();
     void stopClockTimer();
     void handleClockTick();
@@ -93,6 +137,11 @@ private:
     static void on_logout_btn_clicked(GtkButton* btn, gpointer data);
     static void on_confirm_logout(gpointer data);
     static gboolean on_window_close_request(GtkWindow* window, gpointer data);
+    static gboolean on_key_pressed(GtkEventControllerKey* controller,
+                                  guint keyval,
+                                  guint keycode,
+                                  GdkModifierType state,
+                                  gpointer data);
 };
 
 #endif // MAIN_SHELL_WINDOW_H

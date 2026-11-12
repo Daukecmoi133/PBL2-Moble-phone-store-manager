@@ -91,7 +91,7 @@ inline std::string StringHelper::formatCurrency(double amount) {
             result = "." + result;
         }
     }
-    return result + " đ";
+    return result;
 }
 
 #endif // STRINGHELPER_H

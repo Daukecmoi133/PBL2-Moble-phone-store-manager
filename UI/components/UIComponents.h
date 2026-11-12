@@ -7,6 +7,7 @@
 #include "../viewmodels/OrderViewModel.h"
 #include "../viewmodels/ProductViewModel.h"
 #include "../viewmodels/WarrantyViewModel.h"
+#include "../viewmodels/StatisticsViewModel.h"
 
 /**
  * @file UIComponents.h
@@ -49,6 +50,17 @@ void showServiceNotConnectedDialog(GtkWindow* parent, const std::string& feature
 void showChangePasswordDialog(GtkWindow* parent, AppController* controller);
 
 void registerShellWindow(MainShellWindow* shell);
+MainShellWindow* getActiveShell();
+
+/// @brief Tiện ích chuyển trang dạng stack in-window (ủy quyền qua MainShellWindow)
+void pushPage(const std::string& id, GtkWidget* content, const std::string& title);
+void popPage();
+void clearPageStack();
+
+/// @brief Tiện ích hiển thị / đóng hộp thoại dạng in-window overlay modal
+void showOverlayDialog(GtkWidget* card);
+void closeOverlayDialog();
+bool isOverlayDialogOpen();
 
 /// @brief Hiển thị thông báo Toast ngắn ở góc, tự động ẩn sau 2 đến 3 giây
 void showToast(GtkWindow* parent, const std::string& message, const std::string& type = "success");
@@ -74,9 +86,18 @@ GtkWidget* createErrorState(const std::string& message, GCallback onRetry = null
 GtkWidget* createSuccessBanner(const std::string& message);
 
 // === TIỆN ÍCH GIAO DIỆN KHÁC ===
+/// @brief Tạo widget ảnh SVG đơn sắc chuẩn (Lucide) từ thư mục UI/assets/icons/
+GtkWidget* createSvgIcon(const std::string& iconName, int pixelSize = 16);
+
 GtkWidget* createStatCard(const std::string& title, const std::string& value,
                           const std::string& subtitle = "", const std::string& icon = "📊",
                           const std::string& colorClass = "blue");
+
+/// @brief Tạo thẻ thống kê KPI hỗ trợ bấm điều hướng và hiệu ứng hover/focus chuẩn DESIGN.md
+GtkWidget* createClickableStatCard(const std::string& title, const std::string& value,
+                                   const std::string& subtitle, const std::string& iconName,
+                                   const std::string& colorClass, GCallback onClick = nullptr,
+                                   gpointer data = nullptr);
 
 GtkWidget* createStatusBadge(const std::string& text, const std::string& badgeClass);
 GtkWidget* createOrderStatusBadge(OrderStatus status);
@@ -96,6 +117,12 @@ struct TableColumnSpec {
 
 /// @brief Tạo hàng tiêu đề bảng chuẩn (in đậm, nền xám nhạt, cố định chiều rộng)
 GtkWidget* createTableHeaderRow(const std::vector<TableColumnSpec>& columns);
+
+/// @brief Tạo khung bảng (.table-container) với thanh tiêu đề cố định đứng yên ở trên và vùng dữ liệu cuộn dọc độc lập bên dưới
+GtkWidget* createScrollableTableContainer(const std::vector<TableColumnSpec>& columns,
+                                          GtkWidget** outBodyListBox,
+                                          int minBodyHeight = 360,
+                                          int maxBodyHeight = -1);
 
 /// @brief Tạo hàng dữ liệu bảng chuẩn (kèm phân biệt màu dòng chẵn/lẻ .row-even / .row-odd)
 GtkWidget* createTableDataRow(size_t rowIndex);
@@ -165,6 +192,19 @@ GtkWidget* createBackHeader(const std::string& title, const std::string& subtitl
 
 /// @brief Thiết lập con trỏ chuột dạng bàn tay (pointer cursor) cho các nút bấm GTK4
 void setButtonCursor(GtkWidget* btn);
+
+// === TIỆN ÍCH BIỂU ĐỒ & THỐNG KÊ (DESIGN.MD SECTION 8) ===
+/// @brief Định dạng số tiền rút gọn cho biểu đồ & nhãn gọn (vd: "15.2 tr", "500 k", "2.5 tỷ")
+std::string formatCompactVND(double amount);
+
+/// @brief Tạo widget Biểu đồ Cột đôi Doanh thu & Lợi nhuận (Cairo DrawingArea) chuẩn DESIGN.md T14
+GtkWidget* createRevenueBarChart(const std::vector<TimelineStatPoint>& points);
+
+/// @brief Tạo widget Thẻ Cơ cấu Doanh thu theo Thương hiệu (Segmented Bar + Brand Rows) chuẩn DESIGN.md T15
+GtkWidget* createBrandDistributionCard(const std::vector<BrandShareStatItem>& brands);
+
+/// @brief Tạo thanh tỷ lệ trạng thái đơn hàng (Order Pipeline Segmented Bar) cho Admin Dashboard chuẩn DESIGN.md T17
+GtkWidget* createOrderStatusPipelineBar(int completed, int shipping, int pending, int cancelled);
 
 } // namespace UIComponents
 

@@ -98,7 +98,7 @@ inline double Employee::getSalary() const { return salary; }
 inline void Employee::setSalary(double s) { salary = s; }
 
 // Hàm chuyển thông tin nhân viên thành định dạng chuỗi lưu file Employee.txt
-// Format: id|firstName|middleName|lastName|phoneNumber|email|username|password|role|address|salary|accountId
+// Format: id|firstName|middleName|lastName|phoneNumber|email|username|passwordHash|role|address|salary|accountId|active
 inline std::string Employee::toFileString() const {
     // FIX LỖI: Chuyển đổi RoleType sang mã file chuẩn (1=Admin, 2=Sale, 3=Warehouse) theo DATA_FORMAT_GUIDE.md
     int fileRoleCode = 0;
@@ -111,9 +111,10 @@ inline std::string Employee::toFileString() const {
     }
 
     return id + "|" + name.firstName + "|" + name.middleName + "|" + name.lastName + "|" +
-           phoneNumber + "|" + email + "|" + account.getUsername() + "|" + account.getPassword() + "|" +
+           phoneNumber + "|" + email + "|" + account.getUsername() + "|" + account.getPasswordHash() + "|" +
            std::to_string(fileRoleCode) + "|" + address + "|" +
-           std::to_string(static_cast<long long>(salary)) + "|" + account.getID();
+           std::to_string(static_cast<long long>(salary)) + "|" + account.getID() + "|" +
+           (account.isActive() ? "1" : "0");
 }
 
 // Phân tích dòng dữ liệu từ Employee.txt, trả về con trỏ Employee* đúng kiểu
@@ -127,7 +128,7 @@ inline Employee* Employee::fromFileLine(const std::string& line) {
     std::string phone    = StringHelper::trim(parts[4]);
     std::string email    = StringHelper::trim(parts[5]);
     std::string username = StringHelper::trim(parts[6]);
-    std::string password = StringHelper::trim(parts[7]);
+    std::string password = StringHelper::trim(parts[7]); // Giá trị đã lưu: hash PBKDF2 hoặc plaintext cũ
     
     // FIX LỖI: Bắt ngoại lệ chuyển đổi kiểu số an toàn, tránh crash ứng dụng khi gặp dữ liệu lỗi
     int roleInt = 0;
@@ -153,6 +154,10 @@ inline Employee* Employee::fromFileLine(const std::string& line) {
     }
     if (employee != nullptr && parts.getSize() >= 12) {
         employee->getAccount().setID(StringHelper::trim(parts[11]));
+    }
+    if (employee != nullptr && parts.getSize() >= 13) {
+        // Chỉ "0" mới là tài khoản bị vô hiệu hóa; thiếu/giá trị khác = đang hoạt động
+        employee->getAccount().setActive(StringHelper::trim(parts[12]) != "0");
     }
     return employee; // Role không xác định
 }

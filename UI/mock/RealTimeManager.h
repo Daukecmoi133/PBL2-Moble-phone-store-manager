@@ -33,7 +33,7 @@ private:
     }
 
     RealTimeManager() {
-        loadFromFile();
+        resetToSystemNow();
     }
 
 public:
@@ -79,6 +79,15 @@ public:
             return currentSimulatedTime.substr(0, 10);
         }
         return "2026-10-17";
+    }
+
+    // Lấy năm hiện tại của đồng hồ hệ thống
+    int getCurrentYear() const {
+        int y = 2026, m = 1, d = 1;
+        if (sscanf(currentSimulatedTime.c_str(), "%d-%d-%d", &y, &m, &d) >= 1) {
+            return y;
+        }
+        return 2026;
     }
 
     // Tăng thời gian thêm số giây (mặc định 1 giây cho đồng hồ thời gian thực)

@@ -1,0 +1,6 @@
+key|value
+store_shipping_policy|Miễn phí vận chuyển hỏa tốc toàn quốc & Cho phép đồng kiểm trước khi thanh toán
+store_return_policy|1 đổi 1 trong vòng 30 ngày đầu nếu phát sinh lỗi phần cứng từ nhà sản xuất
+store_warranty_policy|Bảo hành chính hãng 12-18 tháng tại các trung tâm ủy quyền toàn quốc
+store_installment_policy|Hỗ trợ trả góp 0% lãi suất xét duyệt hồ sơ trực tuyến chỉ trong 5 phút
+

@@ -8,6 +8,7 @@
 #include "../common/Actor.h"
 #include "../common/Money.h"
 #include "../common/Result.h"
+#include "../dto/ImportLine.h"
 #include "../dto/PhoneStaffView.h"
 #include "../dto/PhoneView.h"
 #include "../model/catalog/Phone.h"
@@ -23,12 +24,16 @@ public:
     // hiển thị để Controller dựng bảng ánh xạ "vị trí hiển thị -> ID" (xem docs/OPEN_QUESTIONS.md).
     Result<Vector<PhoneView>> listForCustomer(Vector<std::string>* outIds = nullptr) const;
     Result<Vector<PhoneStaffView>> listForStaff(const Actor& actor) const;
+    Result<Vector<PhoneStaffView>> listDrafts(const Actor& actor) const;
     Result<Vector<PhoneView>> search(const std::string& keyword, Vector<std::string>* outIds = nullptr) const;
     Result<Vector<PhoneView>> filterByPrice(Money minPrice, Money maxPrice, Vector<std::string>* outIds = nullptr) const;
 
     Result<void> addPhone(const Actor& actor, const Phone& phone);
     Result<void> updatePhone(const Actor& actor, const Phone& phone);
     Result<void> removePhone(const Actor& actor, const std::string& id);
+    Result<void> publishPhone(const Actor& actor, const std::string& id);
+
+    Result<Phone> getPhoneById(const std::string& id) const;
 
     // available = quantity - reservedQuantity
     Result<void> checkAvailable(const std::string& id, int qty) const;
@@ -37,6 +42,9 @@ public:
     Result<void> commitReserved(UnitOfWork& uow, const std::string& id, int qty);   // giữ chỗ -> xuất kho thật
     Result<void> restock(UnitOfWork& uow, const std::string& id, int qty);          // hoàn kho khi hủy đơn đã xác nhận
     Result<void> receiveStock(UnitOfWork& uow, const std::string& id, int qty);     // nhập kho
+    Result<void> updateImportPrice(UnitOfWork& uow, const std::string& id, Money price);
+
+    Result<std::string> createDraftForImport(UnitOfWork& uow, const NewPhoneInfo& info, Money importPrice);
 
 private:
     PhoneRepository& phoneRepo;

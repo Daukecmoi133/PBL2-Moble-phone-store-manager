@@ -25,7 +25,8 @@ public:
     void setAccount(const Account& acc);
 
     // Định dạng lưu file Customers.txt
-    // Format: id|firstName|middleName|lastName|phoneNumber|email|username|password|points|address|accountId
+    // Format: id|firstName|middleName|lastName|phoneNumber|email|username|passwordHash|points|address|accountId|active
+    // passwordHash: chuỗi PBKDF2 (pbkdf2-sha256$...). active: 1/0 (thiếu cột = 1, tương thích file cũ).
     std::string toFileString() const;
 
     // Đọc và phân tích một dòng từ Customers.txt
@@ -72,11 +73,12 @@ inline const Account& Customer::getAccount() const { return account; }
 inline void Customer::setAccount(const Account& acc) { account = acc; }
 
 // Hàm trả về cấu trúc dữ liệu trong file .txt
-// Format: id|firstName|middleName|lastName|phoneNumber|email|username|password|points|address|accountId
+// Format: id|firstName|middleName|lastName|phoneNumber|email|username|passwordHash|points|address|accountId|active
 inline std::string Customer::toFileString() const {
     return id + "|" + name.firstName + "|" + name.middleName + "|" + name.lastName + "|" +
-           phoneNumber + "|" + email + "|" + account.getUsername() + "|" + account.getPassword() + "|" +
-           std::to_string(points) + "|" + address + "|" + account.getID();
+           phoneNumber + "|" + email + "|" + account.getUsername() + "|" + account.getPasswordHash() + "|" +
+           std::to_string(points) + "|" + address + "|" + account.getID() + "|" +
+           (account.isActive() ? "1" : "0");
 }
 
 // Phân tích dòng dữ liệu từ Customers.txt thành đối tượng Customer
@@ -89,13 +91,17 @@ inline Customer Customer::fromFileLine(const std::string& line) {
     std::string phone    = StringHelper::trim(parts[4]);
     std::string email    = StringHelper::trim(parts[5]);
     std::string username = StringHelper::trim(parts[6]);
-    std::string password = StringHelper::trim(parts[7]);
+    std::string password = StringHelper::trim(parts[7]); // Giá trị đã lưu: hash PBKDF2 hoặc plaintext cũ
     int points           = std::stoi(StringHelper::trim(parts[8]));
     std::string address  = StringHelper::trim(parts[9]);
 
     Customer customer(id, name, phone, email, address, username, password, points);
     if (parts.getSize() >= 11) {
         customer.getAccount().setID(StringHelper::trim(parts[10]));
+    }
+    if (parts.getSize() >= 12) {
+        // Chỉ "0" mới là tài khoản bị vô hiệu hóa; thiếu/giá trị khác = đang hoạt động
+        customer.getAccount().setActive(StringHelper::trim(parts[11]) != "0");
     }
     return customer;
 }

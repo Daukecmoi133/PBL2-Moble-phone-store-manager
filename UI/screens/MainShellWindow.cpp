@@ -23,17 +23,34 @@
 #include "CustomerScreens.h"
 #include "SalesScreens.h"
 #include "WarehouseScreens.h"
+#include <algorithm>
+#include <gdk/gdkkeysyms.h>
+
+static MainShellWindow *s_activeShellInstance = nullptr;
+
+MainShellWindow *MainShellWindow::getActiveInstance() {
+  return s_activeShellInstance;
+}
 
 struct NavButtonData {
   MainShellWindow *shell;
   std::string pageName;
 };
 
+MainShellWindow::MainShellWindow(GtkWindow *parentWindow, AppController *ctrl,
+                                 LogoutCallback onLogout, gpointer userData)
+    : controller(ctrl), app(nullptr), window(GTK_WIDGET(parentWindow)),
+      logoutCallback(onLogout), callbackData(userData),
+      customerScreens(nullptr), salesScreens(nullptr),
+      warehouseScreens(nullptr), adminScreens(nullptr), ownsWindow(false) {
+  initShellContent();
+}
+
 MainShellWindow::MainShellWindow(GtkApplication *gapp, AppController *ctrl,
                                  LogoutCallback onLogout, gpointer userData)
     : controller(ctrl), app(gapp), logoutCallback(onLogout),
       callbackData(userData), customerScreens(nullptr), salesScreens(nullptr),
-      warehouseScreens(nullptr), adminScreens(nullptr) {
+      warehouseScreens(nullptr), adminScreens(nullptr), ownsWindow(true) {
 
   window = gtk_application_window_new(app);
   g_signal_connect(window, "close-request", G_CALLBACK(on_window_close_request),
@@ -44,8 +61,24 @@ MainShellWindow::MainShellWindow(GtkApplication *gapp, AppController *ctrl,
   gtk_window_set_default_size(GTK_WINDOW(window), 1240, 680);
   gtk_window_maximize(GTK_WINDOW(window));
 
+  initShellContent();
+  gtk_window_set_child(GTK_WINDOW(window), toastOverlay);
+  activateSession();
+}
+
+void MainShellWindow::initShellContent() {
+  // Phím Esc đóng Overlay Dialog hoặc Pop Page Stack
+  if (window && GTK_IS_WIDGET(window)) {
+    keyController = gtk_event_controller_key_new();
+    g_signal_connect(keyController, "key-pressed", G_CALLBACK(on_key_pressed),
+                     this);
+    gtk_widget_add_controller(window, keyController);
+  }
+
   // Root layout: Vertical Box (Header on top, HBox for Sidebar + Stack below)
   GtkWidget *rootBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_set_hexpand(rootBox, TRUE);
+  gtk_widget_set_vexpand(rootBox, TRUE);
 
   buildHeader();
   gtk_box_append(GTK_BOX(rootBox), headerBar);
@@ -54,39 +87,105 @@ MainShellWindow::MainShellWindow(GtkApplication *gapp, AppController *ctrl,
   gtk_widget_set_vexpand(bodyBox, TRUE);
 
   buildSidebar();
-  gtk_box_append(GTK_BOX(bodyBox), sidebarBox);
+  GtkWidget *sidebarScroll = gtk_scrolled_window_new();
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sidebarScroll),
+                                 GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+  gtk_widget_add_css_class(sidebarScroll, "sidebar-panel");
+  gtk_widget_set_size_request(sidebarScroll, DesignTokens::SIDEBAR_WIDTH, -1);
+  gtk_widget_set_hexpand(sidebarScroll, FALSE);
+  gtk_widget_set_vexpand(sidebarScroll, TRUE);
+  gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(sidebarScroll), sidebarBox);
+  gtk_box_append(GTK_BOX(bodyBox), sidebarScroll);
 
   buildStack();
-  gtk_box_append(GTK_BOX(bodyBox), stack);
+
+  // Container Page Stack thứ hai bọc ngoài stack các màn hình vai trò chính
+  pageNavStack = gtk_stack_new();
+  gtk_stack_set_transition_type(GTK_STACK(pageNavStack),
+                                GTK_STACK_TRANSITION_TYPE_OVER_LEFT);
+  gtk_stack_set_transition_duration(GTK_STACK(pageNavStack), 260);
+  gtk_widget_set_hexpand(pageNavStack, TRUE);
+  gtk_widget_set_vexpand(pageNavStack, TRUE);
+
+  gtk_stack_add_named(GTK_STACK(pageNavStack), stack, "__main_views__");
+  gtk_stack_set_visible_child_name(GTK_STACK(pageNavStack), "__main_views__");
+
+  gtk_box_append(GTK_BOX(bodyBox), pageNavStack);
 
   gtk_box_append(GTK_BOX(rootBox), bodyBox);
 
   toastOverlay = gtk_overlay_new();
+  gtk_widget_set_hexpand(toastOverlay, TRUE);
+  gtk_widget_set_vexpand(toastOverlay, TRUE);
   gtk_overlay_set_child(GTK_OVERLAY(toastOverlay), rootBox);
-  gtk_window_set_child(GTK_WINDOW(window), toastOverlay);
+}
 
+void MainShellWindow::flushPendingCleanups() {
+  for (auto &item : pendingCleanups) {
+    if (item.timerId > 0) {
+      g_source_remove(item.timerId);
+    }
+    if (item.page && GTK_IS_WIDGET(item.page)) {
+      if (item.stack && GTK_IS_STACK(item.stack) &&
+          gtk_widget_get_parent(item.page) == item.stack) {
+        gtk_stack_remove(GTK_STACK(item.stack), item.page);
+      }
+      g_object_unref(item.page);
+    }
+  }
+  pendingCleanups.clear();
+}
+
+void MainShellWindow::activateSession() {
+  s_activeShellInstance = this;
   UIComponents::registerShellWindow(this);
+  flushPendingCleanups();
+  closeOverlayDialog();
+  clearPageStack();
   refreshCurrentRoleUI();
   startClockTimer();
 }
 
-MainShellWindow::~MainShellWindow() {
+void MainShellWindow::deactivateSession() {
   stopClockTimer();
+  flushPendingCleanups();
+  closeOverlayDialog();
+  clearPageStack();
+  if (s_activeShellInstance == this) {
+    s_activeShellInstance = nullptr;
+  }
   UIComponents::registerShellWindow(nullptr);
+}
+
+MainShellWindow::~MainShellWindow() {
+  deactivateSession();
+
+  if (window && keyController && GTK_IS_WIDGET(window)) {
+    gtk_widget_remove_controller(window, keyController);
+    keyController = nullptr;
+  }
+
   delete customerScreens;
   delete salesScreens;
   delete warehouseScreens;
   delete adminScreens;
-  if (window) {
+
+  if (ownsWindow && window) {
     GtkWidget *win = window;
     window = nullptr;
     if (GTK_IS_WINDOW(win)) {
       gtk_window_destroy(GTK_WINDOW(win));
     }
+  } else {
+    window = nullptr;
   }
 }
 
-void MainShellWindow::show() { gtk_window_present(GTK_WINDOW(window)); }
+void MainShellWindow::show() {
+  if (window && GTK_IS_WINDOW(window)) {
+    gtk_window_present(GTK_WINDOW(window));
+  }
+}
 
 void MainShellWindow::showToast(const std::string &message,
                                 const std::string &type) {
@@ -171,7 +270,7 @@ void MainShellWindow::buildHeader() {
   gtk_box_append(GTK_BOX(headerBar), sep);
 
   // Current page breadcrumb
-  lblHeaderTitle = gtk_label_new("Tổng quan");
+  lblHeaderTitle = gtk_label_new("Khách hàng / Tổng quan");
   gtk_widget_add_css_class(lblHeaderTitle, "header-screen-title");
   gtk_widget_set_hexpand(lblHeaderTitle, TRUE);
   gtk_label_set_xalign(GTK_LABEL(lblHeaderTitle), 0.0f);
@@ -224,7 +323,7 @@ void MainShellWindow::buildStack() {
   stack = gtk_stack_new();
   gtk_stack_set_transition_type(GTK_STACK(stack),
                                 GTK_STACK_TRANSITION_TYPE_CROSSFADE);
-  gtk_stack_set_transition_duration(GTK_STACK(stack), 150);
+  gtk_stack_set_transition_duration(GTK_STACK(stack), 200);
   gtk_widget_set_hexpand(stack, TRUE);
   gtk_widget_set_vexpand(stack, TRUE);
 
@@ -243,6 +342,8 @@ void MainShellWindow::buildStack() {
                       "customer_cart");
   gtk_stack_add_named(GTK_STACK(stack), customerScreens->getOrdersView(),
                       "customer_orders");
+  gtk_stack_add_named(GTK_STACK(stack), customerScreens->getDiscountsView(),
+                      "customer_discounts");
   gtk_stack_add_named(GTK_STACK(stack), customerScreens->getProfileView(),
                       "customer_profile");
   gtk_stack_add_named(GTK_STACK(stack), customerScreens->getWarrantyView(),
@@ -302,6 +403,8 @@ void MainShellWindow::buildStack() {
                       "admin_warranty");
   gtk_stack_add_named(GTK_STACK(stack), adminScreens->getReportsView(),
                       "admin_reports");
+  gtk_stack_add_named(GTK_STACK(stack), adminScreens->getProfileView(),
+                      "admin_profile");
   gtk_stack_add_named(GTK_STACK(stack), adminScreens->getRealTimeView(),
                       "admin_realtime");
 }
@@ -379,6 +482,7 @@ void MainShellWindow::refreshCurrentRoleUI() {
     addSidebarButton("customer_products", "Mua sắm điện thoại", "🛍️");
     addSidebarButton("customer_cart", "Giỏ hàng", "🛒");
     addSidebarButton("customer_orders", "Đơn hàng của tôi", "📦");
+    addSidebarButton("customer_discounts", "Ví voucher & Ưu đãi", "🎟️");
     addSidebarButton("customer_warranty", "Trung tâm bảo hành", "🛡️");
     addSidebarButton("customer_profile", "Hồ sơ cá nhân", "👤");
 
@@ -439,7 +543,7 @@ void MainShellWindow::refreshCurrentRoleUI() {
     addCategory("Nhân sự & Hệ thống");
     addSidebarButton("admin_employees", "Quản lý nhân sự", "👥");
     addSidebarButton("admin_customers", "Quản lý khách hàng", "👤");
-    addSidebarButton("admin_accounts", "Quản trị tài khoản", "🔐");
+    addSidebarButton("admin_profile", "Hồ sơ quản trị viên", "👤");
     addSidebarButton("admin_realtime", "Kiểm soát thời gian thực", "⏱️");
 
     initialPage = "admin_dashboard";
@@ -483,6 +587,13 @@ void MainShellWindow::handleClockTick() {
 void MainShellWindow::navigateTo(const std::string &pageName) {
   if (pageName.empty())
     return;
+
+  // Đóng overlay dialog nếu đang mở khi chuyển trang
+  closeOverlayDialog();
+
+  // Tự động pop hết các trang đã push khi bấm mục sidebar khác
+  clearPageStack();
+
   currentPage = pageName;
 
   // Switch stack view
@@ -499,14 +610,29 @@ void MainShellWindow::navigateTo(const std::string &pageName) {
 
   // Update Header Breadcrumb Title
   std::string pageTitle = "Tổng quan";
-  if (pageName == "customer_products" || pageName == "sales_lookup" ||
-      pageName == "admin_products")
+  if (pageName == "customer_dashboard")
+    pageTitle = "Khách hàng / Tổng quan";
+  else if (pageName == "customer_products")
+    pageTitle = "Khách hàng / Mua sắm điện thoại";
+  else if (pageName == "customer_cart")
+    pageTitle = "Khách hàng / Giỏ hàng của bạn";
+  else if (pageName == "customer_orders")
+    pageTitle = "Khách hàng / Đơn hàng của tôi";
+  else if (pageName == "customer_discounts")
+    pageTitle = "Khách hàng / Ví Voucher & Ưu đãi";
+  else if (pageName == "customer_profile")
+    pageTitle = "Khách hàng / Hồ sơ cá nhân & Điểm thưởng";
+  else if (pageName == "customer_warranty")
+    pageTitle = "Khách hàng / Bảo hành thiết bị";
+  else if (pageName == "sales_lookup" || pageName == "admin_products")
     pageTitle = "Sản phẩm điện thoại";
   else if (pageName == "customer_cart")
     pageTitle = "Giỏ hàng của bạn";
   else if (pageName == "customer_orders" || pageName == "sales_orders" ||
            pageName == "admin_orders")
     pageTitle = "Quản lý Đơn hàng";
+  else if (pageName == "customer_discounts")
+    pageTitle = "Ví Voucher & Mã giảm giá";
   else if (pageName == "customer_profile")
     pageTitle = "Hồ sơ cá nhân & Điểm thưởng";
   else if (pageName == "customer_warranty" || pageName == "sales_warranty" ||
@@ -536,6 +662,8 @@ void MainShellWindow::navigateTo(const std::string &pageName) {
     pageTitle = "Quản lý Mã giảm giá";
   else if (pageName == "admin_accounts")
     pageTitle = "Tài khoản & Phân quyền";
+  else if (pageName == "admin_profile")
+    pageTitle = "Hồ sơ quản trị viên";
   else if (pageName == "admin_reports")
     pageTitle = "Báo cáo Doanh thu & Lợi nhuận";
   else if (pageName == "admin_realtime")
@@ -596,6 +724,8 @@ void MainShellWindow::navigateTo(const std::string &pageName) {
       customerScreens->refreshDashboard();
     } else if (pageName == "customer_orders") {
       customerScreens->refreshOrders();
+    } else if (pageName == "customer_discounts") {
+      customerScreens->refreshDiscounts();
     } else if (pageName == "customer_products") {
       customerScreens->refreshProducts();
     } else if (pageName == "customer_cart") {
@@ -632,7 +762,7 @@ void MainShellWindow::updateCartBadge(int count) {
 
 void MainShellWindow::updateSimulatedTimeBadge() {
   if (lblSimulatedTimeBadge && controller) {
-    std::string badge = "⏰" + controller->getSimulatedTime();
+    std::string badge = controller->getSimulatedTime();
     gtk_label_set_text(GTK_LABEL(lblSimulatedTimeBadge), badge.c_str());
   }
 }
@@ -654,7 +784,7 @@ void MainShellWindow::on_logout_btn_clicked(GtkButton *btn, gpointer data) {
 
 void MainShellWindow::on_confirm_logout(gpointer data) {
   MainShellWindow *self = static_cast<MainShellWindow *>(data);
-  self->stopClockTimer();
+  self->deactivateSession();
   self->controller->logout();
   if (self->logoutCallback) {
     self->logoutCallback(self->controller, self->callbackData);
@@ -669,4 +799,237 @@ gboolean MainShellWindow::on_window_close_request(GtkWindow *closedWindow,
     self->window = nullptr;
   }
   return FALSE;
+}
+
+void MainShellWindow::pushPage(const std::string &id, GtkWidget *content,
+                               const std::string &title, bool showTopBack) {
+  if (!pageNavStack || !content)
+    return;
+
+  // Tạo container bao bọc trang con
+  GtkWidget *pageBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class(pageBox, "page-container-view");
+  gtk_widget_set_hexpand(pageBox, TRUE);
+  gtk_widget_set_vexpand(pageBox, TRUE);
+
+  // Thanh tiêu đề trang (.page-header)
+  GtkWidget *header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+  gtk_widget_add_css_class(header, "page-header");
+
+  // Nút Quay lại (.page-back-btn) chỉ hiển thị khi trang không tự bố trí nút điều hướng
+  if (showTopBack) {
+    GtkWidget *btnBack = gtk_button_new_with_label("← Quay lại");
+    gtk_widget_add_css_class(btnBack, "page-back-btn");
+    UIComponents::setButtonCursor(btnBack);
+    g_signal_connect_swapped(btnBack, "clicked",
+                             G_CALLBACK(+[](gpointer d) {
+                               static_cast<MainShellWindow *>(d)->popPage();
+                             }),
+                             this);
+    gtk_box_append(GTK_BOX(header), btnBack);
+  }
+
+  // Tiêu đề trang (.page-title)
+  GtkWidget *lblTitle = gtk_label_new(title.c_str());
+  gtk_widget_add_css_class(lblTitle, "page-title");
+  gtk_label_set_xalign(GTK_LABEL(lblTitle), 0.0f);
+  gtk_widget_set_hexpand(lblTitle, TRUE);
+  gtk_box_append(GTK_BOX(header), lblTitle);
+
+  gtk_box_append(GTK_BOX(pageBox), header);
+
+  // Gắn nội dung trang vào bên dưới header
+  gtk_widget_set_hexpand(content, TRUE);
+  gtk_widget_set_vexpand(content, TRUE);
+  gtk_box_append(GTK_BOX(pageBox), content);
+
+  // Định danh cho child trong GtkStack
+  std::string childName =
+      "page_" + std::to_string(pageStack.size()) + "_" + id;
+  gtk_stack_add_named(GTK_STACK(pageNavStack), pageBox, childName.c_str());
+
+  // Transition OVER_LEFT (260ms — trang mới trượt đè êm ái từ phải sang trái)
+  gtk_stack_set_transition_type(GTK_STACK(pageNavStack),
+                                GTK_STACK_TRANSITION_TYPE_OVER_LEFT);
+  gtk_stack_set_transition_duration(GTK_STACK(pageNavStack), 260);
+  gtk_stack_set_visible_child(GTK_STACK(pageNavStack), pageBox);
+
+  // Lưu vào ngăn xếp
+  pageStack.push_back({id, title, childName, pageBox, content});
+}
+
+void MainShellWindow::popPage() {
+  if (pageStack.empty() || !pageNavStack)
+    return;
+
+  PageEntry top = pageStack.back();
+  pageStack.pop_back();
+
+  // Transition UNDER_RIGHT (260ms — trang hiện tại trượt lùi về phải để lộ trang dưới)
+  gtk_stack_set_transition_type(GTK_STACK(pageNavStack),
+                                GTK_STACK_TRANSITION_TYPE_UNDER_RIGHT);
+  gtk_stack_set_transition_duration(GTK_STACK(pageNavStack), 260);
+
+  if (!pageStack.empty()) {
+    gtk_stack_set_visible_child(GTK_STACK(pageNavStack),
+                                pageStack.back().pageBox);
+  } else {
+    gtk_stack_set_visible_child_name(GTK_STACK(pageNavStack), "__main_views__");
+  }
+
+  // Giải phóng widget an toàn sau khi kết thúc animation (280ms)
+  GtkWidget *oldPage = top.pageBox;
+  g_object_ref(oldPage);
+
+  PageCleanupRecord rec{0, pageNavStack, oldPage};
+  pendingCleanups.push_back(rec);
+  size_t recIdx = pendingCleanups.size() - 1;
+
+  guint tid = g_timeout_add(
+      280,
+      +[](gpointer d) -> gboolean {
+        GtkWidget *page = GTK_WIDGET(d);
+        if (s_activeShellInstance) {
+          auto &list = s_activeShellInstance->pendingCleanups;
+          list.erase(std::remove_if(list.begin(), list.end(),
+                                    [page](const PageCleanupRecord &r) {
+                                      return r.page == page;
+                                    }),
+                     list.end());
+          if (s_activeShellInstance->pageNavStack &&
+              GTK_IS_STACK(s_activeShellInstance->pageNavStack) &&
+              GTK_IS_WIDGET(page)) {
+            if (gtk_widget_get_parent(page) ==
+                s_activeShellInstance->pageNavStack) {
+              gtk_stack_remove(
+                  GTK_STACK(s_activeShellInstance->pageNavStack), page);
+            }
+          }
+        }
+        if (page && GTK_IS_WIDGET(page)) {
+          g_object_unref(page);
+        }
+        return G_SOURCE_REMOVE;
+      },
+      oldPage);
+
+  pendingCleanups[recIdx].timerId = tid;
+}
+
+void MainShellWindow::clearPageStack() {
+  if (pageStack.empty() || !pageNavStack)
+    return;
+
+  gtk_stack_set_transition_type(GTK_STACK(pageNavStack),
+                                GTK_STACK_TRANSITION_TYPE_NONE);
+  gtk_stack_set_visible_child_name(GTK_STACK(pageNavStack), "__main_views__");
+
+  for (auto &entry : pageStack) {
+    if (entry.pageBox && GTK_IS_WIDGET(entry.pageBox)) {
+      if (gtk_widget_get_parent(entry.pageBox) == pageNavStack) {
+        gtk_stack_remove(GTK_STACK(pageNavStack), entry.pageBox);
+      }
+    }
+  }
+  pageStack.clear();
+  gtk_stack_set_transition_duration(GTK_STACK(pageNavStack), 260);
+}
+
+void MainShellWindow::showOverlayDialog(GtkWidget *card) {
+  if (!toastOverlay || !card)
+    return;
+
+  // Nếu đang có dialog khác mở, đóng trước
+  closeOverlayDialog();
+
+  currentOverlayWrapper = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class(currentOverlayWrapper, "overlay-scrim");
+  gtk_widget_add_css_class(currentOverlayWrapper, "overlay-entering");
+  gtk_widget_set_hexpand(currentOverlayWrapper, TRUE);
+  gtk_widget_set_vexpand(currentOverlayWrapper, TRUE);
+  gtk_widget_set_halign(currentOverlayWrapper, GTK_ALIGN_FILL);
+  gtk_widget_set_valign(currentOverlayWrapper, GTK_ALIGN_FILL);
+
+  currentOverlayCard = card;
+  gtk_widget_add_css_class(card, "overlay-card");
+  gtk_widget_set_halign(card, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(card, GTK_ALIGN_CENTER);
+  gtk_widget_set_hexpand(card, TRUE);
+  gtk_widget_set_vexpand(card, TRUE);
+  gtk_box_append(GTK_BOX(currentOverlayWrapper), card);
+
+  // Gesture click vào nền mờ (scrim) bên ngoài card để đóng
+  GtkGesture *click = gtk_gesture_click_new();
+  gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(click), GDK_BUTTON_PRIMARY);
+  g_signal_connect(click, "pressed",
+                   G_CALLBACK(+[](GtkGestureClick *, int, double x, double y,
+                                  gpointer d) {
+                     MainShellWindow *self = static_cast<MainShellWindow *>(d);
+                     if (!self || !self->currentOverlayWrapper)
+                       return;
+                     GtkWidget *picked = gtk_widget_pick(
+                         self->currentOverlayWrapper, x, y, GTK_PICK_DEFAULT);
+                     if (picked == self->currentOverlayWrapper) {
+                       self->closeOverlayDialog();
+                     }
+                   }),
+                   this);
+  gtk_widget_add_controller(currentOverlayWrapper,
+                            GTK_EVENT_CONTROLLER(click));
+
+  gtk_overlay_add_overlay(GTK_OVERLAY(toastOverlay), currentOverlayWrapper);
+
+  // Hiệu ứng fade-in mượt mà cho lớp nền mờ (.overlay-scrim)
+  GtkWidget *scrimRef = GTK_WIDGET(g_object_ref(currentOverlayWrapper));
+  g_idle_add(
+      +[](gpointer d) -> gboolean {
+        GtkWidget *w = GTK_WIDGET(d);
+        if (w && GTK_IS_WIDGET(w)) {
+          gtk_widget_remove_css_class(w, "overlay-entering");
+          g_object_unref(w);
+        }
+        return G_SOURCE_REMOVE;
+      },
+      scrimRef);
+
+  gtk_widget_child_focus(card, GTK_DIR_TAB_FORWARD);
+}
+
+void MainShellWindow::closeOverlayDialog() {
+  if (!currentOverlayWrapper)
+    return;
+
+  GtkWidget *wrapper = currentOverlayWrapper;
+  currentOverlayWrapper = nullptr;
+  currentOverlayCard = nullptr;
+
+  if (toastOverlay && GTK_IS_OVERLAY(toastOverlay) &&
+      gtk_widget_get_parent(wrapper) == toastOverlay) {
+    gtk_overlay_remove_overlay(GTK_OVERLAY(toastOverlay), wrapper);
+  }
+}
+
+gboolean MainShellWindow::on_key_pressed(GtkEventControllerKey *controller,
+                                        guint keyval, guint keycode,
+                                        GdkModifierType state, gpointer data) {
+  (void)controller;
+  (void)keycode;
+  (void)state;
+  MainShellWindow *self = static_cast<MainShellWindow *>(data);
+  if (!self || s_activeShellInstance != self)
+    return GDK_EVENT_PROPAGATE;
+
+  if (keyval == GDK_KEY_Escape) {
+    // Ưu tiên đóng overlay dialog trước
+    if (self->isOverlayDialogOpen()) {
+      self->closeOverlayDialog();
+      return GDK_EVENT_STOP;
+    }
+    // Sau đó đến pop trang con
+    if (self->hasPages()) {
+      self->popPage();
+      return GDK_EVENT_STOP;
+    }
+  }
+  return GDK_EVENT_PROPAGATE;
 }

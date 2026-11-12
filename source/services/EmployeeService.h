@@ -27,8 +27,23 @@ public:
     const EmployeeRepository& getRepository() const { return repo; }
     const Vector<Employee*>& getAllEmployees() const;
 
-    // Xác thực đăng nhập nhân viên với độ phức tạp O(1)
+    // Xác thực đăng nhập nhân viên với độ phức tạp O(1) (tài khoản phải đang hoạt động)
     Employee* authenticate(const std::string& username, const std::string& password);
+
+    // ==== QUẢN LÝ THÔNG TIN XÁC THỰC (ghi xuống Employee.txt, hoàn nguyên RAM nếu ghi thất bại) ====
+
+    // Thay thông tin xác thực đã lưu (hash). Chỉ chấp nhận chuỗi đã băm.
+    bool setPasswordCredential(const std::string& employeeId, const std::string& hashedCredential,
+                               std::string& errorMessage);
+
+    // Khóa / mở khóa tài khoản và lưu trạng thái
+    bool setAccountActive(const std::string& employeeId, bool active, std::string& errorMessage);
+
+    // Chuyển toàn bộ mật khẩu plaintext cũ sang hash (giữ nguyên mật khẩu, ghi file một lần)
+    bool migrateLegacyCredentials(int& migratedCount, std::string& errorMessage);
+
+    // Dữ liệu nhân viên không nạp được từ file (đã gọi loadFromFile nhưng thất bại)
+    bool hasLoadError() const { return repo.hasLoadError(); }
 
     Employee* getEmployeeByUsername(const std::string& username);
     Employee* getEmployeeById(const std::string& id);
@@ -67,13 +82,85 @@ inline const Vector<Employee*>& EmployeeService::getAllEmployees() const {
 }
 
 inline Employee* EmployeeService::authenticate(const std::string& username, const std::string& password) {
-    Employee** ptr = usernameTable.find(username);
+    const std::string trimmedUname = StringHelper::trim(username);
+    if (trimmedUname.empty() || password.empty()) return nullptr;
+
+    Employee** ptr = usernameTable.find(trimmedUname);
     if (ptr != nullptr && *ptr != nullptr) {
-        if ((*ptr)->getAccount().authenticate(username, password)) {
+        if ((*ptr)->getAccount().authenticate(trimmedUname, password)) {
             return *ptr;
         }
     }
     return nullptr;
+}
+
+inline bool EmployeeService::setPasswordCredential(const std::string& employeeId,
+                                                   const std::string& hashedCredential,
+                                                   std::string& errorMessage) {
+    if (!PasswordHasher::isHashed(hashedCredential)) {
+        errorMessage = "Thong tin xac thuc chua duoc bam, tu choi luu!";
+        return false;
+    }
+    Employee* emp = repo.findById(employeeId);
+    if (emp == nullptr) {
+        errorMessage = "Không tìm thấy nhân viên có mã [" + employeeId + "]!";
+        return false;
+    }
+    const std::string previous = emp->getAccount().getPasswordHash();
+    emp->getAccount().setPasswordHash(hashedCredential);
+    if (!repo.saveToFile()) {
+        emp->getAccount().setPasswordHash(previous); // Hoàn nguyên RAM: mật khẩu cũ vẫn còn hiệu lực
+        errorMessage = "Lỗi khi lưu thông tin xác thực vào cơ sở dữ liệu!";
+        return false;
+    }
+    return true;
+}
+
+inline bool EmployeeService::setAccountActive(const std::string& employeeId, bool active,
+                                              std::string& errorMessage) {
+    Employee* emp = repo.findById(employeeId);
+    if (emp == nullptr) {
+        errorMessage = "Không tìm thấy nhân viên có mã [" + employeeId + "]!";
+        return false;
+    }
+    const bool previous = emp->getAccount().isActive();
+    emp->getAccount().setActive(active);
+    if (!repo.saveToFile()) {
+        emp->getAccount().setActive(previous);
+        errorMessage = "Lỗi khi lưu trạng thái tài khoản vào cơ sở dữ liệu!";
+        return false;
+    }
+    return true;
+}
+
+inline bool EmployeeService::migrateLegacyCredentials(int& migratedCount, std::string& errorMessage) {
+    migratedCount = 0;
+    Vector<Employee*>& list = repo.getAll();
+    std::vector<std::pair<int, std::string>> changed; // (vị trí, giá trị plaintext cũ) để hoàn nguyên nếu lỗi
+
+    for (int i = 0; i < list.getSize(); ++i) {
+        if (list[i] == nullptr) continue;
+        Account& acc = list[i]->getAccount();
+        if (acc.getPasswordHash().empty() || acc.isPasswordHashed()) continue;
+        const std::string legacy = acc.getPasswordHash();
+        if (!acc.ensureCredentialHashed()) {
+            acc.setPasswordHash(legacy);
+            for (const auto& c : changed) list[c.first]->getAccount().setPasswordHash(c.second);
+            errorMessage = "Khong the bam mat khau cho tai khoan nhan vien [" + acc.getUsername() + "]!";
+            return false;
+        }
+        changed.push_back(std::make_pair(i, legacy));
+    }
+    if (changed.empty()) return true;
+
+    if (!repo.saveToFile()) {
+        // Không ghi được: giữ nguyên plaintext cũ trong RAM để tài khoản vẫn đăng nhập được như trước
+        for (const auto& c : changed) list[c.first]->getAccount().setPasswordHash(c.second);
+        errorMessage = "Lỗi khi lưu mật khẩu đã băm của nhân viên vào cơ sở dữ liệu!";
+        return false;
+    }
+    migratedCount = static_cast<int>(changed.size());
+    return true;
 }
 
 inline Employee* EmployeeService::getEmployeeByUsername(const std::string& username) {
@@ -140,6 +227,12 @@ inline bool EmployeeService::addEmployee(Employee* emp, std::string& errorMessag
 
     if (idTable.contains(emp->getID())) {
         errorMessage = "Mã nhân viên [" + emp->getID() + "] đã tồn tại!";
+        return false;
+    }
+
+    // Không bao giờ lưu mật khẩu dạng rõ: băm trước khi ghi
+    if (!emp->getAccount().ensureCredentialHashed()) {
+        errorMessage = "Không thể mã hóa mật khẩu cho tài khoản nhân viên mới!";
         return false;
     }
 

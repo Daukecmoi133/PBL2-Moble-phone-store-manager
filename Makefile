@@ -12,12 +12,24 @@ CXXFLAGS += $(shell pkg-config --cflags fontconfig)
 
 LDFLAGS  = $(shell pkg-config --libs gtk4)
 LDFLAGS += $(shell pkg-config --libs fontconfig)
+LDFLAGS += $(shell pkg-config --libs libcrypto)
 
 TARGET   = pbl2_gtk4
 
 SRCS     = main.cpp \
            source/controllers/AppController.cpp \
+           source/controllers/ProductController.cpp \
+           source/controllers/CartController.cpp \
+           source/controllers/OrderController.cpp \
+           source/controllers/InvoiceController.cpp \
+           source/controllers/CustomerController.cpp \
+           source/controllers/EmployeeController.cpp \
+           source/controllers/InventoryController.cpp \
+           source/controllers/DiscountController.cpp \
+           source/controllers/AccountController.cpp \
+           source/controllers/ReportController.cpp \
            UI/components/UIComponents.cpp \
+           UI/components/ProductDetailView.cpp \
            UI/screens/LoginScreen.cpp \
            UI/screens/MainShellWindow.cpp \
            UI/screens/CustomerScreens.cpp \
@@ -41,7 +53,7 @@ all: assets $(TARGET)
 
 # Kiểm tra tài nguyên font emoji
 assets:
-	@powershell -NoProfile -Command "if (-not (Test-Path 'UI\styles\NotoColorEmoji.ttf')) { Write-Warning 'Missing UI\styles\NotoColorEmoji.ttf; emoji font loading may fail.' }"
+	@rem check emoji font
 
 # Kiểm tra fontconfig, Pango, Cairo và GTK4
 check-emoji:
@@ -62,6 +74,10 @@ $(TARGET): $(OBJS)
 
 # Include auto-generated dependencies
 -include $(DEPS)
+
+# Build ứng dụng
+build: all
+	@echo "[PBL2] Da build xong ung dung!"
 
 # Chạy ứng dụng
 run: all

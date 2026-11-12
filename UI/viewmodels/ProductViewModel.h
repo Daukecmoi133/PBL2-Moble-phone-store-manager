@@ -22,6 +22,17 @@ enum class StockDisplayStatus {
     OUT_OF_STOCK    // Hết hàng
 };
 
+// Mục thông tin ảnh trong thư viện ảnh sản phẩm
+struct ProductImageItem {
+    std::string path;
+    bool isPrimary;
+    int displayOrder;
+
+    ProductImageItem() : isPrimary(false), displayOrder(1) {}
+    ProductImageItem(std::string p, bool prim = false, int ord = 1)
+        : path(std::move(p)), isPrimary(prim), displayOrder(ord) {}
+};
+
 // ViewModel hiển thị một dòng / thẻ sản phẩm điện thoại
 struct ProductItemViewModel {
     std::string id;
@@ -38,9 +49,31 @@ struct ProductItemViewModel {
     std::string imageUrl;
     StockDisplayStatus status;
 
+    // Marketing & Sale (B2 & B3 - ANTI.md)
+    double listPrice;           // Giá niêm yết gốc (0 nếu không có sale)
+    std::string saleStart;      // Ngày bắt đầu sale (dd/MM/yyyy)
+    std::string saleEnd;        // Ngày kết thúc sale (dd/MM/yyyy)
+    bool installmentEnabled;    // Có hỗ trợ trả góp 0% không
+    std::string installmentNote;// Ghi chú trả góp
+    std::vector<std::string> colors; // Danh sách màu sắc thực tế
+    int warrantyMonths;         // Thời hạn bảo hành chính hãng (tháng)
+    int returnDays;             // Thời hạn đổi trả (ngày)
+
+    // Mô tả chi tiết & Điểm nổi bật
+    std::string shortHighlights;
+    std::string description;
+
+    // Bảng thông số chi tiết (cặp Nhãn - Giá trị)
+    std::vector<std::pair<std::string, std::string>> detailedSpecs;
+
+    // Thư viện ảnh đầy đủ của sản phẩm
+    std::vector<ProductImageItem> images;
+
     ProductItemViewModel()
         : importPrice(0.0), sellingPrice(0.0), actualStock(0),
-          reservedStock(0), availableStock(0), status(StockDisplayStatus::OUT_OF_STOCK) {}
+          reservedStock(0), availableStock(0), status(StockDisplayStatus::OUT_OF_STOCK),
+          listPrice(0.0), installmentEnabled(false),
+          warrantyMonths(12), returnDays(30) {}
 
     void calculateStockStatus() {
         availableStock = actualStock - reservedStock;
@@ -52,6 +85,19 @@ struct ProductItemViewModel {
         } else {
             status = StockDisplayStatus::IN_STOCK;
         }
+    }
+
+    // Kiểm tra có đang áp dụng chương trình giảm giá hợp lệ không
+    bool hasActiveSale() const {
+        return listPrice > sellingPrice && sellingPrice > 0;
+    }
+
+    // Tính % giảm giá thực tế = round((listPrice - sellingPrice) * 100 / listPrice)
+    int calculateDiscountPercent() const {
+        if (listPrice > sellingPrice && listPrice > 0) {
+            return static_cast<int>((listPrice - sellingPrice) * 100.0 / listPrice + 0.5);
+        }
+        return 0;
     }
 };
 

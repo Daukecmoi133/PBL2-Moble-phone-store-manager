@@ -28,39 +28,39 @@
 
 namespace {
 const std::vector<UIComponents::TableColumnSpec> kWarehouseInvCols = {
-    {"Tên thiết bị & Mã", 220, 0.0f, true}, {"Hãng", 100, 0.5f, false},
-    {"Tình trạng", 130, 0.5f, false},       {"Giá nhập", 130, 1.0f, false},
-    {"Thực tế", 96, 1.0f, false},           {"Giữ chỗ", 96, 1.0f, false},
-    {"Có thể bán", 110, 1.0f, false}};
+    {"Tên thiết bị & Mã", 220, 0.0f, true}, {"Hãng", 110, 0.5f, false},
+    {"Tình trạng", 145, 0.5f, false},       {"Giá nhập", 145, 1.0f, false},
+    {"Thực tế", 105, 1.0f, false},          {"Giữ chỗ", 105, 1.0f, false},
+    {"Có thể bán", 120, 1.0f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kWarehouseLowCols = {
-    {"Mã SP", 110, 0.0f, false},
+    {"Mã SP", 125, 0.0f, false},
     {"Tên điện thoại & Cấu hình", 220, 0.0f, true},
-    {"Hãng", 110, 0.5f, false},
-    {"Giá nhập tham khảo", 150, 1.0f, false},
-    {"Còn khả dụng", 130, 1.0f, false},
-    {"Thao tác", 140, 0.5f, false}};
+    {"Hãng", 115, 0.5f, false},
+    {"Giá nhập tham khảo", 160, 1.0f, false},
+    {"Còn khả dụng", 140, 1.0f, false},
+    {"Thao tác", 155, 0.5f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kWarehouseReceiptCols = {
-    {"Mã phiếu", 130, 0.0f, false},       {"Nhà cung cấp", 190, 0.0f, true},
-    {"Người nhập", 150, 0.0f, false},     {"Thời gian nhập", 150, 0.0f, false},
-    {"Tổng tiền nhập", 150, 1.0f, false}, {"Thao tác", 96, 0.5f, false}};
+    {"Mã phiếu", 190, 0.0f, false},       {"Nhà cung cấp", 190, 0.0f, true},
+    {"Người nhập", 160, 0.0f, false},     {"Thời gian nhập", 150, 0.0f, false},
+    {"Tổng tiền nhập", 160, 1.0f, false}, {"Thao tác", 115, 0.5f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kDraftReceiptCols = {
-    {"Mã máy", 120, 0.0f, false},
+    {"Mã máy", 130, 0.0f, false},
     {"Tên điện thoại nhập", 200, 0.0f, true},
-    {"Đơn giá nhập", 150, 1.0f, false},
+    {"Đơn giá nhập", 155, 1.0f, false},
     {"Số lượng", 160, 0.5f, false},
-    {"Thành tiền", 160, 1.0f, false},
-    {"Xóa", 96, 0.5f, false}};
+    {"Thành tiền", 165, 1.0f, false},
+    {"Xóa", 100, 0.5f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kWarehouseFulfillCols = {
-    {"Mã đơn", 120, 0.0f, false},
-    {"Thông tin người nhận", 180, 0.0f, false},
+    {"Mã đơn", 190, 0.0f, false},
+    {"Thông tin người nhận", 190, 0.0f, false},
     {"Danh sách máy cần lấy", 220, 0.0f, true},
-    {"Trạng thái", 130, 0.5f, false},
-    {"Giao nhận", 130, 0.5f, false},
-    {"Thao tác xử lý", 180, 0.5f, false}};
+    {"Trạng thái", 155, 0.5f, false},
+    {"Giao nhận", 155, 0.5f, false},
+    {"Thao tác xử lý", 185, 0.5f, false}};
 } // namespace
 
 WarehouseScreens::WarehouseScreens(AppController *ctrl,
@@ -80,8 +80,7 @@ WarehouseScreens::WarehouseScreens(AppController *ctrl,
                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
   receiptsView = gtk_scrolled_window_new();
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(receiptsView),
-                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(receiptsView), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
   createReceiptView = gtk_scrolled_window_new();
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(createReceiptView),
@@ -477,8 +476,7 @@ void WarehouseScreens::refreshLowStock() {
 
 void WarehouseScreens::buildReceiptsView() {
   receiptsView = gtk_scrolled_window_new();
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(receiptsView),
-                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(receiptsView), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
   GtkWidget *content =
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
@@ -623,25 +621,26 @@ void WarehouseScreens::refreshReceipts() {
 
 void WarehouseScreens::showReceiptDetailModal(
     const GoodsReceiptSummaryViewModel &receipt) {
-  GtkWidget *win = gtk_window_new();
-  gtk_window_set_title(GTK_WINDOW(win),
-                       ("Chi tiết phiếu nhập — " + receipt.id).c_str());
-  gtk_window_set_modal(GTK_WINDOW(win), TRUE);
-  if (shell) {
-    gtk_window_set_transient_for(GTK_WINDOW(win), shell->getWindow());
-  }
-  gtk_window_set_default_size(GTK_WINDOW(win), 480, 400);
+  if (!shell)
+    return;
+
+  GtkWidget *scroll = gtk_scrolled_window_new();
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_widget_set_hexpand(scroll, TRUE);
+  gtk_widget_set_vexpand(scroll, TRUE);
+
+  GtkWidget *content =
+      gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
+  gtk_widget_add_css_class(content, "page-container");
 
   GtkWidget *card =
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_MD);
-  gtk_widget_add_css_class(card, "dialog-content");
-  gtk_widget_set_margin_top(card, DesignTokens::SPACE_LG);
-  gtk_widget_set_margin_bottom(card, DesignTokens::SPACE_LG);
-  gtk_widget_set_margin_start(card, DesignTokens::SPACE_LG);
-  gtk_widget_set_margin_end(card, DesignTokens::SPACE_LG);
+  gtk_widget_add_css_class(card, "card");
 
-  GtkWidget *title = gtk_label_new(("PHIẾU NHẬP KHO " + receipt.id).c_str());
-  gtk_widget_add_css_class(title, "page-title");
+  GtkWidget *title =
+      gtk_label_new(("📥 PHIẾU NHẬP KHO " + receipt.id).c_str());
+  gtk_widget_add_css_class(title, "card-title");
   gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
   gtk_box_append(GTK_BOX(card), title);
 
@@ -656,6 +655,8 @@ void WarehouseScreens::showReceiptDetailModal(
     GtkWidget *val = gtk_label_new(v.c_str());
     gtk_widget_add_css_class(val, "tabular-num");
     gtk_label_set_xalign(GTK_LABEL(val), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(val), TRUE);
+    gtk_widget_set_hexpand(val, TRUE);
     gtk_box_append(GTK_BOX(r), lbl);
     gtk_box_append(GTK_BOX(r), val);
     gtk_box_append(GTK_BOX(card), r);
@@ -668,9 +669,15 @@ void WarehouseScreens::showReceiptDetailModal(
   GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
   gtk_box_append(GTK_BOX(card), sep);
 
-  for (const auto &d : receipt.details) {
+  GtkWidget *itemsBox =
+      gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_XS);
+  for (size_t idx = 0; idx < receipt.details.size(); ++idx) {
+    const auto &d = receipt.details[idx];
     GtkWidget *r =
         gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+    gtk_widget_add_css_class(r, "pdp-spec-row");
+    gtk_widget_add_css_class(r, (idx % 2 == 0) ? "row-even" : "row-odd");
+
     GtkWidget *n = gtk_label_new(d.phoneName.c_str());
     gtk_widget_set_hexpand(n, TRUE);
     gtk_label_set_xalign(GTK_LABEL(n), 0.0f);
@@ -683,22 +690,26 @@ void WarehouseScreens::showReceiptDetailModal(
     gtk_box_append(GTK_BOX(r), n);
     gtk_box_append(GTK_BOX(r), q);
     gtk_box_append(GTK_BOX(r), p);
-    gtk_box_append(GTK_BOX(card), r);
+    gtk_box_append(GTK_BOX(itemsBox), r);
   }
+  gtk_box_append(GTK_BOX(card), itemsBox);
 
   addRow("Tổng tiền nhập:", UIComponents::formatVND(receipt.totalAmount));
 
-  GtkWidget *btnClose = gtk_button_new_with_label("Đóng (Esc)");
+  GtkWidget *btnClose = gtk_button_new_with_label("← Quay lại");
   gtk_widget_add_css_class(btnClose, "btn-secondary");
   UIComponents::setButtonCursor(btnClose);
   gtk_widget_set_halign(btnClose, GTK_ALIGN_END);
-  g_signal_connect_swapped(btnClose, "clicked", G_CALLBACK(gtk_window_destroy),
-                           win);
+  g_signal_connect_swapped(
+      btnClose, "clicked",
+      G_CALLBACK(+[](MainShellWindow *s) { s->popPage(); }), shell);
   gtk_box_append(GTK_BOX(card), btnClose);
 
-  gtk_window_set_child(GTK_WINDOW(win), card);
-  UIComponents::setupDialogShortcuts(win, nullptr, btnClose);
-  gtk_window_present(GTK_WINDOW(win));
+  gtk_box_append(GTK_BOX(content), card);
+  gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), content);
+  UIComponents::setupDialogShortcuts(content, btnClose, btnClose);
+  shell->pushPage("warehouse_receipt_detail", scroll,
+                  "Chi tiết phiếu nhập kho " + receipt.id);
 }
 
 // ================= 5. TẠO PHIẾU NHẬP KHO =================
@@ -1060,6 +1071,9 @@ void WarehouseScreens::refreshDraftReceiptItems() {
 }
 
 void WarehouseScreens::showAddProductToReceiptModal() {
+  if (!shell)
+    return;
+
   guint supSel =
       receiptComboSupplier
           ? gtk_drop_down_get_selected(GTK_DROP_DOWN(receiptComboSupplier))
@@ -1080,21 +1094,33 @@ void WarehouseScreens::showAddProductToReceiptModal() {
     return;
   }
 
-  GtkWidget *win = gtk_window_new();
-  gtk_window_set_title(GTK_WINDOW(win), "Thêm sản phẩm vào phiếu nhập");
-  gtk_window_set_modal(GTK_WINDOW(win), TRUE);
-  if (shell) {
-    gtk_window_set_transient_for(GTK_WINDOW(win), shell->getWindow());
-  }
-  gtk_window_set_default_size(GTK_WINDOW(win), 440, 340);
+  GtkWidget *scroll = gtk_scrolled_window_new();
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_widget_set_hexpand(scroll, TRUE);
+  gtk_widget_set_vexpand(scroll, TRUE);
+
+  GtkWidget *pageContent =
+      gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
+  gtk_widget_add_css_class(pageContent, "page-container");
 
   GtkWidget *card =
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_MD);
-  gtk_widget_add_css_class(card, "dialog-content");
-  gtk_widget_set_margin_top(card, DesignTokens::SPACE_LG);
-  gtk_widget_set_margin_bottom(card, DesignTokens::SPACE_LG);
-  gtk_widget_set_margin_start(card, DesignTokens::SPACE_LG);
-  gtk_widget_set_margin_end(card, DesignTokens::SPACE_LG);
+  gtk_widget_add_css_class(card, "pdp-card");
+  gtk_widget_set_hexpand(card, TRUE);
+
+  GtkWidget *title = gtk_label_new("📦 Thêm sản phẩm vào phiếu nhập kho");
+  gtk_widget_add_css_class(title, "card-title");
+  gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
+  gtk_box_append(GTK_BOX(card), title);
+
+  GtkWidget *subtitle = gtk_label_new(
+      "Chọn dòng điện thoại thuộc nhà cung cấp hiện tại, nhập số lượng và đơn "
+      "giá nhập thực tế.");
+  gtk_widget_add_css_class(subtitle, "page-subtitle");
+  gtk_label_set_xalign(GTK_LABEL(subtitle), 0.0f);
+  gtk_label_set_wrap(GTK_LABEL(subtitle), TRUE);
+  gtk_box_append(GTK_BOX(card), subtitle);
 
   std::vector<const char *> prodNames;
   for (const auto &p : prods) {
@@ -1148,17 +1174,18 @@ void WarehouseScreens::showAddProductToReceiptModal() {
   GtkWidget *btnRow =
       gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
   gtk_widget_set_halign(btnRow, GTK_ALIGN_END);
+  gtk_widget_set_margin_top(btnRow, 8);
 
   GtkWidget *btnCancel = gtk_button_new_with_label("Hủy (Esc)");
   gtk_widget_add_css_class(btnCancel, "btn-secondary");
   UIComponents::setButtonCursor(btnCancel);
-  g_signal_connect_swapped(btnCancel, "clicked", G_CALLBACK(gtk_window_destroy),
-                           win);
+  g_signal_connect_swapped(
+      btnCancel, "clicked",
+      G_CALLBACK(+[](MainShellWindow *s) { s->popPage(); }), shell);
   gtk_box_append(GTK_BOX(btnRow), btnCancel);
 
   struct AddProdReceiptCtx {
     WarehouseScreens *screens;
-    GtkWidget *win;
     GtkWidget *combo;
     GtkWidget *eQty;
     GtkWidget *ePrice;
@@ -1168,8 +1195,8 @@ void WarehouseScreens::showAddProductToReceiptModal() {
     std::vector<ProductItemViewModel> prods;
   };
   AddProdReceiptCtx *ctx =
-      new AddProdReceiptCtx{this,     win,    comboProd, entryQty, entryPrice,
-                            errCombo, errQty, errPrice,  prods};
+      new AddProdReceiptCtx{this,     comboProd, entryQty, entryPrice,
+                            errCombo, errQty,    errPrice, prods};
 
   GtkWidget *btnAdd = gtk_button_new_with_label("Thêm vào phiếu");
   gtk_widget_add_css_class(btnAdd, "btn-primary");
@@ -1253,7 +1280,9 @@ void WarehouseScreens::showAddProductToReceiptModal() {
         }
 
         c->screens->refreshDraftReceiptItems();
-        gtk_window_destroy(GTK_WINDOW(c->win));
+        if (c->screens->shell) {
+          c->screens->shell->popPage();
+        }
       }),
       ctx,
       [](gpointer d, GClosure *) {
@@ -1264,10 +1293,13 @@ void WarehouseScreens::showAddProductToReceiptModal() {
   gtk_box_append(GTK_BOX(btnRow), btnAdd);
   gtk_box_append(GTK_BOX(card), btnRow);
 
-  gtk_window_set_child(GTK_WINDOW(win), card);
-  UIComponents::setupDialogShortcuts(win, btnAdd, btnCancel);
+  UIComponents::setupDialogShortcuts(card, btnAdd, btnCancel);
+
+  gtk_box_append(GTK_BOX(pageContent), card);
+  gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), pageContent);
+  shell->pushPage("warehouse_add_receipt_item", scroll,
+                  "Thêm sản phẩm vào phiếu nhập");
   gtk_widget_grab_focus(comboProd);
-  gtk_window_present(GTK_WINDOW(win));
 }
 
 // ================= 6. CHUẨN BỊ ĐƠN HÀNG (FULFILLMENT) =================

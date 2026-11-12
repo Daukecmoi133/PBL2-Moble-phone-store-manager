@@ -18,6 +18,8 @@ class EmployeeRepository {
 private:
     std::string filePath;       // Đường dẫn đến file Employee.txt
     Vector<Employee*> employees; // Danh sách nhân viên trên RAM (dùng con trỏ cho đa hình)
+    bool loadAttempted = false;  // Đã gọi loadFromFile() chưa
+    bool loadSucceeded = false;  // Lần nạp gần nhất có đọc được dữ liệu không
 
     // Giải phóng toàn bộ bộ nhớ động và xóa danh sách
     void clearMemory();
@@ -42,6 +44,10 @@ public:
     // Ghi toàn bộ danh sách RAM xuống file (ghi đè).
     bool saveToFile() const;
     const std::string& getFilePath() const { return filePath; }
+
+    // true nếu đã gọi loadFromFile() nhưng KHÔNG đọc/tạo được file dữ liệu (xác thực phải báo lỗi lưu trữ,
+    // không được coi như "tài khoản không tồn tại")
+    bool hasLoadError() const { return loadAttempted && !loadSucceeded; }
 
     // Trả về toàn bộ danh sách (chỉ đọc / cho phép sửa)
     const Vector<Employee*>& getAll() const;
@@ -100,11 +106,14 @@ inline EmployeeRepository::~EmployeeRepository() {
 // - Nếu file không tồn tại: tự tạo file mới
 // - Nếu một dòng bị lỗi: in cảnh báo, bỏ qua và đọc tiếp
 inline bool EmployeeRepository::loadFromFile() {
+    loadAttempted = true;
+    loadSucceeded = false;
     std::ifstream file(filePath);
     if (!file.is_open()) {
         std::cerr << "[Canh bao] Khong the mo file: " << filePath
                   << ". Dang tao file moi..." << std::endl;
-        return createEmptyFile();
+        loadSucceeded = createEmptyFile();
+        return loadSucceeded;
     }
 
     clearMemory();
@@ -140,6 +149,7 @@ inline bool EmployeeRepository::loadFromFile() {
         }
     }
     file.close();
+    loadSucceeded = true;
     return true;
 }
 

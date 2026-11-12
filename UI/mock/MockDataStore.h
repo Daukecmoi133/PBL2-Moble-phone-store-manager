@@ -104,11 +104,12 @@ public:
 
     bool updateDiscount(const DiscountFormRequest& req) {
         for (auto& d : discounts) {
-            if (d.id == req.id || d.code == req.code) {
+            if (d.id == req.id || d.code == req.id || d.code == req.code) {
+                d.id = req.code;
                 d.code = req.code;
                 d.value = req.value;
                 d.minOrderValue = req.minOrderValue;
-                d.maxDiscountAmount = req.maxDiscountAmount;
+                d.maxDiscountAmount = (req.type == 0) ? req.maxDiscountAmount : req.value;
                 d.expiryDate = req.expiryDate;
                 d.maxUsage = req.maxUsage;
                 d.description = req.description;
@@ -117,7 +118,7 @@ public:
                     d.formattedValue = std::to_string(static_cast<int>(req.value)) + "%";
                 } else {
                     d.typeName = "Số tiền cố định";
-                    d.formattedValue = StringHelper::formatCurrency(req.value);
+                    d.formattedValue = StringHelper::formatCurrency(req.value) + " đ";
                 }
                 d.isValid = !RealTimeManager::getInstance().isDateExpired(d.expiryDate);
                 return true;

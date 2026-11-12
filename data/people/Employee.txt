@@ -1,4 +1,4 @@
-id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary|accountId
-EMP-000001|Admin|He|Thong|0900000001|admin@example.com|admin.demo|DemoOnly-Admin-2026|1|Hai Chau, Da Nang|15000000|ACC-000001
-EMP-000002|Tran|Khanh|Duy|0987654321|sales@example.com|sales.demo|DemoOnly-Sales-2026|2|Hoa Khanh, Da Nang|8000000|ACC-000002
-EMP-000003|Le|Van|Kho|0935123456|warehouse@example.com|warehouse.demo|DemoOnly-Warehouse-2026|3|Lien Chieu, Da Nang|7500000|ACC-000003
+id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary
+EMP-000001|Admin|He|Thong|0900000001|admin@example.com|admin.demo|pbkdf2-sha256$600000$e0b14512cd01033da4b42f9af1058d55$74d97371bcec9cafc4f801917225219a92b99083bc0a839d9fc8d930ca53b2ad|1|Hai Chau, Da Nang|15000000|ACC-000001|1
+EMP-000002|Tran|Khanh|Duy|0987654321|sales@example.com|sales.demo|pbkdf2-sha256$600000$ff59849b75dabf07adbcf5fd32a3ac78$eab75898c0e84ad8b2483a650825a65652604bb71805d6665813014c317f797f|2|Hoa Khanh, Da Nang|8000000|ACC-000002|1
+EMP-000003|Le|Van|Kho|0935123456|warehouse@example.com|warehouse.demo|pbkdf2-sha256$600000$d678ab6f5259c1d7b7ee3a0255fe0bff$625c6cb427209b394bed7ec260e3ef843028e0c4c79ace6f5fb80a7f148513c6|3|Lien Chieu, Da Nang|7500000|ACC-000003|1

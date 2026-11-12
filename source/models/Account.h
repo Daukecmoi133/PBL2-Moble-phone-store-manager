@@ -5,6 +5,7 @@
 #include <string>
 #include "Common.h"
 #include "../core/Vector.h"
+#include "../utils/PasswordHasher.h"
 
 // Lớp Role: Quản lý vai trò người dùng và danh sách các quyền hạn được cấp
 class Role {
@@ -27,27 +28,33 @@ class Account {
 private:
     std::string id;
     std::string username; // Tên đăng nhập
-    std::string password; // Mật khẩu tài khoản
+    std::string password; // Thông tin xác thực đã lưu: chuỗi hash PBKDF2 (PasswordHasher) hoặc plaintext cũ chờ chuyển đổi
     Role role;            // Đối tượng vai trò và quyền hạn của tài khoản
     bool active;          // Trạng thái kích hoạt (true: hoạt động, false: bị khóa)
 
 public:
     Account(); // Hàm dựng mặc định
-    Account(std::string username, std::string password,
+    // passwordCredential là giá trị ĐÃ LƯU (hash PBKDF2 hoặc plaintext cũ đọc từ file).
+    // Service sẽ tự băm lại bất kỳ giá trị chưa băm nào trước khi ghi xuống file (xem ensureCredentialHashed).
+    Account(std::string username, std::string passwordCredential,
             RoleType roleType = RoleType::CUSTOMER, std::string id = ""); // Hàm dựng đủ tham số
 
     std::string getID() const;
     void setID(const std::string& id);
     std::string getUsername() const; // Hàm trả về tên đăng nhập
-    std::string getPassword() const; // Hàm trả về mật khẩu
+    std::string getPasswordHash() const; // Hàm trả về thông tin xác thực đã lưu (hash hoặc plaintext cũ), dùng để ghi file
     Role getRole() const; // Hàm trả về đối tượng vai trò Role
     RoleType getRoleType() const; // Hàm trả về loại vai trò RoleType
     void setRole(const Role& r); // Hàm thiết lập vai trò
     void setUsername(const std::string& u); // Hàm thiết lập tên đăng nhập
-    void setPassword(const std::string& p); // Hàm thiết lập mật khẩu
+    bool setPassword(const std::string& plainPassword); // Băm mật khẩu rồi lưu; false nếu băm thất bại (giữ nguyên giá trị cũ)
+    void setPasswordHash(const std::string& storedCredential); // Gán trực tiếp giá trị đã lưu (dùng khi nạp file/hoàn nguyên)
+    bool isPasswordHashed() const; // Thông tin xác thực đã ở dạng hash chưa (false = plaintext cũ cần chuyển đổi)
+    bool ensureCredentialHashed(); // Băm thông tin plaintext đang giữ (giữ nguyên mật khẩu); false nếu rỗng hoặc băm thất bại
     bool isActive() const; // Hàm kiểm tra tài khoản còn hoạt động không
     void setActive(bool a); // Hàm thiết lập trạng thái kích hoạt tài khoản
-    bool authenticate(const std::string& user, const std::string& pass) const; // Hàm xác minh tên đăng nhập và mật khẩu
+    bool verifyPassword(const std::string& pass) const; // Kiểm tra mật khẩu với thông tin đã lưu (không xét trạng thái active)
+    bool authenticate(const std::string& user, const std::string& pass) const; // Hàm xác minh tên đăng nhập và mật khẩu (yêu cầu tài khoản đang hoạt động)
     bool hasPermission(Permission permission) const; // Hàm kiểm tra tài khoản có quyền thực thi chức năng không
 };
 
@@ -124,9 +131,9 @@ inline void Role :: delPermission(Permission permission) {
 inline Account :: Account() : id(""), username(""), password(""), role(RoleType::CUSTOMER), active(true) {}
 
 // Hàm dựng có đủ tham số
-inline Account :: Account(std::string username, std::string password,
+inline Account :: Account(std::string username, std::string passwordCredential,
                           RoleType roleType, std::string id)
-    : id(id), username(username), password(password), role(roleType), active(true) {}
+    : id(id), username(username), password(passwordCredential), role(roleType), active(true) {}
 
 inline std::string Account :: getID() const { return id; }
 inline void Account :: setID(const std::string& accountId) { id = accountId; }
@@ -136,7 +143,7 @@ inline std::string Account :: getUsername() const {
     return username; 
 
 }
-inline std::string Account :: getPassword() const {
+inline std::string Account :: getPasswordHash() const {
     return password;
 }
 
@@ -145,9 +152,31 @@ inline void Account :: setUsername(const std::string& u) {
     username = u; 
 }
 
-inline void Account :: setPassword(const std::string& p) {
-    // Hàm gán Mật khẩu cho tài khoản 
-    password = p; 
+inline bool Account :: setPassword(const std::string& plainPassword) {
+    // Hàm đặt mật khẩu mới cho tài khoản: luôn băm trước khi lưu, không bao giờ lưu dạng rõ
+    std::string hashed = PasswordHasher::hash(plainPassword);
+    if (hashed.empty()) return false;
+    password = hashed;
+    return true;
+}
+
+inline void Account :: setPasswordHash(const std::string& storedCredential) {
+    // Gán nguyên giá trị đã lưu (nạp từ file hoặc hoàn nguyên khi ghi file thất bại)
+    password = storedCredential;
+}
+
+inline bool Account :: isPasswordHashed() const {
+    return PasswordHasher::isHashed(password);
+}
+
+inline bool Account :: ensureCredentialHashed() {
+    // Chuyển plaintext (từ dữ liệu cũ hoặc do caller truyền vào) sang hash mà KHÔNG đổi mật khẩu
+    if (password.empty()) return false;
+    if (PasswordHasher::isHashed(password)) return true;
+    std::string hashed = PasswordHasher::hash(password);
+    if (hashed.empty()) return false;
+    password = hashed;
+    return true;
 }
 
 inline Role Account :: getRole() const { 
@@ -175,9 +204,15 @@ inline void Account :: setActive(bool a) {
     active = a; 
 }
 
+inline bool Account :: verifyPassword(const std::string& pass) const {
+    // Hash hợp lệ -> kiểm tra bằng PBKDF2; plaintext cũ (chưa chuyển đổi) -> so sánh thời gian hằng số
+    return PasswordHasher::verify(pass, password) ||
+           PasswordHasher::matchesLegacyPlaintext(pass, password);
+}
+
 inline bool Account :: authenticate(const std::string& user, const std::string& pass) const {
     // Hàm xác minh đăng nhập cho tài khoản
-    return active && (username == user) && (password == pass);
+    return active && (username == user) && verifyPassword(pass);
 }
 
 inline bool Account :: hasPermission(Permission permission) const {

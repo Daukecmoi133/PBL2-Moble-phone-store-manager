@@ -30,8 +30,23 @@ public:
     const CustomerRepository& getRepository() const { return repo; }
     const Vector<Customer>& getAllCustomers() const;
 
-    // Xác thực đăng nhập khách hàng
+    // Xác thực đăng nhập khách hàng (kiểm tra trên bản ghi gốc trong repository, tài khoản phải đang hoạt động)
     Customer* authenticate(const std::string& username, const std::string& password);
+
+    // ==== QUẢN LÝ THÔNG TIN XÁC THỰC (ghi xuống Customers.txt, hoàn nguyên RAM nếu ghi thất bại) ====
+
+    // Thay thông tin xác thực đã lưu (hash). Chỉ chấp nhận chuỗi đã băm.
+    bool setPasswordCredential(const std::string& customerId, const std::string& hashedCredential,
+                               std::string& errorMessage);
+
+    // Khóa / mở khóa tài khoản và lưu trạng thái
+    bool setAccountActive(const std::string& customerId, bool active, std::string& errorMessage);
+
+    // Chuyển toàn bộ mật khẩu plaintext cũ sang hash (giữ nguyên mật khẩu, ghi file một lần)
+    bool migrateLegacyCredentials(int& migratedCount, std::string& errorMessage);
+
+    // Dữ liệu khách hàng không nạp được từ file (đã gọi loadFromFile nhưng thất bại)
+    bool hasLoadError() const { return repo.hasLoadError(); }
 
     Customer* getCustomerByUsername(const std::string& username);
     Customer* getCustomerByPhone(const std::string& phone);
@@ -98,11 +113,81 @@ inline Customer* CustomerService::authenticate(const std::string& username, cons
         return nullptr;
     }
 
-    Customer* custInIndex = usernameTable.find(trimmedUname);
-    if (custInIndex != nullptr && custInIndex->getAccount().authenticate(trimmedUname, password)) {
-        return repo.findById(custInIndex->getID());
+    // getCustomerByUsername trả về bản ghi gốc trong repository (không phải bản sao trong chỉ mục),
+    // nên mật khẩu vừa đổi/đặt lại có hiệu lực ngay.
+    Customer* cust = getCustomerByUsername(trimmedUname);
+    if (cust != nullptr && cust->getAccount().authenticate(trimmedUname, password)) {
+        return cust;
     }
     return nullptr;
+}
+
+inline bool CustomerService::setPasswordCredential(const std::string& customerId,
+                                                   const std::string& hashedCredential,
+                                                   std::string& errorMessage) {
+    if (!PasswordHasher::isHashed(hashedCredential)) {
+        errorMessage = "Thong tin xac thuc chua duoc bam, tu choi luu!";
+        return false;
+    }
+    Customer* cust = repo.findById(customerId);
+    if (cust == nullptr) {
+        errorMessage = "Không tìm thấy khách hàng có mã [" + customerId + "]!";
+        return false;
+    }
+    const std::string previous = cust->getAccount().getPasswordHash();
+    cust->getAccount().setPasswordHash(hashedCredential);
+    if (!repo.saveToFile()) {
+        cust->getAccount().setPasswordHash(previous); // Hoàn nguyên RAM: mật khẩu cũ vẫn còn hiệu lực
+        errorMessage = "Lỗi khi lưu thông tin xác thực vào cơ sở dữ liệu!";
+        return false;
+    }
+    return true;
+}
+
+inline bool CustomerService::setAccountActive(const std::string& customerId, bool active,
+                                              std::string& errorMessage) {
+    Customer* cust = repo.findById(customerId);
+    if (cust == nullptr) {
+        errorMessage = "Không tìm thấy khách hàng có mã [" + customerId + "]!";
+        return false;
+    }
+    const bool previous = cust->getAccount().isActive();
+    cust->getAccount().setActive(active);
+    if (!repo.saveToFile()) {
+        cust->getAccount().setActive(previous);
+        errorMessage = "Lỗi khi lưu trạng thái tài khoản vào cơ sở dữ liệu!";
+        return false;
+    }
+    return true;
+}
+
+inline bool CustomerService::migrateLegacyCredentials(int& migratedCount, std::string& errorMessage) {
+    migratedCount = 0;
+    Vector<Customer>& list = repo.getAll();
+    std::vector<std::pair<int, std::string>> changed; // (vị trí, giá trị plaintext cũ) để hoàn nguyên nếu lỗi
+
+    for (int i = 0; i < list.getSize(); ++i) {
+        Account& acc = list[i].getAccount();
+        if (acc.getPasswordHash().empty() || acc.isPasswordHashed()) continue;
+        const std::string legacy = acc.getPasswordHash();
+        if (!acc.ensureCredentialHashed()) {
+            acc.setPasswordHash(legacy);
+            for (const auto& c : changed) list[c.first].getAccount().setPasswordHash(c.second);
+            errorMessage = "Khong the bam mat khau cho tai khoan khach hang [" + acc.getUsername() + "]!";
+            return false;
+        }
+        changed.push_back(std::make_pair(i, legacy));
+    }
+    if (changed.empty()) return true;
+
+    if (!repo.saveToFile()) {
+        // Không ghi được: giữ nguyên plaintext cũ trong RAM để tài khoản vẫn đăng nhập được như trước
+        for (const auto& c : changed) list[c.first].getAccount().setPasswordHash(c.second);
+        errorMessage = "Lỗi khi lưu mật khẩu đã băm của khách hàng vào cơ sở dữ liệu!";
+        return false;
+    }
+    migratedCount = static_cast<int>(changed.size());
+    return true;
 }
 
 inline Customer* CustomerService::getCustomerByUsername(const std::string& username) {
@@ -183,6 +268,12 @@ inline bool CustomerService::registerCustomer(const Customer& cust, std::string&
         return false;
     }
 
+    // Không bao giờ lưu mật khẩu dạng rõ: băm trước khi ghi (mật khẩu rỗng bị từ chối)
+    if (!registered.getAccount().ensureCredentialHashed()) {
+        errorMessage = "Không thể mã hóa mật khẩu cho tài khoản mới!";
+        return false;
+    }
+
     if (!repo.addCustomer(registered)) {
         errorMessage = "Lỗi khi lưu thông tin khách hàng vào cơ sở dữ liệu!";
         return false;
@@ -221,7 +312,18 @@ inline bool CustomerService::updateCustomer(const Customer& updatedCust, std::st
         }
     }
 
-    if (!repo.updateCustomer(updatedCust)) {
+    // Cập nhật hồ sơ không được làm mất/đặt lại mật khẩu: thiếu thông tin xác thực thì giữ bản đang lưu,
+    // còn plaintext cũ (nếu có) được băm lại mà không đổi mật khẩu.
+    Customer toSave = updatedCust;
+    if (toSave.getAccount().getPasswordHash().empty()) {
+        toSave.getAccount().setPasswordHash(existing->getAccount().getPasswordHash());
+    }
+    if (!toSave.getAccount().getPasswordHash().empty() && !toSave.getAccount().ensureCredentialHashed()) {
+        errorMessage = "Không thể mã hóa mật khẩu khi lưu tài khoản!";
+        return false;
+    }
+
+    if (!repo.updateCustomer(toSave)) {
         errorMessage = "Lỗi khi cập nhật thông tin khách hàng!";
         return false;
     }

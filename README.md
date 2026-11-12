@@ -103,7 +103,7 @@ riêng lẻ, không được Makefile tích hợp thành một bộ test chung.
 | `source/models/` | Các mô hình sản phẩm, nhân viên, khách hàng, đơn hàng và hóa đơn |
 | `source/repositories/` | Đọc và ghi dữ liệu |
 | `source/services/` | Nghiệp vụ ứng dụng |
-| `source/controllers/` | Điều phối giữa service và giao diện |
+| `source/controllers/` | Điều phối giữa service và giao diện; phần triển khai được chia theo nghiệp vụ (sản phẩm, giỏ hàng, đơn hàng, hóa đơn, khách hàng, nhân viên, kho, giảm giá, tài khoản và báo cáo) |
 | `UI/` | Ứng dụng GTK4, màn hình, widget và view model |
 | `data/` | Dữ liệu demo và ảnh sản phẩm |
 | `tests/` | Mã kiểm thử và chẩn đoán riêng lẻ |

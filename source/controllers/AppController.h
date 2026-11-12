@@ -17,6 +17,10 @@
 #include "../../UI/viewmodels/WarrantyViewModel.h"
 #include "../../UI/viewmodels/StatisticsViewModel.h"
 #include "../../UI/viewmodels/AccountViewModel.h"
+#include "../../UI/viewmodels/ReviewViewModel.h"
+#include "../repositories/ProductMarketingRepository.h"
+#include "../repositories/ProductDescriptionRepository.h"
+#include "../repositories/StoreSettingsRepository.h"
 
 // Forward declarations of Core Services
 class PhoneService;
@@ -43,7 +47,15 @@ private:
 
     UserSessionViewModel currentSession;
 
+    ProductMarketingRepository   marketingRepo;
+    ProductDescriptionRepository descriptionRepo;
+    StoreSettingsRepository      storeSettingsRepo;
+
 public:
+    StoreSettingsRepository& getStoreSettings() { return storeSettingsRepo; }
+    const StoreSettingsRepository& getStoreSettings() const { return storeSettingsRepo; }
+    ProductMarketingRepository& getMarketingRepo() { return marketingRepo; }
+    ProductDescriptionRepository& getDescriptionRepo() { return descriptionRepo; }
     AppController(
         PhoneService* ps = nullptr,
         OrderService* os = nullptr,
@@ -84,6 +96,8 @@ public:
     OperationResult updateProduct(const ProductItemViewModel& product);
     OperationResult deleteProduct(const std::string& id);
     OperationResult updateProductImage(const std::string& productId, const std::string& imageFilePath);
+    std::vector<ProductReviewViewModel> getProductReviews(const std::string& phoneId);
+    OperationResult addProductReview(const std::string& phoneId, int ratingStars, const std::string& comment);
 
     // === GIỎ HÀNG & CHECKOUT ===
     CartSummaryViewModel getCart(const std::string& customerId);

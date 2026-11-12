@@ -14,4 +14,6 @@ struct PhoneStaffView {
     Money sellingPrice = 0;
     int quantity = 0;          // tồn kho thực
     int reservedQuantity = 0;  // đang giữ chỗ cho đơn PENDING
+    bool listed = true;        // cờ đăng bán
+    std::string manufacturer;
 };

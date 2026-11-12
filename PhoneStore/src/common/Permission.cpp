@@ -20,12 +20,13 @@ bool Permission::isAllowed(Role role, Action action) {
         case Action::CancelOrder:
             // Customer chỉ được hủy đơn của chính mình: việc kiểm tra sở hữu nằm ở OrderService.
             return role == Role::CUSTOMER || role == Role::SALE_EMPLOYEE;
+        case Action::CreateImportReceipt:
+            return role == Role::WAREHOUSE_EMPLOYEE;
         case Action::ManagePhone:
         case Action::ManageCustomer:
         case Action::ManageEmployee:
         case Action::ManageDiscount:
         case Action::ManageSupplier:
-        case Action::CreateImportReceipt:
         case Action::CreateInvoice:
         case Action::ViewReport:
         case Action::BackupRestore:

@@ -110,7 +110,11 @@ public:
 
     // Bắt đầu giao dịch: tạo bản sao lưu an toàn .tx_bak và ghi manifest
     bool begin() {
-        if (participants.empty()) return true;
+        if (participants.empty()) {
+            active = true;
+            committed = false;
+            return true;
+        }
 
         if (manifestPath.empty()) {
             manifestPath = findRootDataDir(participants[0].originalPath) + "/.tx_manifest";

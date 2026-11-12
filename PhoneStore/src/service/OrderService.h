@@ -28,7 +28,11 @@ public:
     Result<void> markShipping(const Actor& actor, const std::string& orderId);     // PREPARING -> SHIPPING
     Result<void> takePayment(const Actor& actor, const std::string& orderId, PaymentMethod method); // UNPAID -> PAID
     Result<void> completeOrder(const Actor& actor, const std::string& orderId);    // yêu cầu PAID
+    Result<void> confirmReceived(const Actor& actor, const std::string& orderId); // khách hàng xác nhận đã nhận hàng
     Result<void> cancelOrder(const Actor& actor, const std::string& orderId);
+
+    // Hủy các đơn hàng PENDING quá hạn TTL, nhả hàng giữ chỗ
+    int cancelExpiredPending();
 
     // Bán tại quầy: tạo đơn, thu tiền và lập hóa đơn trong một UnitOfWork
     Result<std::string> createCounterSale(const Actor& actor, const OrderDraft& draft, PaymentMethod method);

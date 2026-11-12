@@ -50,7 +50,10 @@ cac quan he giua du lieu va nhung gioi han can biet khi nhap them du lieu.
 | `PAY/Order/Orders.txt` | Order + OrderDetail | `OrderRepository` | Detail duoc luu nhung trong dong order. |
 | `PAY/Invoices.txt` | Invoice + OrderDetail | `InvoiceRepository` | Mot invoice mau cho moi order da hoan tat. |
 | `Device/StockReceipts.txt` | ImportReceipt + OrderDetail | `StockReceiptRepository` | Detail dung `OrderDetail` de tai su dung truong du lieu. |
-| `Device/ProductImage.txt` | Anh san pham (metadata) | Chua co reader trong source/UI hien tai | Chi la catalog metadata; khong duoc xem la da hien thi tren giao dien. |
+| `Device/ProductImage.txt` | Anh san pham (metadata) | `ProductImageRepository` | Quản lý đường dẫn ảnh chính & phụ của từng sản phẩm. |
+| `Device/ProductMarketing.txt` | Marketing & Khuyến mãi | `ProductMarketingRepository` | Giá gốc niêm yết, thời hạn sale, trả góp, màu sắc, bảo hành. |
+| `Device/ProductDescriptions.txt` | Mô tả chi tiết sản phẩm | `ProductDescriptionRepository` | Điểm nổi bật và đoạn văn mô tả chi tiết của từng máy. |
+| `system/StoreSettings.txt` | Cài đặt & Chính sách chung | `StoreSettingsRepository` | Chính sách vận chuyển, đổi trả, bảo hành toàn cửa hàng. |
 
 Gio hang la trang thai phien lam viec trong RAM, khong co file persistence.
 Bao cao doanh thu/ton kho duoc tinh tu entity, khong co file bao cao dau vao.

@@ -1,0 +1,8 @@
+productId|listPrice|saleStart|saleEnd|installmentEnabled|installmentNote|colors|warrantyMonths|returnDays
+PHN-000101|15990000|01/11/2026|30/11/2026|1|Trả góp 0% qua Home Credit / Thẻ tín dụng|Bạc Ánh Sao,Xanh Lục Bảo,Đen Huyền Bí|12|30
+PHN-000102|34990000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
+PHN-000103|33990000|01/11/2026|30/11/2026|1|Trả góp 0% qua Samsung Finance+|Xám Titan,Đen Titan,Tím Titan,Vàng Titan|12|30
+PHN-000104|27990000|01/11/2026|30/11/2026|0||Đen,Trắng|18|30
+PHN-000105|0|||0||Xanh Dương,Đen Midnight,Trắng Starlight,Hồng|12|30
+PHN-000106|10490000|01/11/2026|30/11/2026|1|Trả góp 0% kỳ hạn 6 tháng|Xanh Iceblue,Tím Lilac,Navy|12|30
+PHN-000107|24900000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Nâu Da Bò,Đen,Xanh Dương|12|30

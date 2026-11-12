@@ -32,6 +32,7 @@ struct DateTime {
     void setTime(int y, int m, int d, int h = 0, int min = 0, int s = 0);
     std::string toString() const;
     std::string toDateString() const;
+    DateTime addHours(int hours) const;
 
     // Comparison operators
     bool operator<(const DateTime& other) const;
@@ -91,6 +92,22 @@ inline std::string DateTime::toDateString() const {
         << std::setw(2) << month << "/"
         << year;
     return oss.str();
+}
+
+inline DateTime DateTime::addHours(int hours) const {
+    std::tm t = {};
+    t.tm_year = year - 1900;
+    t.tm_mon = month - 1;
+    t.tm_mday = day;
+    t.tm_hour = hour + hours;
+    t.tm_min = minute;
+    t.tm_sec = second;
+    t.tm_isdst = -1;
+    std::time_t newTime = std::mktime(&t);
+    std::tm* result = std::localtime(&newTime);
+    if (!result) return *this;
+    return DateTime(result->tm_year + 1900, result->tm_mon + 1, result->tm_mday,
+                    result->tm_hour, result->tm_min, result->tm_sec);
 }
 
 inline DateTime DateTime::fromDateString(const std::string& str) {

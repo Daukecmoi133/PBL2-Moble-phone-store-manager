@@ -7,6 +7,7 @@
 #include "SupplierService.h"
 #include "../common/Actor.h"
 #include "../common/Result.h"
+#include "../dto/ImportLine.h"
 #include "../model/supply/ImportReceipt.h"
 #include "../repository/ImportReceiptRepository.h"
 #include "../storage/ds/Vector.h"
@@ -15,7 +16,7 @@ class ImportReceiptService {
 public:
     ImportReceiptService(ImportReceiptRepository& receipts, SupplierService& suppliers, PhoneService& phones);
 
-    Result<std::string> createReceipt(const Actor& actor, const ImportReceipt& receipt); // gọi PhoneService::receiveStock
+    Result<std::string> createReceipt(const Actor& actor, const std::string& supplierId, const Vector<ImportLine>& lines); // gọi PhoneService::receiveStock
     Result<ImportReceipt> getById(const Actor& actor, const std::string& receiptId) const;
     Result<Vector<ImportReceipt>> list(const Actor& actor) const;
 

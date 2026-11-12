@@ -17,6 +17,8 @@ class CustomerRepository {
 private:
     std::string filePath;       // Đường dẫn đến file Customers.txt
     Vector<Customer> customers; // Danh sách khách hàng trên RAM
+    bool loadAttempted = false; // Đã gọi loadFromFile() chưa
+    bool loadSucceeded = false; // Lần nạp gần nhất có đọc được dữ liệu không
 
     // Tạo file mới với header nếu file chưa tồn tại
     bool createEmptyFile() const;
@@ -31,6 +33,10 @@ public:
     // Ghi toàn bộ danh sách RAM xuống file (ghi đè).
     bool saveToFile() const;
     const std::string& getFilePath() const { return filePath; }
+
+    // true nếu đã gọi loadFromFile() nhưng KHÔNG đọc/tạo được file dữ liệu (xác thực phải báo lỗi lưu trữ,
+    // không được coi như "tài khoản không tồn tại")
+    bool hasLoadError() const { return loadAttempted && !loadSucceeded; }
 
     // Trả về toàn bộ danh sách (chỉ đọc / cho phép sửa)
     const Vector<Customer>& getAll() const;
@@ -74,11 +80,14 @@ inline CustomerRepository::CustomerRepository(std::string path)
 // - Nếu file không tồn tại: tự tạo file mới và trả về true (danh sách rỗng)
 // - Nếu một dòng bị lỗi: in cảnh báo, bỏ qua và đọc tiếp
 inline bool CustomerRepository::loadFromFile() {
+    loadAttempted = true;
+    loadSucceeded = false;
     std::ifstream file(filePath);
     if (!file.is_open()) {
         std::cerr << "[Canh bao] Khong the mo file: " << filePath
                   << ". Dang tao file moi..." << std::endl;
-        return createEmptyFile();
+        loadSucceeded = createEmptyFile();
+        return loadSucceeded;
     }
 
     customers.clear();
@@ -110,6 +119,7 @@ inline bool CustomerRepository::loadFromFile() {
         }
     }
     file.close();
+    loadSucceeded = true;
     return true;
 }
 

@@ -12,6 +12,7 @@ private:
     Phone phone;
     int quantity;
     double unitPrice;
+    bool selected;
 
 public:
     CartItem();
@@ -25,6 +26,9 @@ public:
 
     double getUnitPrice() const;
     void setUnitPrice(double price);
+
+    bool isSelected() const;
+    void setSelected(bool s);
 
     double getSubtotal() const;
     void increaseQuantity(int amount);
@@ -48,6 +52,9 @@ public:
     bool removeItem(const std::string& phoneId);
     bool updateQuantity(const std::string& phoneId, int newQuantity);
     double calculateTotal() const;
+    double calculateSelectedTotal() const;
+    Vector<CartItem> getSelectedItems() const;
+    void removeSelected();
     int getTotalItemCount() const;
     void clear();
     bool isEmpty() const;
@@ -56,11 +63,11 @@ public:
 // ================= IMPLEMENTATION CARTITEM =================
 
 // Hàm dựng mặc định
-inline CartItem::CartItem() : phone(), quantity(0), unitPrice(0.0) {}
+inline CartItem::CartItem() : phone(), quantity(0), unitPrice(0.0), selected(true) {}
 
 // Hàm dựng đủ tham số
 inline CartItem::CartItem(const Phone& phone, int quantity)
-    : phone(phone), quantity(quantity), unitPrice(phone.getSellingPrice()) {}
+    : phone(phone), quantity(quantity), unitPrice(phone.getSellingPrice()), selected(true) {}
 
 // Hàm có chức năng trả về Phone mà CardItem đang chứa
 inline Phone CartItem::getPhone() const { return phone; }
@@ -75,6 +82,10 @@ inline void CartItem::setQuantity(int q) { quantity = q; }
 // Hàm setter / getter cho đơn giá điện thoại
 inline double CartItem::getUnitPrice() const { return unitPrice; }
 inline void CartItem::setUnitPrice(double price) { unitPrice = price; }
+
+// Hàm getter / setter cho trạng thái tick chọn
+inline bool CartItem::isSelected() const { return selected; }
+inline void CartItem::setSelected(bool s) { selected = s; }
 
 // Hàm có chức năng tính tổng số tiền của sản phầm hiện tại
 inline double CartItem::getSubtotal() const {
@@ -143,6 +154,39 @@ inline double Cart::calculateTotal() const {
         total += items[i].getSubtotal();
     }
     return total;
+}
+
+// Tính tổng giá trị của chỉ các sản phẩm đã tick chọn
+inline double Cart::calculateSelectedTotal() const {
+    double total = 0.0;
+    for (int i = 0; i < items.getSize(); ++i) {
+        if (items[i].isSelected()) {
+            total += items[i].getSubtotal();
+        }
+    }
+    return total;
+}
+
+// Lấy danh sách các dòng sản phẩm đã tick chọn
+inline Vector<CartItem> Cart::getSelectedItems() const {
+    Vector<CartItem> selected;
+    for (int i = 0; i < items.getSize(); ++i) {
+        if (items[i].isSelected()) {
+            selected.push_back(items[i]);
+        }
+    }
+    return selected;
+}
+
+// Xóa các dòng sản phẩm đã tick chọn khỏi giỏ hàng
+inline void Cart::removeSelected() {
+    Vector<CartItem> remaining;
+    for (int i = 0; i < items.getSize(); ++i) {
+        if (!items[i].isSelected()) {
+            remaining.push_back(items[i]);
+        }
+    }
+    items = remaining;
 }
 
 // Tính tổng số lượng sản phẩm có trong giỏ hàng

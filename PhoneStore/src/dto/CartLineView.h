@@ -10,4 +10,6 @@ struct CartLineView {
     int quantity = 0;
     Money unitPrice = 0;
     Money subtotal = 0;
+    bool selected = true;
+    bool available = true; // còn hàng khả dụng và đang được đăng bán
 };

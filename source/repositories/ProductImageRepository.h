@@ -111,7 +111,7 @@ public:
             if (ProductImageRecord::fromFileLine(line, rec)) {
                 bool exists = false;
                 for (auto& r : records) {
-                    if (r.productId == rec.productId) {
+                    if (r.productId == rec.productId && r.imagePath == rec.imagePath) {
                         r = rec;
                         exists = true;
                         break;
@@ -136,7 +136,40 @@ public:
         });
     }
 
+    std::vector<ProductImageRecord> getImagesForProduct(const std::string& productId) const {
+        std::vector<ProductImageRecord> result;
+        for (const auto& r : records) {
+            if (r.productId == productId) {
+                result.push_back(r);
+            }
+        }
+        std::sort(result.begin(), result.end(), [](const ProductImageRecord& a, const ProductImageRecord& b) {
+            if (a.isPrimary != b.isPrimary) return a.isPrimary > b.isPrimary;
+            return a.displayOrder < b.displayOrder;
+        });
+        return result;
+    }
+
+    void setImagesForProduct(const std::string& productId, const std::vector<ProductImageRecord>& imgs) {
+        // Remove existing
+        for (auto it = records.begin(); it != records.end();) {
+            if (it->productId == productId) {
+                it = records.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        for (const auto& img : imgs) {
+            records.push_back(img);
+        }
+    }
+
     std::string getImagePath(const std::string& productId) const {
+        // Ưu tiên ảnh chính (isPrimary = 1)
+        for (const auto& r : records) {
+            if (r.productId == productId && r.isPrimary == 1) return r.imagePath;
+        }
+        // Fallback ảnh đầu tiên
         for (const auto& r : records) {
             if (r.productId == productId) return r.imagePath;
             // Hỗ trợ tra cứu tương đương giữa "PHN-000101" và "101"

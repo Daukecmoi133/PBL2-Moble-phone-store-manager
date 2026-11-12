@@ -1,10 +1,15 @@
 #include "SupplierService.h"
+#include "../common/Permission.h"
 
 SupplierService::SupplierService(SupplierRepository& repo) : supplierRepo(repo) {}
 
-Result<void> SupplierService::addSupplier(const Actor&, const Supplier&) {
-    // TODO(logic): kiểm tra quyền ManageSupplier, hợp lệ dữ liệu, add + save.
-    return Result<void>::fail(ErrorCode::NotImplemented, "TODO: SupplierService::addSupplier");
+Result<void> SupplierService::addSupplier(const Actor& actor, const Supplier& supplier) {
+    if (!Permission::isAllowed(actor.role, Action::ManageSupplier)) {
+        return Result<void>::fail(ErrorCode::PermissionDenied, "Không có quyền thêm nhà cung cấp");
+    }
+    auto addRes = supplierRepo.add(supplier);
+    if (!addRes.isOk()) return addRes;
+    return supplierRepo.save();
 }
 
 Result<void> SupplierService::updateSupplier(const Actor&, const Supplier&) {
@@ -27,7 +32,10 @@ Result<Vector<Supplier>> SupplierService::search(const Actor&, const std::string
     return Result<Vector<Supplier>>::fail(ErrorCode::NotImplemented, "TODO: SupplierService::search");
 }
 
-Result<Supplier> SupplierService::getSupplierById(const Actor&, const std::string&) const {
-    // TODO(logic): kiểm tra quyền rồi findById (ImportReceiptService dùng để xác minh nhà cung cấp).
-    return Result<Supplier>::fail(ErrorCode::NotImplemented, "TODO: SupplierService::getSupplierById");
+Result<Supplier> SupplierService::getSupplierById(const Actor& actor, const std::string& supplierId) const {
+    if (!Permission::isAllowed(actor.role, Action::CreateImportReceipt) &&
+        !Permission::isAllowed(actor.role, Action::ManageSupplier)) {
+        return Result<Supplier>::fail(ErrorCode::PermissionDenied, "Không có quyền xem thông tin nhà cung cấp");
+    }
+    return supplierRepo.findById(supplierId);
 }

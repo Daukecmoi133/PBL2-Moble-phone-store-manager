@@ -28,6 +28,9 @@ output_run.txt
 feedback.txt
 Summary.txt
 summary.txt
+
+# Local documentation and specification files
+ANTI.md
 CHANGELOG.md
 PBL2_Skeleton_Spec.md
 
@@ -36,7 +39,10 @@ PBL2_Skeleton_Spec.md
 .idea/
 Thumbs.db
 .DS_Store
-
+.scratch/
+.PhoneStore/
 
 # Agent UI 
 .agents/
+.docs/
+.HOPDONG/

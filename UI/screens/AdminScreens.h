@@ -54,6 +54,7 @@ private:
     GtkWidget* warrantyMonitorView;
     GtkWidget* reportsView;
     GtkWidget* realTimeView;
+    GtkWidget* adminProfileView;
 
     // Subview containers for swap between List & Detail/Edit screens
     GtkWidget* productContainerBox;
@@ -68,11 +69,16 @@ private:
     GtkWidget* employeeCountBadge = nullptr;
     GtkWidget* customerListBox;
     GtkWidget* customerCountBadge = nullptr;
+    std::string customerFilterKeyword = "";
+    int customerFilterTier = 0;
+    int customerSortBy = 0;
     GtkWidget* supplierListBox;
     GtkWidget* supplierCountBadge = nullptr;
     GtkWidget* discountListBox;
     GtkWidget* discountCountBadge = nullptr;
     std::string discountFilterKeyword;
+    int discountFilterType = 0;
+    int discountSortBy = 0;
     GtkWidget* accountListBox;
     GtkWidget* accountCountBadge = nullptr;
     std::string accountFilterKeyword;
@@ -112,6 +118,7 @@ public:
     GtkWidget* getWarrantyMonitorView() { return warrantyMonitorView; }
     GtkWidget* getReportsView() { return reportsView; }
     GtkWidget* getRealTimeView() { return realTimeView; }
+    GtkWidget* getProfileView() { return adminProfileView; }
 
     void refreshAll();
     void refreshDashboard();
@@ -126,6 +133,7 @@ public:
     void refreshWarrantyMonitor();
     void refreshReports();
     void refreshRealTime();
+    void refreshProfile();
     void updateClockDisplay(const std::string& timeStr);
 
     // Full-screen detail & edit views with Back buttons
@@ -154,6 +162,7 @@ private:
     void buildWarrantyMonitorView();
     void buildReportsView();
     void buildRealTimeView();
+    void buildAdminProfileView();
 
     void showEmployeeFormModal(const EmployeeItemViewModel* existingEmp = nullptr);
     void showSupplierFormModal(const SupplierItemViewModel* existingSup = nullptr);
