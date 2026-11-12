@@ -63,9 +63,13 @@ const std::vector<UIComponents::TableColumnSpec> kSalesOrderCols = {
     {"Tổng tiền", 150, 1.0f, false},  {"Xử lý đơn", 160, 0.5f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kSalesWarrantyCols = {
-    {"Mã phiếu", 195, 0.0f, false},   {"Thiết bị", 210, 0.0f, false},
-    {"Khách hàng", 180, 0.0f, false}, {"Ngày nhận", 165, 0.0f, false},
-    {"Trạng thái", 155, 0.5f, false}, {"Mô tả sự cố", 220, 0.0f, true}};
+    {"Mã phiếu & Mã đơn", 185, 0.0f, false},
+    {"Thiết bị & Bảo hành", 200, 0.0f, false},
+    {"Khách hàng", 175, 0.0f, false},
+    {"Ngày nhận", 145, 0.0f, false},
+    {"Trạng thái", 145, 0.5f, false},
+    {"Mô tả sự cố & Ghi chú", 220, 0.0f, true},
+    {"Thao tác", 110, 0.5f, false}};
 } // namespace
 
 SalesScreens::SalesScreens(AppController *ctrl, MainShellWindow *parentShell)
@@ -2512,9 +2516,17 @@ void SalesScreens::buildWarrantyIntakeView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *btnCreate = gtk_button_new_with_label("➕ Tạo phiếu hộ khách");
+  gtk_widget_add_css_class(btnCreate, "btn-primary");
+  UIComponents::setButtonCursor(btnCreate);
+  g_signal_connect_swapped(
+      btnCreate, "clicked",
+      G_CALLBACK(+[](SalesScreens *s) { s->showCreateWarrantyModal(); }), this);
+
   GtkWidget *header = UIComponents::createSectionHeader(
       "Tiếp nhận yêu cầu bảo hành",
-      "Ghi nhận và theo dõi thiết bị khách hàng mang tới cửa hàng bảo hành.");
+      "Ghi nhận, xử lý kỹ thuật và theo dõi thiết bị khách hàng mang tới bảo hành.",
+      btnCreate);
   gtk_box_append(GTK_BOX(content), header);
 
   GtkWidget *extraControls =
@@ -2557,7 +2569,7 @@ void SalesScreens::buildWarrantyIntakeView() {
   gtk_box_append(GTK_BOX(extraControls), dropSort);
 
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
-      "Tìm theo mã phiếu, tên thiết bị hoặc khách hàng...",
+      "Tìm theo mã phiếu, mã đơn, tên thiết bị hoặc khách hàng...",
       G_CALLBACK(+[](GtkEditable *e, gpointer d) {
         SalesScreens *self = static_cast<SalesScreens *>(d);
         const char *txt = gtk_editable_get_text(e);
@@ -2597,10 +2609,15 @@ void SalesScreens::refreshWarrantyIntake() {
   for (const auto &w : all) {
     if (!warrantyKeyword.empty()) {
       if (!Utf8Helper::containsCaseInsensitive(w.id, warrantyKeyword) &&
+          !Utf8Helper::containsCaseInsensitive(w.orderId, warrantyKeyword) &&
           !Utf8Helper::containsCaseInsensitive(w.phoneName, warrantyKeyword) &&
           !Utf8Helper::containsCaseInsensitive(w.customerName,
                                                warrantyKeyword) &&
           !Utf8Helper::containsCaseInsensitive(w.customerPhone,
+                                               warrantyKeyword) &&
+          !Utf8Helper::containsCaseInsensitive(w.issueDescription,
+                                               warrantyKeyword) &&
+          !Utf8Helper::containsCaseInsensitive(w.technicianNote,
                                                warrantyKeyword)) {
         continue;
       }
@@ -2671,37 +2688,836 @@ void SalesScreens::refreshWarrantyIntake() {
     const auto &w = list[i];
     GtkWidget *row = UIComponents::createTableDataRow(i);
 
-    // Col 0: Mã phiếu
-    gtk_box_append(GTK_BOX(row), UIComponents::createTableTextCell(
-                                     w.id, kSalesWarrantyCols[0], "cell-code"));
-
-    // Col 1: Thiết bị
-    gtk_box_append(GTK_BOX(row),
-                   UIComponents::createTableTextCell(
-                       w.phoneName, kSalesWarrantyCols[1], "cell-title"));
-
-    // Col 2: Khách hàng
+    // Col 0: Mã phiếu & Mã đơn
+    std::string orderSub =
+        w.orderId.empty() ? "Đơn vãng lai" : ("Đơn: " + w.orderId);
     gtk_box_append(GTK_BOX(row),
                    UIComponents::createTableTwoLineCell(
-                       w.customerName, w.customerPhone, kSalesWarrantyCols[2]));
+                       w.id, orderSub, kSalesWarrantyCols[0]));
+
+    // Col 1: Thiết bị & Bảo hành
+    std::string remSub;
+    if (w.remainingDays > 0) {
+      remSub = "Còn " + std::to_string(w.remainingDays) + " ngày bảo hành";
+    } else if (!w.expireDate.empty()) {
+      remSub = "Hết hạn (" + w.expireDate + ")";
+    } else {
+      remSub = "Bảo hành tiêu chuẩn";
+    }
+    gtk_box_append(GTK_BOX(row),
+                   UIComponents::createTableTwoLineCell(
+                       w.phoneName, remSub, kSalesWarrantyCols[1]));
+
+    // Col 2: Khách hàng
+    std::string phoneSub =
+        w.customerPhone.empty() ? "Không có SĐT" : ("SĐT: " + w.customerPhone);
+    gtk_box_append(GTK_BOX(row),
+                   UIComponents::createTableTwoLineCell(
+                       w.customerName, phoneSub, kSalesWarrantyCols[2]));
 
     // Col 3: Ngày nhận
     gtk_box_append(GTK_BOX(row),
                    UIComponents::createTableTextCell(
-                       w.requestDate, kSalesWarrantyCols[3], "cell-subtitle"));
+                       w.requestDate, kSalesWarrantyCols[3], "tabular-num"));
 
     // Col 4: Trạng thái badge
     GtkWidget *badge = UIComponents::createWarrantyStatusBadge(w.status);
     gtk_box_append(GTK_BOX(row), UIComponents::createTableWidgetCell(
                                      badge, kSalesWarrantyCols[4]));
 
-    // Col 5: Mô tả sự cố
+    // Col 5: Mô tả sự cố & Ghi chú KT
+    std::string noteSub = w.technicianNote.empty()
+                              ? "Chưa có ghi chú KT"
+                              : ("KT: " + w.technicianNote);
     gtk_box_append(GTK_BOX(row),
-                   UIComponents::createTableTextCell(w.issueDescription,
-                                                     kSalesWarrantyCols[5]));
+                   UIComponents::createTableTwoLineCell(
+                       "Lỗi: " + w.issueDescription, noteSub,
+                       kSalesWarrantyCols[5]));
+
+    // Col 6: Thao tác (Xử lý phiếu)
+    if (w.status != WarrantyStatus::RESOLVED &&
+        w.status != WarrantyStatus::REJECTED) {
+      GtkWidget *btnProcess = UIComponents::createTableActionButton(
+          "⚙️ Xử lý", "Tiến hành xử lý và cập nhật tiến độ bảo hành",
+          "btn-action-primary");
+      struct ProcWarData {
+        SalesScreens *s;
+        WarrantyItemViewModel item;
+      };
+      ProcWarData *pwd = new ProcWarData{this, w};
+      g_signal_connect_data(
+          btnProcess, "clicked",
+          G_CALLBACK(+[](GtkButton *b, gpointer d) {
+            (void)b;
+            ProcWarData *data = static_cast<ProcWarData *>(d);
+            data->s->showProcessWarrantyModal(data->item);
+          }),
+          pwd,
+          [](gpointer d, GClosure *) { delete static_cast<ProcWarData *>(d); },
+          (GConnectFlags)0);
+      gtk_box_append(GTK_BOX(row), UIComponents::createTableWidgetCell(
+                                       btnProcess, kSalesWarrantyCols[6]));
+    } else {
+      gtk_box_append(GTK_BOX(row),
+                     UIComponents::createTableTextCell(
+                         "Đã đóng", kSalesWarrantyCols[6], "cell-subtitle"));
+    }
 
     gtk_box_append(GTK_BOX(warrantyListBox), row);
   }
+}
+
+void SalesScreens::showProcessWarrantyModal(const WarrantyItemViewModel &w) {
+  if (!shell)
+    return;
+
+  GtkWidget *scroll = gtk_scrolled_window_new();
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_widget_set_hexpand(scroll, TRUE);
+  gtk_widget_set_vexpand(scroll, TRUE);
+
+  GtkWidget *pageContent =
+      gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
+  gtk_widget_add_css_class(pageContent, "page-container");
+
+  GtkWidget *card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 14);
+  gtk_widget_add_css_class(card, "pdp-card");
+  gtk_widget_set_hexpand(card, TRUE);
+
+  GtkWidget *title =
+      gtk_label_new(("⚙️ Xử lý phiếu bảo hành: " + w.id).c_str());
+  gtk_widget_add_css_class(title, "card-title");
+  gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
+  gtk_box_append(GTK_BOX(card), title);
+
+  GtkWidget *subtitle = gtk_label_new(
+      "Kiểm tra tình trạng thiết bị, chẩn đoán kỹ thuật và cập nhật trạng thái "
+      "xử lý theo quy trình.");
+  gtk_widget_add_css_class(subtitle, "page-subtitle");
+  gtk_label_set_xalign(GTK_LABEL(subtitle), 0.0f);
+  gtk_label_set_wrap(GTK_LABEL(subtitle), TRUE);
+  gtk_box_append(GTK_BOX(card), subtitle);
+
+  // Grid thông tin phiếu
+  GtkWidget *infoGrid = gtk_grid_new();
+  gtk_grid_set_row_spacing(GTK_GRID(infoGrid), 8);
+  gtk_grid_set_column_spacing(GTK_GRID(infoGrid), 16);
+
+  auto addInfoRow = [&](int rowIdx, const std::string &lblText,
+                        const std::string &valText,
+                        GtkWidget *customWidget = nullptr) {
+    GtkWidget *lbl = gtk_label_new(lblText.c_str());
+    gtk_widget_add_css_class(lbl, "stat-label");
+    gtk_label_set_xalign(GTK_LABEL(lbl), 0.0f);
+    gtk_grid_attach(GTK_GRID(infoGrid), lbl, 0, rowIdx, 1, 1);
+
+    if (customWidget != nullptr) {
+      gtk_grid_attach(GTK_GRID(infoGrid), customWidget, 1, rowIdx, 1, 1);
+    } else {
+      GtkWidget *vLbl = gtk_label_new(valText.c_str());
+      gtk_widget_add_css_class(vLbl, "cell-title");
+      gtk_label_set_xalign(GTK_LABEL(vLbl), 0.0f);
+      gtk_label_set_wrap(GTK_LABEL(vLbl), TRUE);
+      gtk_grid_attach(GTK_GRID(infoGrid), vLbl, 1, rowIdx, 1, 1);
+    }
+  };
+
+  std::string custDisp = w.customerName;
+  if (!w.customerPhone.empty())
+    custDisp += " (SĐT: " + w.customerPhone + ")";
+  addInfoRow(0, "Khách hàng:", custDisp);
+
+  std::string devDisp = w.phoneName;
+  if (!w.phoneId.empty())
+    devDisp += " [" + w.phoneId + "]";
+  addInfoRow(1, "Thiết bị:", devDisp);
+
+  addInfoRow(2, "Mã đơn hàng:",
+             w.orderId.empty() ? "Đơn vãng lai (POS)" : w.orderId);
+
+  std::string expDisp;
+  if (w.remainingDays > 0) {
+    expDisp = "Còn " + std::to_string(w.remainingDays) +
+              " ngày (Hết hạn: " + w.expireDate + ")";
+  } else if (!w.expireDate.empty()) {
+    expDisp = "Đã hết hạn (" + w.expireDate + ")";
+  } else {
+    expDisp = "Bảo hành tiêu chuẩn";
+  }
+  addInfoRow(3, "Thời hạn bảo hành:", expDisp);
+
+  addInfoRow(4, "Ngày tiếp nhận:", w.requestDate);
+
+  GtkWidget *curBadge = UIComponents::createWarrantyStatusBadge(w.status);
+  gtk_widget_set_halign(curBadge, GTK_ALIGN_START);
+  addInfoRow(5, "Trạng thái hiện tại:", "", curBadge);
+
+  addInfoRow(6, "Mô tả lỗi từ khách:", w.issueDescription);
+
+  gtk_box_append(GTK_BOX(card), infoGrid);
+
+  GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_widget_set_margin_top(sep, 6);
+  gtk_widget_set_margin_bottom(sep, 6);
+  gtk_box_append(GTK_BOX(card), sep);
+
+  // Form chuyển trạng thái kế tiếp theo State Machine
+  std::vector<WarrantyStatus> nextStatuses;
+  std::vector<std::string> statusLabels;
+  std::vector<const char *> statusPtrs;
+
+  if (w.status == WarrantyStatus::RECEIVED) {
+    nextStatuses.push_back(WarrantyStatus::PROCESSING);
+    statusLabels.push_back("Đang xử lý kỹ thuật (PROCESSING)");
+
+    nextStatuses.push_back(WarrantyStatus::REJECTED);
+    statusLabels.push_back("Từ chối bảo hành (REJECTED)");
+  } else if (w.status == WarrantyStatus::PROCESSING) {
+    nextStatuses.push_back(WarrantyStatus::RESOLVED);
+    statusLabels.push_back("Hoàn tất bảo hành / Trả máy (RESOLVED)");
+
+    nextStatuses.push_back(WarrantyStatus::REJECTED);
+    statusLabels.push_back("Từ chối bảo hành (REJECTED)");
+  }
+
+  for (const auto &s : statusLabels) {
+    statusPtrs.push_back(s.c_str());
+  }
+  statusPtrs.push_back(nullptr);
+
+  GtkWidget *comboStatus = gtk_drop_down_new_from_strings(statusPtrs.data());
+  gtk_box_append(GTK_BOX(card), UIComponents::createFormField(
+                                    "Chuyển sang trạng thái *", comboStatus));
+
+  GtkWidget *entryNote = gtk_entry_new();
+  gtk_entry_set_max_length(GTK_ENTRY(entryNote), 500);
+  if (!w.technicianNote.empty()) {
+    gtk_editable_set_text(GTK_EDITABLE(entryNote), w.technicianNote.c_str());
+  }
+  gtk_entry_set_placeholder_text(
+      GTK_ENTRY(entryNote),
+      "Ghi nhận tình trạng kỹ thuật, nguyên nhân hư hỏng, linh kiện cần thay...");
+  gtk_box_append(GTK_BOX(card), UIComponents::createFormField(
+                                    "Ghi chú kỹ thuật viên *", entryNote));
+
+  GtkWidget *entryRes = gtk_entry_new();
+  gtk_entry_set_max_length(GTK_ENTRY(entryRes), 500);
+  if (!w.resolution.empty()) {
+    gtk_editable_set_text(GTK_EDITABLE(entryRes), w.resolution.c_str());
+  }
+  gtk_entry_set_placeholder_text(
+      GTK_ENTRY(entryRes),
+      "Biện pháp giải quyết: Đã thay linh kiện / Đã cài đặt lại / Trả máy từ "
+      "chối...");
+  gtk_box_append(
+      GTK_BOX(card),
+      UIComponents::createFormField("Kết quả xử lý & Biện pháp *", entryRes));
+
+  GtkWidget *lblHint = gtk_label_new(
+      "💡 Lưu ý: Khi chuyển sang Hoàn tất (RESOLVED) hoặc Từ chối (REJECTED), "
+      "bắt buộc phải nhập ghi chú kỹ thuật hoặc kết quả giải quyết.");
+  gtk_widget_add_css_class(lblHint, "form-hint");
+  gtk_label_set_xalign(GTK_LABEL(lblHint), 0.0f);
+  gtk_label_set_wrap(GTK_LABEL(lblHint), TRUE);
+  gtk_box_append(GTK_BOX(card), lblHint);
+
+  GtkWidget *btnRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_widget_set_halign(btnRow, GTK_ALIGN_END);
+  gtk_widget_set_margin_top(btnRow, 8);
+
+  GtkWidget *btnCancel = gtk_button_new_with_label("Hủy");
+  gtk_widget_add_css_class(btnCancel, "btn-secondary");
+  UIComponents::setButtonCursor(btnCancel);
+  g_signal_connect_swapped(
+      btnCancel, "clicked",
+      G_CALLBACK(+[](MainShellWindow *s) { s->popPage(); }), shell);
+  gtk_box_append(GTK_BOX(btnRow), btnCancel);
+
+  GtkWidget *btnSubmit = gtk_button_new_with_label("💾 Lưu cập nhật");
+  gtk_widget_add_css_class(btnSubmit, "btn-primary");
+  UIComponents::setButtonCursor(btnSubmit);
+
+  struct ProcessCtx {
+    SalesScreens *screens;
+    std::string wreqId;
+    GtkWidget *combo;
+    GtkWidget *entryNote;
+    GtkWidget *entryRes;
+    std::vector<WarrantyStatus> allowedStatuses;
+  };
+  ProcessCtx *ctx = new ProcessCtx{this, w.id, comboStatus, entryNote, entryRes,
+                                   nextStatuses};
+
+  g_signal_connect_data(
+      btnSubmit, "clicked",
+      G_CALLBACK(+[](GtkButton *b, gpointer d) {
+        ProcessCtx *c = static_cast<ProcessCtx *>(d);
+        GtkWindow *win =
+            c->screens->shell ? c->screens->shell->getWindow() : nullptr;
+
+        guint sel = gtk_drop_down_get_selected(GTK_DROP_DOWN(c->combo));
+        if (sel >= c->allowedStatuses.size()) {
+          UIComponents::showWarningDialog(win, "Lỗi",
+                                          "Vui lòng chọn trạng thái hợp lệ!");
+          return;
+        }
+
+        WarrantyStatus targetStatus = c->allowedStatuses[sel];
+        const char *rawNote =
+            gtk_editable_get_text(GTK_EDITABLE(c->entryNote));
+        const char *rawRes = gtk_editable_get_text(GTK_EDITABLE(c->entryRes));
+        std::string note = rawNote ? rawNote : "";
+        std::string resText = rawRes ? rawRes : "";
+
+        // Trim
+        auto trimStr = [](const std::string &s) {
+          size_t f = s.find_first_not_of(" \t\r\n");
+          if (f == std::string::npos)
+            return std::string("");
+          size_t l = s.find_last_not_of(" \t\r\n");
+          return s.substr(f, l - f + 1);
+        };
+        std::string cleanNote = trimStr(note);
+        std::string cleanRes = trimStr(resText);
+
+        if (targetStatus == WarrantyStatus::RESOLVED ||
+            targetStatus == WarrantyStatus::REJECTED) {
+          if (cleanNote.empty() && cleanRes.empty()) {
+            UIComponents::showWarningDialog(
+                win, "Thiếu thông tin bắt buộc",
+                "Khi hoàn tất hoặc từ chối bảo hành, bắt buộc phải nhập ghi chú "
+                "kỹ thuật hoặc kết quả giải quyết!");
+            return;
+          }
+        }
+
+        // Khóa nút để tránh bấm đúp
+        gtk_widget_set_sensitive(GTK_WIDGET(b), FALSE);
+
+        OperationResult res = c->screens->controller->updateWarrantyStatus(
+            c->wreqId, targetStatus, cleanNote, cleanRes);
+        if (res.success) {
+          c->screens->refreshWarrantyIntake();
+          if (c->screens->shell) {
+            c->screens->shell->popPage();
+          }
+          UIComponents::showSuccessDialog(
+              c->screens->shell ? c->screens->shell->getWindow() : nullptr,
+              "Cập nhật thành công", res.message);
+        } else {
+          gtk_widget_set_sensitive(GTK_WIDGET(b), TRUE);
+          UIComponents::showErrorDialog(win, "Cập nhật thất bại", res.message);
+        }
+      }),
+      ctx, [](gpointer d, GClosure *) { delete static_cast<ProcessCtx *>(d); },
+      (GConnectFlags)0);
+
+  gtk_box_append(GTK_BOX(btnRow), btnSubmit);
+  gtk_box_append(GTK_BOX(card), btnRow);
+
+  UIComponents::setupDialogShortcuts(card, btnSubmit, btnCancel);
+
+  gtk_box_append(GTK_BOX(pageContent), card);
+  gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), pageContent);
+  shell->pushPage("sales_process_warranty", scroll,
+                  "Xử lý phiếu bảo hành " + w.id);
+  gtk_widget_grab_focus(entryNote);
+}
+
+void SalesScreens::showCreateWarrantyModal() {
+  if (!shell)
+    return;
+
+  GtkWidget *scroll = gtk_scrolled_window_new();
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_widget_set_hexpand(scroll, TRUE);
+  gtk_widget_set_vexpand(scroll, TRUE);
+
+  GtkWidget *pageContent =
+      gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
+  gtk_widget_add_css_class(pageContent, "page-container");
+
+  GtkWidget *card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 14);
+  gtk_widget_add_css_class(card, "pdp-card");
+  gtk_widget_set_hexpand(card, TRUE);
+
+  GtkWidget *title = gtk_label_new("🛡️ Tiếp nhận bảo hành hộ khách hàng");
+  gtk_widget_add_css_class(title, "card-title");
+  gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
+  gtk_box_append(GTK_BOX(card), title);
+
+  GtkWidget *subtitle = gtk_label_new(
+      "Chọn khách hàng (hoặc đơn POS vãng lai), chọn thiết bị đã mua cần bảo "
+      "hành và ghi nhận hiện tượng lỗi.");
+  gtk_widget_add_css_class(subtitle, "page-subtitle");
+  gtk_label_set_xalign(GTK_LABEL(subtitle), 0.0f);
+  gtk_label_set_wrap(GTK_LABEL(subtitle), TRUE);
+  gtk_box_append(GTK_BOX(card), subtitle);
+
+  // 1. Ô tìm kiếm khách hàng & Dropdown khách hàng
+  GtkWidget *entryCustSearch = gtk_entry_new();
+  gtk_entry_set_placeholder_text(
+      GTK_ENTRY(entryCustSearch),
+      "🔍 Tìm khách hàng theo tên, số điện thoại hoặc mã...");
+  gtk_box_append(GTK_BOX(card),
+                 UIComponents::createFormField("Tìm kiếm khách hàng",
+                                               entryCustSearch));
+
+  std::vector<CustomerItemViewModel> allCusts = controller->getCustomers();
+
+  // Khởi tạo danh sách khách hàng ban đầu
+  std::vector<std::string> currentCustIds;
+  std::vector<std::string> custDisplayStrings;
+  std::vector<const char *> custPtrs;
+
+  auto buildCustLists = [&](const std::string &kw) {
+    currentCustIds.clear();
+    custDisplayStrings.clear();
+    custPtrs.clear();
+
+    // Lựa chọn đầu tiên luôn là Khách vãng lai (đơn POS)
+    currentCustIds.push_back("");
+    custDisplayStrings.push_back(
+        "[Khách vãng lai] — Đơn POS tại quầy (Không có tài khoản)");
+
+    for (const auto &c : allCusts) {
+      if (!kw.empty()) {
+        bool match = Utf8Helper::containsCaseInsensitive(c.fullName, kw) ||
+                     Utf8Helper::containsCaseInsensitive(c.phone, kw) ||
+                     Utf8Helper::containsCaseInsensitive(c.id, kw);
+        if (!match)
+          continue;
+      }
+      currentCustIds.push_back(c.id);
+      std::string disp = "[" + c.id + "] " + c.fullName + " — SĐT: " +
+                         (c.phone.empty() ? "N/A" : c.phone);
+      custDisplayStrings.push_back(disp);
+    }
+
+    for (const auto &s : custDisplayStrings) {
+      custPtrs.push_back(s.c_str());
+    }
+    custPtrs.push_back(nullptr);
+  };
+
+  buildCustLists("");
+
+  GtkWidget *comboCust = gtk_drop_down_new_from_strings(custPtrs.data());
+  gtk_box_append(GTK_BOX(card), UIComponents::createFormField(
+                                    "Chọn khách hàng / Đơn POS *", comboCust));
+
+  // 2. Dropdown thiết bị bảo hành & nhãn giải thích
+  std::vector<WarrantyEligibleItemViewModel> currentEligibleItems;
+  std::vector<std::string> deviceDisplayStrings;
+  std::vector<const char *> devicePtrs;
+
+  GtkWidget *comboDevice = gtk_drop_down_new_from_strings(nullptr);
+  GtkWidget *lblDeviceStatus = gtk_label_new("");
+  gtk_label_set_xalign(GTK_LABEL(lblDeviceStatus), 0.0f);
+  gtk_label_set_wrap(GTK_LABEL(lblDeviceStatus), TRUE);
+  gtk_widget_add_css_class(lblDeviceStatus, "form-hint");
+
+  GtkWidget *devBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+  gtk_box_append(GTK_BOX(devBox), comboDevice);
+  gtk_box_append(GTK_BOX(devBox), lblDeviceStatus);
+  gtk_box_append(
+      GTK_BOX(card),
+      UIComponents::createFormField("Chọn thiết bị cần bảo hành *", devBox));
+
+  // 3. Ô mô tả sự cố
+  GtkWidget *entryIssue = gtk_entry_new();
+  gtk_entry_set_max_length(GTK_ENTRY(entryIssue), 500);
+  gtk_entry_set_placeholder_text(
+      GTK_ENTRY(entryIssue),
+      "Mô tả chi tiết hiện tượng lỗi gặp phải (tối đa 500 ký tự)...");
+  gtk_box_append(
+      GTK_BOX(card),
+      UIComponents::createFormField("Mô tả sự cố * (tối đa 500 ký tự)",
+                                    entryIssue));
+
+  // 4. Hàng nút thao tác
+  GtkWidget *btnRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_widget_set_halign(btnRow, GTK_ALIGN_END);
+  gtk_widget_set_margin_top(btnRow, 8);
+
+  GtkWidget *btnCancel = gtk_button_new_with_label("Hủy");
+  gtk_widget_add_css_class(btnCancel, "btn-secondary");
+  UIComponents::setButtonCursor(btnCancel);
+  g_signal_connect_swapped(
+      btnCancel, "clicked",
+      G_CALLBACK(+[](MainShellWindow *s) { s->popPage(); }), shell);
+  gtk_box_append(GTK_BOX(btnRow), btnCancel);
+
+  GtkWidget *btnSubmit = gtk_button_new_with_label("Tạo phiếu bảo hành");
+  gtk_widget_add_css_class(btnSubmit, "btn-primary");
+  UIComponents::setButtonCursor(btnSubmit);
+
+  struct CreateModalCtx {
+    SalesScreens *screens;
+    std::vector<CustomerItemViewModel> allCusts;
+    std::vector<std::string> currentCustIds;
+    std::vector<WarrantyEligibleItemViewModel> currentEligibleItems;
+    GtkWidget *entrySearch;
+    GtkWidget *comboCust;
+    GtkWidget *comboDevice;
+    GtkWidget *lblDeviceStatus;
+    GtkWidget *entryIssue;
+    GtkWidget *btnSubmit;
+  };
+  CreateModalCtx *modalCtx = new CreateModalCtx{
+      this,        allCusts, currentCustIds, currentEligibleItems,
+      entryCustSearch, comboCust, comboDevice,  lblDeviceStatus,
+      entryIssue,  btnSubmit};
+
+  auto updateDeviceList = [](CreateModalCtx *c) {
+    guint selCust = gtk_drop_down_get_selected(GTK_DROP_DOWN(c->comboCust));
+    std::string targetCustomerId =
+        (selCust < c->currentCustIds.size()) ? c->currentCustIds[selCust] : "";
+
+    c->currentEligibleItems =
+        c->screens->controller->getEligibleWarrantyItems(targetCustomerId);
+
+    std::vector<std::string> devStrs;
+    std::vector<const char *> devPtrs;
+    int firstValid = -1;
+
+    if (c->currentEligibleItems.empty()) {
+      devStrs.push_back(
+          targetCustomerId.empty()
+              ? "(Không có đơn POS vãng lai nào đủ điều kiện)"
+              : "(Khách hàng này chưa có sản phẩm nào đủ điều kiện)");
+      devPtrs.push_back(devStrs[0].c_str());
+      devPtrs.push_back(nullptr);
+
+      GtkStringList *sList = gtk_string_list_new(devPtrs.data());
+      gtk_drop_down_set_model(GTK_DROP_DOWN(c->comboDevice),
+                              G_LIST_MODEL(sList));
+      g_object_unref(sList);
+
+      std::string note =
+          targetCustomerId.empty()
+              ? "⚠️ Không tìm thấy đơn hàng POS vãng lai hoàn tất nào chứa sản "
+                "phẩm còn hạn bảo hành."
+              : "⚠️ Khách hàng này chưa có đơn hàng hoàn tất nào mua sản phẩm "
+                "còn thời hạn bảo hành.";
+      gtk_label_set_text(GTK_LABEL(c->lblDeviceStatus), note.c_str());
+      gtk_widget_set_sensitive(c->btnSubmit, FALSE);
+      return;
+    }
+
+    for (size_t i = 0; i < c->currentEligibleItems.size(); ++i) {
+      const auto &it = c->currentEligibleItems[i];
+      std::string label =
+          it.phoneName + " — Đơn " + it.orderId + " (Mua: " + it.purchaseDate;
+      if (!it.active || it.remainingDays < 0) {
+        label += " • Đã hết hạn";
+        if (!it.expireDate.empty())
+          label += " " + it.expireDate;
+        label += ") [Vô hiệu hóa: Hết hạn]";
+      } else if (it.openRequests >= it.quantity) {
+        label += " • Còn " + std::to_string(it.remainingDays) +
+                 " ngày) [Vô hiệu hóa: Đã đạt " +
+                 std::to_string(it.openRequests) + "/" +
+                 std::to_string(it.quantity) + " yêu cầu mở]";
+      } else {
+        label += " • Còn " + std::to_string(it.remainingDays) + " ngày)";
+        if (firstValid < 0)
+          firstValid = static_cast<int>(i);
+      }
+      devStrs.push_back(label);
+    }
+
+    for (const auto &s : devStrs) {
+      devPtrs.push_back(s.c_str());
+    }
+    devPtrs.push_back(nullptr);
+
+    GtkStringList *sList = gtk_string_list_new(devPtrs.data());
+    gtk_drop_down_set_model(GTK_DROP_DOWN(c->comboDevice), G_LIST_MODEL(sList));
+    g_object_unref(sList);
+
+    if (firstValid >= 0) {
+      gtk_drop_down_set_selected(GTK_DROP_DOWN(c->comboDevice),
+                                 static_cast<guint>(firstValid));
+      const auto &it = c->currentEligibleItems[firstValid];
+      std::string text = "✅ Thiết bị đủ điều kiện bảo hành (còn " +
+                         std::to_string(it.remainingDays) + " ngày).";
+      gtk_label_set_text(GTK_LABEL(c->lblDeviceStatus), text.c_str());
+      gtk_widget_set_sensitive(c->btnSubmit, TRUE);
+    } else {
+      gtk_label_set_text(
+          GTK_LABEL(c->lblDeviceStatus),
+          "⚠️ Tất cả sản phẩm đã mua của khách đều đã hết hạn hoặc đạt tối đa "
+          "yêu cầu mở.");
+      gtk_widget_set_sensitive(c->btnSubmit, FALSE);
+    }
+  };
+
+  // Nạp thiết bị cho lựa chọn mặc định ban đầu
+  updateDeviceList(modalCtx);
+
+  // Lắng nghe sự kiện tìm kiếm khách hàng
+  g_signal_connect_data(
+      entryCustSearch, "changed",
+      G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+        CreateModalCtx *c = static_cast<CreateModalCtx *>(d);
+        const char *txt = gtk_editable_get_text(e);
+        std::string kw = txt ? txt : "";
+
+        c->currentCustIds.clear();
+        std::vector<std::string> dispStrs;
+        std::vector<const char *> ptrs;
+
+        c->currentCustIds.push_back("");
+        dispStrs.push_back(
+            "[Khách vãng lai] — Đơn POS tại quầy (Không có tài khoản)");
+
+        for (const auto &cust : c->allCusts) {
+          if (!kw.empty()) {
+            bool match =
+                Utf8Helper::containsCaseInsensitive(cust.fullName, kw) ||
+                Utf8Helper::containsCaseInsensitive(cust.phone, kw) ||
+                Utf8Helper::containsCaseInsensitive(cust.id, kw);
+            if (!match)
+              continue;
+          }
+          c->currentCustIds.push_back(cust.id);
+          std::string disp = "[" + cust.id + "] " + cust.fullName +
+                             " — SĐT: " +
+                             (cust.phone.empty() ? "N/A" : cust.phone);
+          dispStrs.push_back(disp);
+        }
+
+        for (const auto &s : dispStrs) {
+          ptrs.push_back(s.c_str());
+        }
+        ptrs.push_back(nullptr);
+
+        GtkStringList *sList = gtk_string_list_new(ptrs.data());
+        gtk_drop_down_set_model(GTK_DROP_DOWN(c->comboCust),
+                                G_LIST_MODEL(sList));
+        g_object_unref(sList);
+      }),
+      modalCtx, nullptr, (GConnectFlags)0);
+
+  // Lắng nghe thay đổi chọn khách hàng
+  g_signal_connect_data(
+      comboCust, "notify::selected",
+      G_CALLBACK(+[](GObject *, GParamSpec *, gpointer d) {
+        CreateModalCtx *c = static_cast<CreateModalCtx *>(d);
+        guint selCust = gtk_drop_down_get_selected(GTK_DROP_DOWN(c->comboCust));
+        std::string targetCustomerId =
+            (selCust < c->currentCustIds.size()) ? c->currentCustIds[selCust]
+                                                 : "";
+
+        c->currentEligibleItems =
+            c->screens->controller->getEligibleWarrantyItems(targetCustomerId);
+
+        std::vector<std::string> devStrs;
+        std::vector<const char *> devPtrs;
+        int firstValid = -1;
+
+        if (c->currentEligibleItems.empty()) {
+          devStrs.push_back(
+              targetCustomerId.empty()
+                  ? "(Không có đơn POS vãng lai nào đủ điều kiện)"
+                  : "(Khách hàng này chưa có sản phẩm nào đủ điều kiện)");
+          devPtrs.push_back(devStrs[0].c_str());
+          devPtrs.push_back(nullptr);
+
+          GtkStringList *sList = gtk_string_list_new(devPtrs.data());
+          gtk_drop_down_set_model(GTK_DROP_DOWN(c->comboDevice),
+                                  G_LIST_MODEL(sList));
+          g_object_unref(sList);
+
+          std::string note =
+              targetCustomerId.empty()
+                  ? "⚠️ Không tìm thấy đơn hàng POS vãng lai hoàn tất nào chứa "
+                    "sản phẩm còn hạn bảo hành."
+                  : "⚠️ Khách hàng này chưa có đơn hàng hoàn tất nào mua sản "
+                    "phẩm còn thời hạn bảo hành.";
+          gtk_label_set_text(GTK_LABEL(c->lblDeviceStatus), note.c_str());
+          gtk_widget_set_sensitive(c->btnSubmit, FALSE);
+          return;
+        }
+
+        for (size_t i = 0; i < c->currentEligibleItems.size(); ++i) {
+          const auto &it = c->currentEligibleItems[i];
+          std::string label = it.phoneName + " — Đơn " + it.orderId +
+                              " (Mua: " + it.purchaseDate;
+          if (!it.active || it.remainingDays < 0) {
+            label += " • Đã hết hạn";
+            if (!it.expireDate.empty())
+              label += " " + it.expireDate;
+            label += ") [Vô hiệu hóa: Hết hạn]";
+          } else if (it.openRequests >= it.quantity) {
+            label += " • Còn " + std::to_string(it.remainingDays) +
+                     " ngày) [Vô hiệu hóa: Đã đạt " +
+                     std::to_string(it.openRequests) + "/" +
+                     std::to_string(it.quantity) + " yêu cầu mở]";
+          } else {
+            label += " • Còn " + std::to_string(it.remainingDays) + " ngày)";
+            if (firstValid < 0)
+              firstValid = static_cast<int>(i);
+          }
+          devStrs.push_back(label);
+        }
+
+        for (const auto &s : devStrs) {
+          devPtrs.push_back(s.c_str());
+        }
+        devPtrs.push_back(nullptr);
+
+        GtkStringList *sList = gtk_string_list_new(devPtrs.data());
+        gtk_drop_down_set_model(GTK_DROP_DOWN(c->comboDevice),
+                                G_LIST_MODEL(sList));
+        g_object_unref(sList);
+
+        if (firstValid >= 0) {
+          gtk_drop_down_set_selected(GTK_DROP_DOWN(c->comboDevice),
+                                     static_cast<guint>(firstValid));
+          const auto &it = c->currentEligibleItems[firstValid];
+          std::string text = "✅ Thiết bị đủ điều kiện bảo hành (còn " +
+                             std::to_string(it.remainingDays) + " ngày).";
+          gtk_label_set_text(GTK_LABEL(c->lblDeviceStatus), text.c_str());
+          gtk_widget_set_sensitive(c->btnSubmit, TRUE);
+        } else {
+          gtk_label_set_text(
+              GTK_LABEL(c->lblDeviceStatus),
+              "⚠️ Tất cả sản phẩm đã mua của khách đều đã hết hạn hoặc đạt tối "
+              "đa yêu cầu mở.");
+          gtk_widget_set_sensitive(c->btnSubmit, FALSE);
+        }
+      }),
+      modalCtx, nullptr, (GConnectFlags)0);
+
+  // Lắng nghe thay đổi chọn thiết bị
+  g_signal_connect_data(
+      comboDevice, "notify::selected",
+      G_CALLBACK(+[](GObject *obj, GParamSpec *, gpointer d) {
+        CreateModalCtx *c = static_cast<CreateModalCtx *>(d);
+        guint selDev = gtk_drop_down_get_selected(GTK_DROP_DOWN(obj));
+        if (selDev >= c->currentEligibleItems.size()) {
+          gtk_label_set_text(GTK_LABEL(c->lblDeviceStatus), "");
+          gtk_widget_set_sensitive(c->btnSubmit, FALSE);
+          return;
+        }
+
+        const auto &it = c->currentEligibleItems[selDev];
+        if (!it.active || it.remainingDays < 0) {
+          std::string text =
+              "⚠️ Mục này đã bị vô hiệu hóa: Thiết bị đã hết hạn bảo hành (" +
+              it.expireDate + "). Không thể tạo yêu cầu bảo hành.";
+          gtk_label_set_text(GTK_LABEL(c->lblDeviceStatus), text.c_str());
+          gtk_widget_set_sensitive(c->btnSubmit, FALSE);
+        } else if (it.openRequests >= it.quantity) {
+          std::string text =
+              "⚠️ Mục này đã bị vô hiệu hóa: Thiết bị đã đạt giới hạn " +
+              std::to_string(it.openRequests) + "/" +
+              std::to_string(it.quantity) +
+              " yêu cầu bảo hành đang mở. Vui lòng chờ xử lý các phiếu trước.";
+          gtk_label_set_text(GTK_LABEL(c->lblDeviceStatus), text.c_str());
+          gtk_widget_set_sensitive(c->btnSubmit, FALSE);
+        } else {
+          std::string text = "✅ Thiết bị đủ điều kiện bảo hành (còn " +
+                             std::to_string(it.remainingDays) +
+                             " ngày bảo hành).";
+          gtk_label_set_text(GTK_LABEL(c->lblDeviceStatus), text.c_str());
+          gtk_widget_set_sensitive(c->btnSubmit, TRUE);
+        }
+      }),
+      modalCtx, nullptr, (GConnectFlags)0);
+
+  // Nút submit tạo phiếu
+  g_signal_connect_data(
+      btnSubmit, "clicked",
+      G_CALLBACK(+[](GtkButton *b, gpointer d) {
+        CreateModalCtx *c = static_cast<CreateModalCtx *>(d);
+        GtkWindow *win =
+            c->screens->shell ? c->screens->shell->getWindow() : nullptr;
+
+        guint selCust = gtk_drop_down_get_selected(GTK_DROP_DOWN(c->comboCust));
+        std::string targetCustomerId =
+            (selCust < c->currentCustIds.size()) ? c->currentCustIds[selCust]
+                                                 : "";
+
+        guint selDev =
+            gtk_drop_down_get_selected(GTK_DROP_DOWN(c->comboDevice));
+        if (selDev >= c->currentEligibleItems.size()) {
+          UIComponents::showWarningDialog(win, "Thiếu thông tin",
+                                          "Vui lòng chọn thiết bị bảo hành!");
+          return;
+        }
+
+        const auto &selectedItem = c->currentEligibleItems[selDev];
+        if (!selectedItem.active || selectedItem.remainingDays < 0) {
+          UIComponents::showWarningDialog(
+              win, "Không thể gửi yêu cầu",
+              "Thiết bị này đã hết hạn bảo hành! Không thể tạo yêu cầu.");
+          return;
+        }
+        if (selectedItem.openRequests >= selectedItem.quantity) {
+          UIComponents::showWarningDialog(
+              win, "Không thể gửi yêu cầu",
+              "Thiết bị này đã đạt giới hạn yêu cầu bảo hành đang mở tối đa!");
+          return;
+        }
+
+        const char *rawIssue =
+            gtk_editable_get_text(GTK_EDITABLE(c->entryIssue));
+        std::string issue = rawIssue ? rawIssue : "";
+        size_t first = issue.find_first_not_of(" \t\r\n");
+        if (first == std::string::npos) {
+          UIComponents::showWarningDialog(
+              win, "Thiếu thông tin",
+              "Vui lòng nhập mô tả chi tiết lỗi gặp phải trên thiết bị!");
+          return;
+        }
+        std::string cleanIssue = issue.substr(first);
+        size_t last = cleanIssue.find_last_not_of(" \t\r\n");
+        if (last != std::string::npos) {
+          cleanIssue = cleanIssue.substr(0, last + 1);
+        }
+
+        // Khóa nút để tránh bấm đúp
+        gtk_widget_set_sensitive(GTK_WIDGET(b), FALSE);
+
+        CreateWarrantyRequest req;
+        req.customerId = targetCustomerId;
+        req.orderId = selectedItem.orderId;
+        req.phoneId = selectedItem.phoneId;
+        req.issueDescription = cleanIssue;
+
+        OperationResult res = c->screens->controller->createWarranty(req);
+        if (res.success) {
+          c->screens->refreshWarrantyIntake();
+          if (c->screens->shell) {
+            c->screens->shell->popPage();
+          }
+          UIComponents::showSuccessDialog(
+              c->screens->shell ? c->screens->shell->getWindow() : nullptr,
+              "Đã tiếp nhận yêu cầu", res.message);
+        } else {
+          gtk_widget_set_sensitive(GTK_WIDGET(b), TRUE);
+          UIComponents::showErrorDialog(win, "Tiếp nhận thất bại", res.message);
+        }
+      }),
+      modalCtx,
+      [](gpointer d, GClosure *) { delete static_cast<CreateModalCtx *>(d); },
+      (GConnectFlags)0);
+
+  gtk_box_append(GTK_BOX(btnRow), btnSubmit);
+  gtk_box_append(GTK_BOX(card), btnRow);
+
+  UIComponents::setupDialogShortcuts(card, btnSubmit, btnCancel);
+
+  gtk_box_append(GTK_BOX(pageContent), card);
+  gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), pageContent);
+  shell->pushPage("sales_create_warranty", scroll,
+                  "Tiếp nhận bảo hành hộ khách");
+  gtk_widget_grab_focus(entryCustSearch);
 }
 
 void SalesScreens::focusPosSearch() {

@@ -1,0 +1,2 @@
+id|orderId|phoneId|phoneName|customerId|createdAt|status|issueDescription|technicianNote|resolution|updatedAt
+WREQ-12112026-000074|ORD-18092026-000001|PHN-000107|Oppo Find X7 Ultra 256GB|CUS-000001|12/11/2026 17:25:37|0|Hư màn|||12/11/2026 17:25:37

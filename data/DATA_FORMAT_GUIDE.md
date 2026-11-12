@@ -54,6 +54,7 @@ cac quan he giua du lieu va nhung gioi han can biet khi nhap them du lieu.
 | `Device/ProductMarketing.txt` | Marketing & Khuyến mãi | `ProductMarketingRepository` | Giá gốc niêm yết, thời hạn sale, trả góp, màu sắc, bảo hành. |
 | `Device/ProductDescriptions.txt` | Mô tả chi tiết sản phẩm | `ProductDescriptionRepository` | Điểm nổi bật và đoạn văn mô tả chi tiết của từng máy. |
 | `system/StoreSettings.txt` | Cài đặt & Chính sách chung | `StoreSettingsRepository` | Chính sách vận chuyển, đổi trả, bảo hành toàn cửa hàng. |
+| `PAY/WarrantyRequests.txt` | WarrantyRequest | `WarrantyRequestRepository` | Quản lý yêu cầu bảo hành sản phẩm; 11 cột, status 0..3. |
 
 Gio hang la trang thai phien lam viec trong RAM, khong co file persistence.
 Bao cao doanh thu/ton kho duoc tinh tu entity, khong co file bao cao dau vao.
@@ -243,18 +244,59 @@ Reader cua ProductImage.txt chua duoc implement trong source/UI. Bo data chi
 tro den asset Oppo dang co; khong tao placeholder gia cho cac san pham khac.
 Khi them anh, chi them duong dan sau khi asset ton tai va duoc phep su dung.
 
-## 13. Du lieu khong tao thanh file rieng
+## 13. Yêu cầu bảo hành sản phẩm - `PAY/WarrantyRequests.txt`
+
+Schema đầy đủ 11 cột phân cách bằng dấu gạch đứng `|`:
+
+```text
+id|orderId|phoneId|phoneName|customerId|createdAt|status|issueDescription|technicianNote|resolution|updatedAt
+```
+
+### Chi tiết các trường:
+- `id`: Khóa chính định dạng `WREQ-ddmmyyyy-000001` (xác thực qua `IdGenerator::isValidId(id, "WREQ", true)`).
+- `orderId`: Khóa ngoại tham chiếu `Order` (`ORD-ddmmyyyy-000001`). Đơn hàng bắt buộc phải ở trạng thái `COMPLETED` (5).
+- `phoneId`: Khóa ngoại tham chiếu `Phone` (`PHN-000101`). Bắt buộc phải là sản phẩm có mặt trong chi tiết đơn hàng `orderId`.
+- `phoneName`: Tên sản phẩm tại thời điểm tạo phiếu (hỗ trợ hiển thị độc lập).
+- `customerId`: Khóa ngoại tham chiếu `Customer` (`CUS-000001`). Cho phép để trống `""` đối với đơn hàng bán tại quầy (POS walk-in).
+- `createdAt`: Thời điểm lập yêu cầu bảo hành, định dạng `DD/MM/YYYY HH:MM:SS`.
+- `status`: Mã trạng thái bảo hành (số nguyên `0..3`):
+  - `0`: `RECEIVED` (Mới tiếp nhận)
+  - `1`: `PROCESSING` (Đang xử lý / Đang sửa chữa)
+  - `2`: `RESOLVED` (Hoàn tất bảo hành - Trạng thái cuối)
+  - `3`: `REJECTED` (Từ chối bảo hành - Trạng thái cuối)
+- `issueDescription`: Mô tả sự cố từ khách hàng. Quy tắc làm sạch: thay thế `|` thành `/`, xóa `\r`, `\n`, `\t`, trim khoảng trắng đầu cuối, cắt tối đa 500 ký tự UTF-8 an toàn đa byte.
+- `technicianNote`: Ghi chú kỹ thuật viên trong quá trình chẩn đoán/sửa chữa. Làm sạch tương tự.
+- `resolution`: Kết quả giải quyết hoặc lý do từ chối. Bắt buộc không được để trống khi chuyển sang `RESOLVED` hoặc `REJECTED`.
+- `updatedAt`: Thời điểm cập nhật trạng thái gần nhất, định dạng `DD/MM/YYYY HH:MM:SS`.
+
+### Ràng buộc nghiệp vụ và Máy trạng thái (State Machine):
+1. **Ràng buộc tạo phiếu**:
+   - Đơn hàng phải tồn tại và có trạng thái `COMPLETED`.
+   - Sản phẩm `phoneId` phải nằm trong đơn hàng.
+   - Nếu đơn hàng có gắn `customerId`, phiếu bảo hành phải gắn đúng `customerId` đó; nếu đơn là vãng lai (`customerId == ""`), phiếu bảo hành phải có `customerId == ""`.
+   - Thời điểm tạo phiếu phải trong hạn bảo hành (`now <= expireDate`, với `expireDate = startDate.addMonths(12)`).
+   - Số lượng yêu cầu bảo hành đang mở (`RECEIVED` hoặc `PROCESSING`) không được vượt quá số lượng sản phẩm đã mua trong đơn (`openRequests < quantity`).
+   - Mô tả sự cố sau làm sạch không được để trống.
+2. **Quy tắc chuyển trạng thái**:
+   - `RECEIVED` (0) chỉ được chuyển sang `PROCESSING` (1) hoặc `REJECTED` (3).
+   - `PROCESSING` (1) chỉ được chuyển sang `RESOLVED` (2) hoặc `REJECTED` (3).
+   - `RESOLVED` (2) và `REJECTED` (3) là hai trạng thái cuối (terminal state), không thể thay đổi trạng thái nữa.
+   - Khi chuyển sang `RESOLVED` hoặc `REJECTED`, bắt buộc phải có nội dung trong `technicianNote` hoặc `resolution`.
+3. **An toàn dữ liệu**:
+   - Repository sử dụng `FileHelper::atomicWrite` tránh mất dữ liệu khi crash/lỗi đĩa.
+   - Nếu phát hiện dòng lỗi khi nạp, file gốc được tự động sao lưu thành `<file>.corrupt_<timestamp>` trước lần ghi đè đầu tiên và hoàn nguyên RAM nếu ghi đĩa thất bại.
+
+## 14. Du lieu khong tao thanh file rieng
 
 - `Cart`/`CartItem`: tam thoi trong phien, chua co repository persistence.
 - `Account`: nhung trong Customer/Employee.
 - Reports: tinh tu Order/Invoice/Phone.
-- Khong co file payment transaction, stock adjustment, return, warranty,
-  promotion-to-order link, login audit hay backup snapshot trong bo data hien tai.
+- Khong co file payment transaction, stock adjustment, return, promotion-to-order link, login audit hay backup snapshot trong bo data hien tai. (Lưu ý: Yêu cầu bảo hành đã có file persistence chính thức tại `PAY/WarrantyRequests.txt`).
 
 Khong can tao file rong cho cac entity tren neu chua co code doc/ghi; file khong
 duoc su dung de tao cam giac tinh nang da duoc implement.
 
-## 14. Enum codes
+## 15. Enum codes
 
 | Enum | Code file | Gia tri |
 |---|---:|---|
@@ -275,14 +317,18 @@ duoc su dung de tao cam giac tinh nang da duoc implement.
 | OrderStatus | 6 | CANCELLED |
 | DiscountType | 0 | PERCENTAGE |
 | DiscountType | 1 | FIXED_AMOUNT |
+| WarrantyStatus | 0 | RECEIVED |
+| WarrantyStatus | 1 | PROCESSING |
+| WarrantyStatus | 2 | RESOLVED |
+| WarrantyStatus | 3 | REJECTED |
 
-## 15. Checklist truoc khi commit data
+## 16. Checklist truoc khi commit data
 
 1. Tat ca repository input co header dung chinh xac va dung so cot.
 2. Moi primary ID duy nhat; usernames, email va phone khong bi dung lai khi
    nghiep vu yeu cau duy nhat.
 3. Moi foreign key ton tai: customer/order, employee/invoice, supplier/receipt,
-   phone trong order/invoice/receipt/spec/image.
+   phone trong order/invoice/receipt/spec/image, orderId/phoneId/customerId trong warranty (với customerId có thể để trống nếu là đơn POS vãng lai).
 4. Detail quantity > 0; gia khong am; enum nam trong mien; discount khong vuot
    subtotal; total tinh dung.
 5. Moi invoice khop mot order; invoice detail, customer, method, discount va

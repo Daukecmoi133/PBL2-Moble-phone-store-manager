@@ -136,6 +136,8 @@ private:
     void showCustomerDetailsModal(const CustomerItemViewModel& cust);
     void showInvoiceDetailModal(const InvoiceItemViewModel& inv);
     void showPosProductPickerModal();
+    void showCreateWarrantyModal();
+    void showProcessWarrantyModal(const WarrantyItemViewModel& item);
 };
 
 #endif // SALES_SCREENS_H

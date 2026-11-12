@@ -31,6 +31,7 @@ struct DateTime {
   std::string toString() const;
   std::string toDateString() const;
   DateTime addDays(int days) const;
+  DateTime addMonths(int months) const;
 
   // Comparison operators
   bool operator<(const DateTime &other) const;
@@ -117,7 +118,8 @@ inline bool DateTime::isValidDate(int y, int m, int d) {
 }
 
 inline bool DateTime::isValidDateString(const std::string &str) {
-  if (str.empty()) return false;
+  if (str.empty())
+    return false;
   int d = 0, m = 0, y = 0;
   if (str.find('/') != std::string::npos) {
     char sep1 = 0, sep2 = 0;
@@ -137,12 +139,15 @@ inline bool DateTime::isValidDateString(const std::string &str) {
 
 inline DateTime DateTime::addDays(int days) const {
   DateTime result = *this;
-  if (days == 0) return result;
+  if (days == 0)
+    return result;
 
-  static const int daysInMonth[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  static const int daysInMonth[] = {0,  31, 28, 31, 30, 31, 30,
+                                    31, 31, 30, 31, 30, 31};
 
   auto getMonthDays = [](int y, int m) -> int {
-    if (m == 2 && isLeapYear(y)) return 29;
+    if (m == 2 && isLeapYear(y))
+      return 29;
     return daysInMonth[m];
   };
 
@@ -177,6 +182,40 @@ inline DateTime DateTime::addDays(int days) const {
     result.month = m;
     result.year = y;
   }
+  return result;
+}
+
+inline DateTime DateTime::addMonths(int months) const {
+  DateTime result = *this;
+  if (months == 0)
+    return result;
+
+  static const int daysInMonth[] = {0,  31, 28, 31, 30, 31, 30,
+                                    31, 31, 30, 31, 30, 31};
+
+  auto getMonthDays = [](int y, int m) -> int {
+    if (m == 2 && isLeapYear(y))
+      return 29;
+    return daysInMonth[m];
+  };
+
+  int totalMonths = (result.year * 12 + (result.month - 1)) + months;
+  int newYear = totalMonths / 12;
+  int newMonth = (totalMonths % 12) + 1;
+  if (newMonth <= 0) {
+    newYear -= 1;
+    newMonth += 12;
+  }
+
+  result.year = newYear;
+  result.month = newMonth;
+
+  // Kẹp ngày về cuối tháng đích nếu ngày vượt quá số ngày của tháng đó
+  int maxDays = getMonthDays(result.year, result.month);
+  if (result.day > maxDays) {
+    result.day = maxDays;
+  }
+
   return result;
 }
 

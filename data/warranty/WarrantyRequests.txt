@@ -1,0 +1,3 @@
+id|warrantyId|customerId|handlerEmployeeId|issueDescription|resolutionNote|repairCost|createdAt|completedAt|status
+WREQ-18092026-000001|WAR-000001|CUS-000001|EMP-000002|Máy bị chập chờn khi cắm sạc nhanh 45W tự ngắt sau 5 phút|Đã nhận máy kiểm tra mạch sạc. Dự kiến thay chân sạc Type-C chính hãng.|0.00|18/09/2026 15:00:00|01/01/1970 00:00:00|1
+WREQ-20092026-000001|WAR-000001|CUS-000001|EMP-000001|Màn hình có 1 đường kẻ sọc xanh nhấp nháy góc trên bên phải|Kiểm tra định kỳ|0.00|20/09/2026 11:20:00|12/11/2026 15:46:39|2

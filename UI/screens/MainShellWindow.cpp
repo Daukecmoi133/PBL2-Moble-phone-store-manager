@@ -588,6 +588,15 @@ void MainShellWindow::navigateTo(const std::string &pageName) {
   if (pageName.empty())
     return;
 
+  // Bảo vệ phân quyền: Nhân viên kho (Warehouse) không có quyền xem các trang bảo hành
+  const auto &currentUser = controller->getCurrentUser();
+  if (currentUser.isWarehouse()) {
+    if (pageName == "sales_warranty" || pageName == "admin_warranty" ||
+        pageName == "customer_warranty") {
+      return;
+    }
+  }
+
   // Đóng overlay dialog nếu đang mở khi chuyển trang
   closeOverlayDialog();
 

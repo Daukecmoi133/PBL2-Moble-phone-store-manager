@@ -89,7 +89,6 @@ private:
     std::string invoiceFilterKeyword;
     GtkWidget* warrantyListBox;
     GtkWidget* warrantyCountBadge = nullptr;
-    std::string warrantyFilterKeyword;
     GtkWidget* reportsListBox;
     GtkWidget* realTimeReconcileBox;
     GtkWidget* lblClockDisplay = nullptr;
@@ -98,6 +97,11 @@ private:
     std::string orderFilterKeyword;
     int orderFilterStatus;
     int orderFilterPayment;
+
+    // Warranty filters
+    std::string warrantyFilterKeyword;
+    int warrantyFilterStatus = -1;
+    guint warrantySortBy = 0;
 
     // Bộ lọc báo cáo doanh thu theo khoảng ngày (DD/MM/YYYY, để trống = toàn thời gian)
     std::string reportFromDate;
@@ -148,6 +152,7 @@ public:
 
     void showOrderListView();
     void showOrderDetailView(const OrderItemViewModel& ord);
+    void showProcessWarrantyModal(const WarrantyItemViewModel& item);
 
 private:
     void buildDashboardView();
