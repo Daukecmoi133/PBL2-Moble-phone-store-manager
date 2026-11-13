@@ -19,18 +19,27 @@ private:
 public:
     static void setDataRoot(const std::string& dir) { s_customDataDir = dir; }
     static void clearDataRoot() { s_customDataDir = ""; }
+    static std::string getDataRoot() {
+        if (!s_customDataDir.empty()) return s_customDataDir;
+        const char* envData = std::getenv("PBL2_DATA_DIR");
+        if (envData && envData[0] != '\0') return std::string(envData);
+        const char* envSandbox = std::getenv("PBL2_TEST_SANDBOX");
+        if (envSandbox && envSandbox[0] != '\0') return std::string(envSandbox);
+        return "";
+    }
 
     static std::string resolveDataPath(const std::string& relativePath) {
         if (relativePath.empty()) return "";
-        if (!s_customDataDir.empty()) {
-            if (relativePath == "data") return s_customDataDir;
-            if (relativePath.rfind(s_customDataDir, 0) == 0) {
+        std::string effectiveRoot = getDataRoot();
+        if (!effectiveRoot.empty()) {
+            if (relativePath == "data") return effectiveRoot;
+            if (relativePath.rfind(effectiveRoot, 0) == 0) {
                 return relativePath;
             }
             if (relativePath.rfind("data/", 0) == 0 || relativePath.rfind("data\\", 0) == 0) {
-                return s_customDataDir + "/" + relativePath.substr(5);
+                return effectiveRoot + "/" + relativePath.substr(5);
             }
-            return s_customDataDir + "/" + relativePath;
+            return effectiveRoot + "/" + relativePath;
         }
 
         std::error_code ec;

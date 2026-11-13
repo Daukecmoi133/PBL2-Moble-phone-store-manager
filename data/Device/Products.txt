@@ -1,8 +1,41 @@
 id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications
-PHN-000101|Oppo Reno 16F 5G|Oppo|Android - ColorOS 16|10.600.000|14.000.000|42|Oppo Electronics|6.57 inch AMOLED, 8GB RAM, 256GB, Dimensity 7300-Energy, 7000mAh
-PHN-000102|iPhone 15 Pro Max 256GB|Apple|iOS 17|27.500.000|31.990.000|18|Apple Inc.|6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
-PHN-000103|Samsung Galaxy S24 Ultra 256GB|Samsung|Android 14 - One UI 6.1|25.000.000|29.990.000|25|Samsung Electronics|6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
-PHN-000104|Xiaomi 14 Ultra 512GB|Xiaomi|Android 14 - HyperOS|21.000.000|25.490.000|14|Xiaomi Corporation|6.73 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh
-PHN-000105|iPhone 13 128GB|Apple|iOS 15|11.200.000|13.890.000|31|Apple Inc.|6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
-PHN-000106|Samsung Galaxy A55 5G|Samsung|Android 14 - One UI 6.1|7.500.000|9.690.000|49|Samsung Electronics|Samsung Galaxy A55 5G 128GB, Samsung, Android 14 - One UI 6.1, 6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh
-PHN-000107|Oppo Find X7 Ultra|Oppo|Android 14 - ColorOS 14|18.500.000|22.900.000|11|Oppo Electronics|Oppo Find X7 Ultra 256GB, Oppo, Android 14 - ColorOS 14, 6.82 inch AMOLED, 16GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000101|Oppo Reno 16F 5G 256GB - Cam Hổ Phách|Oppo|Android - ColorOS 16|10.600.000|14.000.000|42|Oppo Electronics|6.57 inch AMOLED, 8GB RAM, 256GB, Dimensity 7300-Energy, 7000mAh, Màu Cam Hổ Phách
+PHN-000102|iPhone 15 Pro Max 256GB - Titan Tự Nhiên|Apple|iOS 17|27.500.000|31.990.000|18|Apple Inc.|6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh, Màu Titan Tự Nhiên
+PHN-000103|Samsung Galaxy S24 Ultra 256GB - Xám Titan|Samsung|Android 14 - One UI 6.1|25.000.000|29.990.000|23|Samsung Electronics|6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh, Màu Xám Titan
+PHN-000104|Xiaomi 14 Ultra 512GB - Đen|Xiaomi|Android 14 - HyperOS|21.000.000|25.490.000|14|Xiaomi Corporation|6.73 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh, Màu Đen
+PHN-000105|iPhone 13 128GB - Xanh Midnight|Apple|iOS 15|11.200.000|13.890.000|31|Apple Inc.|6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh, Màu Xanh Midnight
+PHN-000106|Samsung Galaxy A55 5G 128GB - Xanh Iceblue|Samsung|Android 14 - One UI 6.1|7.500.000|9.690.000|49|Samsung Electronics|6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh, Màu Xanh Iceblue
+PHN-000107|Oppo Find X7 Ultra 256GB - Nâu Da|Oppo|Android 14 - ColorOS 14|18.500.000|22.900.000|11|Oppo Electronics|6.82 inch AMOLED, 16GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh, Màu Nâu Da
+PHN-000108|Oppo Reno 16F 5G 256GB - Xanh Olive|Oppo|Android - ColorOS 16|10.600.000|14.000.000|25|Oppo Electronics|6.57 inch AMOLED, 8GB RAM, 256GB, Dimensity 7300-Energy, 7000mAh, Màu Xanh Olive
+PHN-000109|Oppo Reno 16F 5G 128GB - Cam Hổ Phách|Oppo|Android - ColorOS 16|9.200.000|11.990.000|18|Oppo Electronics|6.57 inch AMOLED, 8GB RAM, 128GB, Dimensity 7300-Energy, 7000mAh, Màu Cam Hổ Phách
+PHN-000110|Oppo Reno 16F 5G 128GB - Xanh Olive|Oppo|Android - ColorOS 16|9.200.000|11.990.000|20|Oppo Electronics|6.57 inch AMOLED, 8GB RAM, 128GB, Dimensity 7300-Energy, 7000mAh, Màu Xanh Olive
+PHN-000111|iPhone 15 Pro Max 256GB - Titan Xanh|Apple|iOS 17|27.500.000|31.990.000|15|Apple Inc.|6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh, Màu Titan Xanh
+PHN-000112|iPhone 15 Pro Max 256GB - Titan Đen|Apple|iOS 17|27.500.000|31.990.000|12|Apple Inc.|6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh, Màu Titan Đen
+PHN-000113|iPhone 15 Pro Max 256GB - Titan Trắng|Apple|iOS 17|27.500.000|31.990.000|8|Apple Inc.|6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh, Màu Titan Trắng
+PHN-000114|iPhone 15 Pro Max 512GB - Titan Tự Nhiên|Apple|iOS 17|31.500.000|36.990.000|10|Apple Inc.|6.7 inch OLED, 8GB RAM, 512GB, A17 Pro, 4422mAh, Màu Titan Tự Nhiên
+PHN-000115|iPhone 15 Pro Max 512GB - Titan Xanh|Apple|iOS 17|31.500.000|36.990.000|7|Apple Inc.|6.7 inch OLED, 8GB RAM, 512GB, A17 Pro, 4422mAh, Màu Titan Xanh
+PHN-000116|iPhone 15 Pro Max 512GB - Titan Đen|Apple|iOS 17|31.500.000|36.990.000|5|Apple Inc.|6.7 inch OLED, 8GB RAM, 512GB, A17 Pro, 4422mAh, Màu Titan Đen
+PHN-000117|iPhone 15 Pro Max 1TB - Titan Tự Nhiên|Apple|iOS 17|36.500.000|42.990.000|4|Apple Inc.|6.7 inch OLED, 8GB RAM, 1TB, A17 Pro, 4422mAh, Màu Titan Tự Nhiên
+PHN-000118|iPhone 15 Pro Max 1TB - Titan Đen|Apple|iOS 17|36.500.000|42.990.000|3|Apple Inc.|6.7 inch OLED, 8GB RAM, 1TB, A17 Pro, 4422mAh, Màu Titan Đen
+PHN-000119|Samsung Galaxy S24 Ultra 256GB - Đen Titan|Samsung|Android 14 - One UI 6.1|25.000.000|29.990.000|17|Samsung Electronics|6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh, Màu Đen Titan
+PHN-000120|Samsung Galaxy S24 Ultra 256GB - Tím Titan|Samsung|Android 14 - One UI 6.1|25.000.000|29.990.000|14|Samsung Electronics|6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh, Màu Tím Titan
+PHN-000121|Samsung Galaxy S24 Ultra 256GB - Vàng Titan|Samsung|Android 14 - One UI 6.1|25.000.000|29.990.000|9|Samsung Electronics|6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh, Màu Vàng Titan
+PHN-000122|Samsung Galaxy S24 Ultra 512GB - Xám Titan|Samsung|Android 14 - One UI 6.1|28.500.000|34.490.000|12|Samsung Electronics|6.8 inch AMOLED, 12GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh, Màu Xám Titan
+PHN-000123|Samsung Galaxy S24 Ultra 512GB - Đen Titan|Samsung|Android 14 - One UI 6.1|28.500.000|34.490.000|8|Samsung Electronics|6.8 inch AMOLED, 12GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh, Màu Đen Titan
+PHN-000124|Samsung Galaxy S24 Ultra 1TB - Xám Titan|Samsung|Android 14 - One UI 6.1|33.500.000|39.990.000|6|Samsung Electronics|6.8 inch AMOLED, 12GB RAM, 1TB, Snapdragon 8 Gen 3, 5000mAh, Màu Xám Titan
+PHN-000125|Xiaomi 14 Ultra 512GB - Trắng|Xiaomi|Android 14 - HyperOS|21.000.000|25.490.000|10|Xiaomi Corporation|6.73 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh, Màu Trắng
+PHN-000126|Xiaomi 14 Ultra 1TB - Đen|Xiaomi|Android 14 - HyperOS|24.500.000|29.990.000|7|Xiaomi Corporation|6.73 inch AMOLED, 16GB RAM, 1TB, Snapdragon 8 Gen 3, 5000mAh, Màu Đen
+PHN-000127|Xiaomi 14 Ultra 1TB - Trắng|Xiaomi|Android 14 - HyperOS|24.500.000|29.990.000|5|Xiaomi Corporation|6.73 inch AMOLED, 16GB RAM, 1TB, Snapdragon 8 Gen 3, 5000mAh, Màu Trắng
+PHN-000128|iPhone 13 128GB - Hồng|Apple|iOS 15|11.200.000|13.890.000|22|Apple Inc.|6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh, Màu Hồng
+PHN-000129|iPhone 13 128GB - Trắng Ánh Sao|Apple|iOS 15|11.200.000|13.890.000|19|Apple Inc.|6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh, Màu Trắng Ánh Sao
+PHN-000130|iPhone 13 128GB - Xanh Lá|Apple|iOS 15|11.200.000|13.890.000|14|Apple Inc.|6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh, Màu Xanh Lá
+PHN-000131|iPhone 13 256GB - Xanh Midnight|Apple|iOS 15|13.500.000|16.490.000|15|Apple Inc.|6.1 inch OLED, 4GB RAM, 256GB, A15 Bionic, 3227mAh, Màu Xanh Midnight
+PHN-000132|iPhone 13 256GB - Hồng|Apple|iOS 15|13.500.000|16.490.000|11|Apple Inc.|6.1 inch OLED, 4GB RAM, 256GB, A15 Bionic, 3227mAh, Màu Hồng
+PHN-000133|iPhone 13 512GB - Xanh Midnight|Apple|iOS 15|17.000.000|20.990.000|8|Apple Inc.|6.1 inch OLED, 4GB RAM, 512GB, A15 Bionic, 3227mAh, Màu Xanh Midnight
+PHN-000134|Samsung Galaxy A55 5G 128GB - Tím Lilac|Samsung|Android 14 - One UI 6.1|7.500.000|9.690.000|35|Samsung Electronics|6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh, Màu Tím Lilac
+PHN-000135|Samsung Galaxy A55 5G 128GB - Xanh Navy|Samsung|Android 14 - One UI 6.1|7.500.000|9.690.000|28|Samsung Electronics|6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh, Màu Xanh Navy
+PHN-000136|Samsung Galaxy A55 5G 256GB - Xanh Iceblue|Samsung|Android 14 - One UI 6.1|8.800.000|10.990.000|24|Samsung Electronics|6.6 inch AMOLED, 8GB RAM, 256GB, Exynos 1480, 5000mAh, Màu Xanh Iceblue
+PHN-000137|Samsung Galaxy A55 5G 256GB - Tím Lilac|Samsung|Android 14 - One UI 6.1|8.800.000|10.990.000|18|Samsung Electronics|6.6 inch AMOLED, 8GB RAM, 256GB, Exynos 1480, 5000mAh, Màu Tím Lilac
+PHN-000138|Oppo Find X7 Ultra 256GB - Đen|Oppo|Android 14 - ColorOS 14|18.500.000|22.900.000|9|Oppo Electronics|6.82 inch AMOLED, 16GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh, Màu Đen
+PHN-000139|Oppo Find X7 Ultra 512GB - Nâu Da|Oppo|Android 14 - ColorOS 14|21.000.000|25.900.000|6|Oppo Electronics|6.82 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh, Màu Nâu Da
+PHN-000140|Oppo Find X7 Ultra 512GB - Đen|Oppo|Android 14 - ColorOS 14|21.000.000|25.900.000|4|Oppo Electronics|6.82 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh, Màu Đen

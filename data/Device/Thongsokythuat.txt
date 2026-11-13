@@ -1,4 +1,81 @@
 PHN-000101|
+Xuất xứ:Trung Quốc
+Thời điểm ra mắt:12/07/2026
+Thời gian bảo hành chính hãng:12 tháng
+Kích thước:158.16 x 4.93 x 8.58mm
+Trọng lượng sản phẩm:197g
+Khung máy:Nhựa
+Mặt lưng máy:Thủy tinh hữu cơ
+Phiên bản CPU:Dimensity 7300-Enegy 5G
+Loại CPU:Octa-Core
+Số nhân:8
+Tốc độ tối đa:2.5 GHz
+Ram:8 GB
+Kích thước màn hình:6.57 inch
+Công nghệ màn hình:AMOLED
+Chuẩn màn hình:FHD+
+Độ phân giải:1080 x 2372 Pixels
+Tần số quét:120 Hz
+Chất liệu mặt lưng:Kính cường lực AGC DT Stat D+
+Loại cảm ứng:Điện dung đa điểm
+Chip đồ họa:Arm Mali-G615
+Dung lượng(ROM):256 GB
+Thẻ nhớ ngoài:MicroSD
+Số camera sau:Triple rear camera
+Camera 1:Wide
+Resolution:50.0 MP
+Aperture:ƒ/1.8
+Resolution:8.0 MP
+Aperture:ƒ/2.2
+Resolution:50.0 MP
+Aperture:ƒ/2.8
+Quay phim camera sau:1080p@30fps / 720p@30fps
+Số Camera Selfie:Single selfie camera
+Resolution camera 1:50.0 MP
+Aperture:ƒ/2.0
+Quay phim camera selfie:1080p@30fps
+Bảo mật:Mở khoá vân tay cạnh viền
+Số khe SIM:2
+Thẻ SIM:2 Nano SIM
+Hỗ trợ mạng:5G
+Cổng sạc:Type C
+Bluetooth:v5.4
+Kết nối khác:NFC
+Loại PIN:Lithium polymer
+Dung lượng pin:7000 mAh
+Củ sạc kèm máy:SuperVOOC 80W
+Thông tin thêm:Sạc pin nhanh
+PHN-000102|
+Tên thương mại:iPhone 15 Pro Max 256GB
+Thương hiệu:Apple
+Hệ điều hành theo catalog:iOS 17
+Thông số theo catalog:6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
+PHN-000103|
+Tên thương mại: Samsung Galaxy S24 Ultra 256GB
+Thương hiệu: Samsung
+Hệ điều hành theo catalog: Android 14 - One UI 6.1
+Thông số theo catalog: 6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000104|
+Tên thương mại: Xiaomi 14 Ultra 512GB
+Thương hiệu: Xiaomi
+Hệ điều hành theo catalog: Android 14 - HyperOS
+Thông số theo catalog: 6.73 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000105|
+Tên thương mại: iPhone 13 128GB
+Thương hiệu: Apple
+Hệ điều hành theo catalog: iOS 15
+Thông số theo catalog: 6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
+PHN-000106|
+Tên thương mại:Samsung Galaxy A55 5G 128GB
+Thương hiệu:Samsung
+Hệ điều hành theo catalog:Android 14 - One UI 6.1
+Thông số theo catalog:6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh
+PHN-000107|
+Tên thương mại:Oppo Find X7 Ultra 256GB
+Thương hiệu:Oppo
+Hệ điều hành theo catalog:Android 14 - ColorOS 14
+Thông số theo catalog:6.82 inch AMOLED, 16GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000108|
 -Thông tin hàng hóa:
                 Xuất xứ:Trung Quốc
                 Thời điểm ra mắt:12/07/2026
@@ -96,32 +173,348 @@ PHN-000101|
                             +Ốp lưng
                             +Que lấy SIM
                             +Sách HDSD
-PHN-000102|
-Tên thương mại: iPhone 15 Pro Max 256GB
-Thương hiệu: Apple
-Hệ điều hành theo catalog: iOS 17
-Thông số theo catalog: 6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
-PHN-000103|
+PHN-000109|
+-Thông tin hàng hóa:
+                Xuất xứ:Trung Quốc
+                Thời điểm ra mắt:12/07/2026
+                Thời gian bảo hành chính hãng:12 tháng
+- Thiết kế & Trong lượng:
+                Kích thước:158.16 x 4.93 x 8.58mm
+                Trọng lượng sản phẩm:197g
+                Chất liệu:  
+                            + Khung máy:Nhựa
+                            + Mặt lưng máy:Thủy tinh hữu cơ
+- Bộ xử lí(CPU):
+                Phiên bản CPU:Dimensity 7300-Enegy 5G
+                Loại CPU:Octa-Core
+                Số nhân:8
+                Tốc độ tối đa:2.5 GHz
+- Ram:          
+                Ram:8 GB
+- Màn hình:
+                Kích thước màn hình:6.57 inch
+                Công nghệ màn hình:AMOLED
+                Chuẩn màn hình:FHD+
+                Độ phân giải:1080 x 2372 Pixels
+                Tần số quét:120 Hz
+                Chất liệu mặt lưng:Kính cường lực AGC DT Stat D+
+                Loại cảm ứng:Điện dung đa điểm
+                Độ sáng 1400 nits
+- Chip đồ họa(GPU):
+                Chip đồ họa:Arm Mali-G615
+- Lưu trữ:
+                Dung lượng(ROM):256 GB
+                Thẻ nhớ ngoài:MicroSD
+- Camera sau:
+                Số camera sau:Triple rear camera
+                Camera 1:Wide
+                Resolution:50.0 MP
+                Aperture:ƒ/1.8
+                Resolution:8.0 MP
+                Aperture:ƒ/2.2
+                Resolution:50.0 MP
+                Aperture:ƒ/2.8
+                Quay phim camera sau:1080p@30fps / 720p@30fps
+                Tính năng:
+                            +Xóa phông
+                            +Trôi nhanh thời gian (Time Lapse)
+                            +Siêu cận (Macro)
+                            +HDR
+                            +Ban đêm (Night Mode)
+- Camera Selfie:
+                Số Camera Selfie:Single selfie camera
+                Resolution camera 1:50.0 MP
+                Aperture:ƒ/2.0
+                Quay phim camera selfie:1080p@30fps
+                Tính năng:
+                            +Xóa phông
+                            +Trôi nhanh thời gian (Time lapse)
+                            +HDR
+                            +Ban đêm (Night Mode)
+
+- Cảm biến:
+                Cảm biến vân tay
+                Cảm biến tiệm cận
+                Cảm biến ánh sáng
+                Cảm biến gia tốc kế
+
+- Bảo mật:
+                Bảo mật:Mở khoá vân tay cạnh viền
+- Giao tiếp và kết nối:
+                Số khe SIM:2
+                Thẻ SIM:2 Nano SIM
+                Hỗ trợ mạng:5G
+
+                Cổng giao tiếp:
+                            +Cổng sạc: Type C
+                Wifi:
+                            +Wifi 6
+                            +Dual-band (2.4 GHz/ 5 GHz)
+                            +802.11 a/b/g/n/ac/ax
+
+                GPS:
+                            +GPS
+                            +GLONASS
+                            +GALILEO
+                            +BDS
+                Bluetooth:v5.4
+                Kết nối khác:NFC
+-Thông tin pin & sạc:
+                Loại PIN:Lithium polymer
+                Dung lượng pin:7000 mAh
+                Củ sạc kèm máy:SuperVOOC 80W
+                Thông tin thêm:Sạc pin nhanh
+-Phụ kiện trong hộp:
+                Phụ kiện trong hộp:
+                            +Cáp
+                            +Củ sạc
+                            +Ốp lưng
+                            +Que lấy SIM
+                            +Sách HDSD
+PHN-000110|
+-Thông tin hàng hóa:
+                Xuất xứ:Trung Quốc
+                Thời điểm ra mắt:12/07/2026
+                Thời gian bảo hành chính hãng:12 tháng
+- Thiết kế & Trong lượng:
+                Kích thước:158.16 x 4.93 x 8.58mm
+                Trọng lượng sản phẩm:197g
+                Chất liệu:  
+                            + Khung máy:Nhựa
+                            + Mặt lưng máy:Thủy tinh hữu cơ
+- Bộ xử lí(CPU):
+                Phiên bản CPU:Dimensity 7300-Enegy 5G
+                Loại CPU:Octa-Core
+                Số nhân:8
+                Tốc độ tối đa:2.5 GHz
+- Ram:          
+                Ram:8 GB
+- Màn hình:
+                Kích thước màn hình:6.57 inch
+                Công nghệ màn hình:AMOLED
+                Chuẩn màn hình:FHD+
+                Độ phân giải:1080 x 2372 Pixels
+                Tần số quét:120 Hz
+                Chất liệu mặt lưng:Kính cường lực AGC DT Stat D+
+                Loại cảm ứng:Điện dung đa điểm
+                Độ sáng 1400 nits
+- Chip đồ họa(GPU):
+                Chip đồ họa:Arm Mali-G615
+- Lưu trữ:
+                Dung lượng(ROM):256 GB
+                Thẻ nhớ ngoài:MicroSD
+- Camera sau:
+                Số camera sau:Triple rear camera
+                Camera 1:Wide
+                Resolution:50.0 MP
+                Aperture:ƒ/1.8
+                Resolution:8.0 MP
+                Aperture:ƒ/2.2
+                Resolution:50.0 MP
+                Aperture:ƒ/2.8
+                Quay phim camera sau:1080p@30fps / 720p@30fps
+                Tính năng:
+                            +Xóa phông
+                            +Trôi nhanh thời gian (Time Lapse)
+                            +Siêu cận (Macro)
+                            +HDR
+                            +Ban đêm (Night Mode)
+- Camera Selfie:
+                Số Camera Selfie:Single selfie camera
+                Resolution camera 1:50.0 MP
+                Aperture:ƒ/2.0
+                Quay phim camera selfie:1080p@30fps
+                Tính năng:
+                            +Xóa phông
+                            +Trôi nhanh thời gian (Time lapse)
+                            +HDR
+                            +Ban đêm (Night Mode)
+
+- Cảm biến:
+                Cảm biến vân tay
+                Cảm biến tiệm cận
+                Cảm biến ánh sáng
+                Cảm biến gia tốc kế
+
+- Bảo mật:
+                Bảo mật:Mở khoá vân tay cạnh viền
+- Giao tiếp và kết nối:
+                Số khe SIM:2
+                Thẻ SIM:2 Nano SIM
+                Hỗ trợ mạng:5G
+
+                Cổng giao tiếp:
+                            +Cổng sạc: Type C
+                Wifi:
+                            +Wifi 6
+                            +Dual-band (2.4 GHz/ 5 GHz)
+                            +802.11 a/b/g/n/ac/ax
+
+                GPS:
+                            +GPS
+                            +GLONASS
+                            +GALILEO
+                            +BDS
+                Bluetooth:v5.4
+                Kết nối khác:NFC
+-Thông tin pin & sạc:
+                Loại PIN:Lithium polymer
+                Dung lượng pin:7000 mAh
+                Củ sạc kèm máy:SuperVOOC 80W
+                Thông tin thêm:Sạc pin nhanh
+-Phụ kiện trong hộp:
+                Phụ kiện trong hộp:
+                            +Cáp
+                            +Củ sạc
+                            +Ốp lưng
+                            +Que lấy SIM
+                            +Sách HDSD
+PHN-000111|
+Tên thương mại:iPhone 15 Pro Max 256GB
+Thương hiệu:Apple
+Hệ điều hành theo catalog:iOS 17
+Thông số theo catalog:6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
+PHN-000112|
+Tên thương mại:iPhone 15 Pro Max 256GB
+Thương hiệu:Apple
+Hệ điều hành theo catalog:iOS 17
+Thông số theo catalog:6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
+PHN-000113|
+Tên thương mại:iPhone 15 Pro Max 256GB
+Thương hiệu:Apple
+Hệ điều hành theo catalog:iOS 17
+Thông số theo catalog:6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
+PHN-000114|
+Tên thương mại:iPhone 15 Pro Max 256GB
+Thương hiệu:Apple
+Hệ điều hành theo catalog:iOS 17
+Thông số theo catalog:6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
+PHN-000115|
+Tên thương mại:iPhone 15 Pro Max 256GB
+Thương hiệu:Apple
+Hệ điều hành theo catalog:iOS 17
+Thông số theo catalog:6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
+PHN-000116|
+Tên thương mại:iPhone 15 Pro Max 256GB
+Thương hiệu:Apple
+Hệ điều hành theo catalog:iOS 17
+Thông số theo catalog:6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
+PHN-000117|
+Tên thương mại:iPhone 15 Pro Max 256GB
+Thương hiệu:Apple
+Hệ điều hành theo catalog:iOS 17
+Thông số theo catalog:6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
+PHN-000118|
+Tên thương mại:iPhone 15 Pro Max 256GB
+Thương hiệu:Apple
+Hệ điều hành theo catalog:iOS 17
+Thông số theo catalog:6.7 inch OLED, 8GB RAM, 256GB, A17 Pro, 4422mAh
+PHN-000119|
 Tên thương mại: Samsung Galaxy S24 Ultra 256GB
 Thương hiệu: Samsung
 Hệ điều hành theo catalog: Android 14 - One UI 6.1
 Thông số theo catalog: 6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
-PHN-000104|
+PHN-000120|
+Tên thương mại: Samsung Galaxy S24 Ultra 256GB
+Thương hiệu: Samsung
+Hệ điều hành theo catalog: Android 14 - One UI 6.1
+Thông số theo catalog: 6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000121|
+Tên thương mại: Samsung Galaxy S24 Ultra 256GB
+Thương hiệu: Samsung
+Hệ điều hành theo catalog: Android 14 - One UI 6.1
+Thông số theo catalog: 6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000122|
+Tên thương mại: Samsung Galaxy S24 Ultra 256GB
+Thương hiệu: Samsung
+Hệ điều hành theo catalog: Android 14 - One UI 6.1
+Thông số theo catalog: 6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000123|
+Tên thương mại: Samsung Galaxy S24 Ultra 256GB
+Thương hiệu: Samsung
+Hệ điều hành theo catalog: Android 14 - One UI 6.1
+Thông số theo catalog: 6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000124|
+Tên thương mại: Samsung Galaxy S24 Ultra 256GB
+Thương hiệu: Samsung
+Hệ điều hành theo catalog: Android 14 - One UI 6.1
+Thông số theo catalog: 6.8 inch AMOLED, 12GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000125|
 Tên thương mại: Xiaomi 14 Ultra 512GB
 Thương hiệu: Xiaomi
 Hệ điều hành theo catalog: Android 14 - HyperOS
 Thông số theo catalog: 6.73 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh
-PHN-000105|
+PHN-000126|
+Tên thương mại: Xiaomi 14 Ultra 512GB
+Thương hiệu: Xiaomi
+Hệ điều hành theo catalog: Android 14 - HyperOS
+Thông số theo catalog: 6.73 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000127|
+Tên thương mại: Xiaomi 14 Ultra 512GB
+Thương hiệu: Xiaomi
+Hệ điều hành theo catalog: Android 14 - HyperOS
+Thông số theo catalog: 6.73 inch AMOLED, 16GB RAM, 512GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000128|
 Tên thương mại: iPhone 13 128GB
 Thương hiệu: Apple
 Hệ điều hành theo catalog: iOS 15
 Thông số theo catalog: 6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
-PHN-000106|
+PHN-000129|
+Tên thương mại: iPhone 13 128GB
+Thương hiệu: Apple
+Hệ điều hành theo catalog: iOS 15
+Thông số theo catalog: 6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
+PHN-000130|
+Tên thương mại: iPhone 13 128GB
+Thương hiệu: Apple
+Hệ điều hành theo catalog: iOS 15
+Thông số theo catalog: 6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
+PHN-000131|
+Tên thương mại: iPhone 13 128GB
+Thương hiệu: Apple
+Hệ điều hành theo catalog: iOS 15
+Thông số theo catalog: 6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
+PHN-000132|
+Tên thương mại: iPhone 13 128GB
+Thương hiệu: Apple
+Hệ điều hành theo catalog: iOS 15
+Thông số theo catalog: 6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
+PHN-000133|
+Tên thương mại: iPhone 13 128GB
+Thương hiệu: Apple
+Hệ điều hành theo catalog: iOS 15
+Thông số theo catalog: 6.1 inch OLED, 4GB RAM, 128GB, A15 Bionic, 3227mAh
+PHN-000134|
 Tên thương mại:Samsung Galaxy A55 5G 128GB
 Thương hiệu:Samsung
 Hệ điều hành theo catalog:Android 14 - One UI 6.1
 Thông số theo catalog:6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh
-PHN-000107|
+PHN-000135|
+Tên thương mại:Samsung Galaxy A55 5G 128GB
+Thương hiệu:Samsung
+Hệ điều hành theo catalog:Android 14 - One UI 6.1
+Thông số theo catalog:6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh
+PHN-000136|
+Tên thương mại:Samsung Galaxy A55 5G 128GB
+Thương hiệu:Samsung
+Hệ điều hành theo catalog:Android 14 - One UI 6.1
+Thông số theo catalog:6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh
+PHN-000137|
+Tên thương mại:Samsung Galaxy A55 5G 128GB
+Thương hiệu:Samsung
+Hệ điều hành theo catalog:Android 14 - One UI 6.1
+Thông số theo catalog:6.6 inch AMOLED, 8GB RAM, 128GB, Exynos 1480, 5000mAh
+PHN-000138|
+Tên thương mại:Oppo Find X7 Ultra 256GB
+Thương hiệu:Oppo
+Hệ điều hành theo catalog:Android 14 - ColorOS 14
+Thông số theo catalog:6.82 inch AMOLED, 16GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000139|
+Tên thương mại:Oppo Find X7 Ultra 256GB
+Thương hiệu:Oppo
+Hệ điều hành theo catalog:Android 14 - ColorOS 14
+Thông số theo catalog:6.82 inch AMOLED, 16GB RAM, 256GB, Snapdragon 8 Gen 3, 5000mAh
+PHN-000140|
 Tên thương mại:Oppo Find X7 Ultra 256GB
 Thương hiệu:Oppo
 Hệ điều hành theo catalog:Android 14 - ColorOS 14

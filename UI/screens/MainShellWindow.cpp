@@ -584,11 +584,23 @@ void MainShellWindow::handleClockTick() {
   }
 }
 
+void MainShellWindow::navigateToCartWithOnlySelected(
+    const std::string &phoneId) {
+  if (customerScreens) {
+    customerScreens->selectOnlyCartItem(phoneId);
+  }
+  navigateTo("customer_cart");
+  if (customerScreens) {
+    customerScreens->refreshCart();
+  }
+}
+
 void MainShellWindow::navigateTo(const std::string &pageName) {
   if (pageName.empty())
     return;
 
-  // Bảo vệ phân quyền: Nhân viên kho (Warehouse) không có quyền xem các trang bảo hành
+  // Bảo vệ phân quyền: Nhân viên kho (Warehouse) không có quyền xem các trang
+  // bảo hành
   const auto &currentUser = controller->getCurrentUser();
   if (currentUser.isWarehouse()) {
     if (pageName == "sales_warranty" || pageName == "admin_warranty" ||
@@ -825,13 +837,13 @@ void MainShellWindow::pushPage(const std::string &id, GtkWidget *content,
   GtkWidget *header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
   gtk_widget_add_css_class(header, "page-header");
 
-  // Nút Quay lại (.page-back-btn) chỉ hiển thị khi trang không tự bố trí nút điều hướng
+  // Nút Quay lại (.page-back-btn) chỉ hiển thị khi trang không tự bố trí nút
+  // điều hướng
   if (showTopBack) {
     GtkWidget *btnBack = gtk_button_new_with_label("← Quay lại");
     gtk_widget_add_css_class(btnBack, "page-back-btn");
     UIComponents::setButtonCursor(btnBack);
-    g_signal_connect_swapped(btnBack, "clicked",
-                             G_CALLBACK(+[](gpointer d) {
+    g_signal_connect_swapped(btnBack, "clicked", G_CALLBACK(+[](gpointer d) {
                                static_cast<MainShellWindow *>(d)->popPage();
                              }),
                              this);
@@ -853,8 +865,7 @@ void MainShellWindow::pushPage(const std::string &id, GtkWidget *content,
   gtk_box_append(GTK_BOX(pageBox), content);
 
   // Định danh cho child trong GtkStack
-  std::string childName =
-      "page_" + std::to_string(pageStack.size()) + "_" + id;
+  std::string childName = "page_" + std::to_string(pageStack.size()) + "_" + id;
   gtk_stack_add_named(GTK_STACK(pageNavStack), pageBox, childName.c_str());
 
   // Transition OVER_LEFT (260ms — trang mới trượt đè êm ái từ phải sang trái)
@@ -874,7 +885,8 @@ void MainShellWindow::popPage() {
   PageEntry top = pageStack.back();
   pageStack.pop_back();
 
-  // Transition UNDER_RIGHT (260ms — trang hiện tại trượt lùi về phải để lộ trang dưới)
+  // Transition UNDER_RIGHT (260ms — trang hiện tại trượt lùi về phải để lộ
+  // trang dưới)
   gtk_stack_set_transition_type(GTK_STACK(pageNavStack),
                                 GTK_STACK_TRANSITION_TYPE_UNDER_RIGHT);
   gtk_stack_set_transition_duration(GTK_STACK(pageNavStack), 260);
@@ -910,8 +922,8 @@ void MainShellWindow::popPage() {
               GTK_IS_WIDGET(page)) {
             if (gtk_widget_get_parent(page) ==
                 s_activeShellInstance->pageNavStack) {
-              gtk_stack_remove(
-                  GTK_STACK(s_activeShellInstance->pageNavStack), page);
+              gtk_stack_remove(GTK_STACK(s_activeShellInstance->pageNavStack),
+                               page);
             }
           }
         }
@@ -970,21 +982,20 @@ void MainShellWindow::showOverlayDialog(GtkWidget *card) {
   // Gesture click vào nền mờ (scrim) bên ngoài card để đóng
   GtkGesture *click = gtk_gesture_click_new();
   gtk_gesture_single_set_button(GTK_GESTURE_SINGLE(click), GDK_BUTTON_PRIMARY);
-  g_signal_connect(click, "pressed",
-                   G_CALLBACK(+[](GtkGestureClick *, int, double x, double y,
-                                  gpointer d) {
-                     MainShellWindow *self = static_cast<MainShellWindow *>(d);
-                     if (!self || !self->currentOverlayWrapper)
-                       return;
-                     GtkWidget *picked = gtk_widget_pick(
-                         self->currentOverlayWrapper, x, y, GTK_PICK_DEFAULT);
-                     if (picked == self->currentOverlayWrapper) {
-                       self->closeOverlayDialog();
-                     }
-                   }),
-                   this);
-  gtk_widget_add_controller(currentOverlayWrapper,
-                            GTK_EVENT_CONTROLLER(click));
+  g_signal_connect(
+      click, "pressed",
+      G_CALLBACK(+[](GtkGestureClick *, int, double x, double y, gpointer d) {
+        MainShellWindow *self = static_cast<MainShellWindow *>(d);
+        if (!self || !self->currentOverlayWrapper)
+          return;
+        GtkWidget *picked = gtk_widget_pick(self->currentOverlayWrapper, x, y,
+                                            GTK_PICK_DEFAULT);
+        if (picked == self->currentOverlayWrapper) {
+          self->closeOverlayDialog();
+        }
+      }),
+      this);
+  gtk_widget_add_controller(currentOverlayWrapper, GTK_EVENT_CONTROLLER(click));
 
   gtk_overlay_add_overlay(GTK_OVERLAY(toastOverlay), currentOverlayWrapper);
 
@@ -1019,8 +1030,8 @@ void MainShellWindow::closeOverlayDialog() {
 }
 
 gboolean MainShellWindow::on_key_pressed(GtkEventControllerKey *controller,
-                                        guint keyval, guint keycode,
-                                        GdkModifierType state, gpointer data) {
+                                         guint keyval, guint keycode,
+                                         GdkModifierType state, gpointer data) {
   (void)controller;
   (void)keycode;
   (void)state;

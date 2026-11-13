@@ -98,6 +98,7 @@ public:
   std::vector<ProductItemViewModel>
   getProducts(const ProductFilterRequest &filter = ProductFilterRequest());
   ProductItemViewModel getProductById(const std::string &id);
+  std::vector<ProductItemViewModel> getProductVariants(const std::string &phoneIdOrBaseModel);
   OperationResult addProduct(const ProductItemViewModel &product);
   OperationResult updateProduct(const ProductItemViewModel &product);
   OperationResult deleteProduct(const std::string &id);
@@ -105,6 +106,7 @@ public:
                                      const std::string &imageFilePath);
   std::vector<ProductReviewViewModel>
   getProductReviews(const std::string &phoneId);
+  bool canCustomerReviewProduct(const std::string &customerId, const std::string &phoneId);
   OperationResult addProductReview(const std::string &phoneId, int ratingStars,
                                    const std::string &comment);
 
@@ -134,6 +136,7 @@ public:
   OperationResult updateOrderStatus(const std::string &orderId,
                                     OrderStatus newStatus);
   OperationResult cancelOrder(const std::string &orderId);
+  void autoCompleteDeliveredOrders();
 
   // === HÓA ĐƠN ===
   std::vector<InvoiceItemViewModel> getAllInvoices();
@@ -209,7 +212,7 @@ public:
                                          DashboardStatsViewModel
                                          getDashboardStats(
                                              const std::string &fromDate = "",
-                                             const std::string &toDate = "");
+                                             const std::string &toDate = "", int timelineMode = 0);
                                          OperationResult validateReportRange(
                                              const std::string &fromDate,
                                              const std::string &toDate);

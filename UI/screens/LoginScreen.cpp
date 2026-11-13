@@ -37,23 +37,55 @@ LoginScreen::LoginScreen(AppController *ctrl,
       callbackData(userData) {
   s_activeLoginScreen = this;
 
-  // Root Overlay Container (hỗ trợ cả overlay dialog và toast ngay trên màn đăng nhập)
+  // Root Overlay Container (hỗ trợ cả overlay dialog và toast ngay trên màn
+  // đăng nhập)
   rootWidget = gtk_overlay_new();
+  gtk_widget_add_css_class(rootWidget, "login-overlay");
   gtk_widget_set_hexpand(rootWidget, TRUE);
   gtk_widget_set_vexpand(rootWidget, TRUE);
 
-  // Scrolled Container with dark gradient background
+  // Background Picture Widget: đảm bảo ảnh hình nền luôn sắc nét và scale chuẩn
+  // full màn hình
+  const char *bgPath1 =
+      "data/Device/productImages/D&N Store Phone Sales Screen.png";
+  const char *bgPath2 =
+      "C:/DUY/PBL2/data/Device/productImages/D&N Store Phone Sales Screen.png";
+  GFile *bgFile = g_file_new_for_path(bgPath1);
+  if (!g_file_query_exists(bgFile, nullptr)) {
+    g_object_unref(bgFile);
+    bgFile = g_file_new_for_path(bgPath2);
+  }
+  bgPicture = gtk_picture_new_for_file(bgFile);
+  g_object_unref(bgFile);
+  gtk_picture_set_content_fit(GTK_PICTURE(bgPicture), GTK_CONTENT_FIT_COVER);
+  gtk_widget_set_hexpand(bgPicture, TRUE);
+  gtk_widget_set_vexpand(bgPicture, TRUE);
+  gtk_overlay_set_child(GTK_OVERLAY(rootWidget), bgPicture);
+
+  // Dark Gradient Scrim Overlay: Tăng cường độ tương phản, đậm hơn ở phía đặt
+  // form
+  GtkWidget *scrim = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class(scrim, "login-scrim");
+  gtk_widget_set_hexpand(scrim, TRUE);
+  gtk_widget_set_vexpand(scrim, TRUE);
+  gtk_overlay_add_overlay(GTK_OVERLAY(rootWidget), scrim);
+
+  // Scrolled Container with background
   bgScroll = gtk_scrolled_window_new();
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(bgScroll),
                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-  gtk_widget_add_css_class(bgScroll, "login-bg");
+  gtk_widget_add_css_class(bgScroll, "login-scroll");
   gtk_widget_set_hexpand(bgScroll, TRUE);
   gtk_widget_set_vexpand(bgScroll, TRUE);
 
-  // Center Alignment Box
+  // Right Alignment Box: Đưa bảng login sang bên phải đối xứng với dòng chữ D&N
+  // store
   centerBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_widget_set_halign(centerBox, GTK_ALIGN_CENTER);
+  gtk_widget_set_hexpand(centerBox, TRUE);
+  gtk_widget_set_vexpand(centerBox, TRUE);
+  gtk_widget_set_halign(centerBox, GTK_ALIGN_END);
   gtk_widget_set_valign(centerBox, GTK_ALIGN_CENTER);
+  gtk_widget_set_margin_end(centerBox, 100);
   gtk_widget_set_margin_top(centerBox, 40);
   gtk_widget_set_margin_bottom(centerBox, 40);
 
@@ -66,15 +98,15 @@ LoginScreen::LoginScreen(AppController *ctrl,
 
   loginCard = gtk_box_new(GTK_ORIENTATION_VERTICAL, 16);
   gtk_widget_add_css_class(loginCard, "login-card");
-  gtk_widget_set_size_request(loginCard, 540, -1);
+  gtk_widget_set_size_request(loginCard, 480, -1);
 
   registerCard = gtk_box_new(GTK_ORIENTATION_VERTICAL, 14);
   gtk_widget_add_css_class(registerCard, "login-card");
-  gtk_widget_set_size_request(registerCard, 540, -1);
+  gtk_widget_set_size_request(registerCard, 480, -1);
 
   forgotCard = gtk_box_new(GTK_ORIENTATION_VERTICAL, 14);
   gtk_widget_add_css_class(forgotCard, "login-card");
-  gtk_widget_set_size_request(forgotCard, 540, -1);
+  gtk_widget_set_size_request(forgotCard, 480, -1);
 
   gtk_stack_add_named(GTK_STACK(authStack), loginCard, "login");
   gtk_stack_add_named(GTK_STACK(authStack), registerCard, "register");
@@ -82,33 +114,32 @@ LoginScreen::LoginScreen(AppController *ctrl,
 
   gtk_box_append(GTK_BOX(centerBox), authStack);
   gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(bgScroll), centerBox);
-  gtk_overlay_set_child(GTK_OVERLAY(rootWidget), bgScroll);
+  gtk_overlay_add_overlay(GTK_OVERLAY(rootWidget), bgScroll);
 
   // Phím Esc: đóng overlay dialog nếu đang mở, hoặc quay lại trang Đăng nhập
   GtkEventController *keyCtrl = gtk_event_controller_key_new();
   gtk_event_controller_set_propagation_phase(keyCtrl, GTK_PHASE_CAPTURE);
-  g_signal_connect(
-      keyCtrl, "key-pressed",
-      G_CALLBACK(+[](GtkEventControllerKey *, guint keyval, guint,
-                     GdkModifierType, gpointer d) -> gboolean {
-        LoginScreen *self = static_cast<LoginScreen *>(d);
-        if (!self)
-          return GDK_EVENT_PROPAGATE;
-        if (keyval == GDK_KEY_Escape) {
-          if (self->isOverlayDialogOpen()) {
-            self->closeOverlayDialog();
-            return GDK_EVENT_STOP;
-          }
-          const char *vis =
-              gtk_stack_get_visible_child_name(GTK_STACK(self->authStack));
-          if (vis && std::strcmp(vis, "login") != 0) {
-            self->showLoginForm();
-            return GDK_EVENT_STOP;
-          }
-        }
-        return GDK_EVENT_PROPAGATE;
-      }),
-      this);
+  g_signal_connect(keyCtrl, "key-pressed",
+                   G_CALLBACK(+[](GtkEventControllerKey *, guint keyval, guint,
+                                  GdkModifierType, gpointer d) -> gboolean {
+                     LoginScreen *self = static_cast<LoginScreen *>(d);
+                     if (!self)
+                       return GDK_EVENT_PROPAGATE;
+                     if (keyval == GDK_KEY_Escape) {
+                       if (self->isOverlayDialogOpen()) {
+                         self->closeOverlayDialog();
+                         return GDK_EVENT_STOP;
+                       }
+                       const char *vis = gtk_stack_get_visible_child_name(
+                           GTK_STACK(self->authStack));
+                       if (vis && std::strcmp(vis, "login") != 0) {
+                         self->showLoginForm();
+                         return GDK_EVENT_STOP;
+                       }
+                     }
+                     return GDK_EVENT_PROPAGATE;
+                   }),
+                   this);
   gtk_widget_add_controller(rootWidget, keyCtrl);
 
   showLoginForm();
@@ -133,22 +164,30 @@ void LoginScreen::showLoginForm() {
     child = next;
   }
 
-  // Brand Logo & Title
-  GtkWidget *brandBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
-  GtkWidget *lblLogo = gtk_label_new("📱");
-  gtk_widget_set_margin_bottom(lblLogo, 4);
+  // // Brand Logo & Title with Cyan Accent Line
+  // GtkWidget *brandBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+  // gtk_widget_set_margin_bottom(brandBox, 4);
 
-  GtkWidget *lblTitle = gtk_label_new("D&A STORE");
-  gtk_widget_add_css_class(lblTitle, "login-title");
+  // GtkWidget *titleRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  // GtkWidget *lblLogo = gtk_label_new("📱");
+  // gtk_widget_add_css_class(lblLogo, "login-logo-badge");
+  // GtkWidget *lblTitle = gtk_label_new("D&N STORE");
+  // gtk_widget_add_css_class(lblTitle, "login-title");
+  // gtk_box_append(GTK_BOX(titleRow), lblLogo);
+  // gtk_box_append(GTK_BOX(titleRow), lblTitle);
 
-  GtkWidget *lblSubtitle =
-      gtk_label_new("Hệ thống Quản lý Cửa hàng Điện thoại");
-  gtk_widget_add_css_class(lblSubtitle, "login-subtitle");
+  // // Vạch nhấn accent màu cyan theo chuẩn thiết kế
+  // GtkWidget *accentBar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  // gtk_widget_add_css_class(accentBar, "hero-accent-bar");
 
-  gtk_box_append(GTK_BOX(brandBox), lblLogo);
-  gtk_box_append(GTK_BOX(brandBox), lblTitle);
-  gtk_box_append(GTK_BOX(brandBox), lblSubtitle);
-  gtk_box_append(GTK_BOX(loginCard), brandBox);
+  // GtkWidget *lblSubtitle =
+  //     gtk_label_new("Hệ thống Quản lý Cửa hàng Điện thoại");
+  // gtk_widget_add_css_class(lblSubtitle, "login-subtitle");
+
+  // gtk_box_append(GTK_BOX(brandBox), titleRow);
+  // gtk_box_append(GTK_BOX(brandBox), accentBar);
+  // gtk_box_append(GTK_BOX(brandBox), lblSubtitle);
+  // gtk_box_append(GTK_BOX(loginCard), brandBox);
 
   // Form: Username
   entryUsername = gtk_entry_new();
@@ -180,18 +219,15 @@ void LoginScreen::showLoginForm() {
                                gtk_widget_set_visible(s->lblError, FALSE);
                            }),
                            this);
-  g_signal_connect_swapped(
-      entryUsername, "activate",
-      G_CALLBACK(+[](LoginScreen *s) {
-        if (s->entryPassword)
-          gtk_widget_grab_focus(s->entryPassword);
-      }),
-      this);
-  g_signal_connect_swapped(entryPassword, "activate",
+  g_signal_connect_swapped(entryUsername, "activate",
                            G_CALLBACK(+[](LoginScreen *s) {
-                             s->triggerLogin();
+                             if (s->entryPassword)
+                               gtk_widget_grab_focus(s->entryPassword);
                            }),
                            this);
+  g_signal_connect_swapped(
+      entryPassword, "activate",
+      G_CALLBACK(+[](LoginScreen *s) { s->triggerLogin(); }), this);
 
   // Corner Action 1: Quên mật khẩu (gọn ở góc phải bên dưới ô mật khẩu)
   GtkWidget *forgotBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -247,6 +283,7 @@ void LoginScreen::showLoginForm() {
 
   GtkWidget *lblQuick = gtk_label_new("Tài khoản mẫu dùng thử hệ thống:");
   gtk_widget_add_css_class(lblQuick, "stat-label");
+  gtk_widget_add_css_class(lblQuick, "login-quick-label");
   gtk_label_set_xalign(GTK_LABEL(lblQuick), 0.0f);
   gtk_box_append(GTK_BOX(loginCard), lblQuick);
 
@@ -750,7 +787,8 @@ void LoginScreen::triggerLogin() {
         msg = "⚠️ Sai mật khẩu đăng nhập. Vui lòng kiểm tra lại.";
       } else if (msg.find("vô hiệu hóa") != std::string::npos) {
         msg = "⚠️ Tài khoản đã bị vô hiệu hóa hoặc đã bị khóa trong hệ thống.";
-      } else if (msg.find("không tồn tại") != std::string::npos || msg.find("bị khóa") != std::string::npos) {
+      } else if (msg.find("không tồn tại") != std::string::npos ||
+                 msg.find("bị khóa") != std::string::npos) {
         msg = "⚠️ Tài khoản không tồn tại hoặc đã bị khóa trong hệ thống.";
       } else if (msg.find("không được để trống") != std::string::npos) {
         msg = "⚠️ Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";

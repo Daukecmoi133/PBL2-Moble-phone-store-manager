@@ -1,5 +1,5 @@
 id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address
-CUS-000001|Nguyen|Van|B|0912345678|customer001@example.com|customer001.demo|pbkdf2-sha256$600000$ca4bf89744b2e7a7b51fff17b48e575d$d05b188f47d044216fd6d64400adac10738540e1899a6d989b02dcf0074d51da|2080|Da Nang|ACC-000004|1
-CUS-000002|Tran|Thi|Mai|0905111222|customer002@example.com|customer002.demo|pbkdf2-sha256$600000$6b9aa8d82442ad7631ab2ae89e13401d$40a7ec665ff1f06329003d5642c1df00a3782bdf0169645f596c38a1a253827f|80|Thanh Khe, Da Nang|ACC-000005|1
+CUS-000001|Nguyen|Van|B|0912345678|customer001@example.com|customer001.demo|pbkdf2-sha256$600000$ca4bf89744b2e7a7b51fff17b48e575d$d05b188f47d044216fd6d64400adac10738540e1899a6d989b02dcf0074d51da|2765|Da Nang|ACC-000004|1
+CUS-000002|Tran|Thi|Mai|0905111222|customer002@example.com|customer002.demo|pbkdf2-sha256$600000$6b9aa8d82442ad7631ab2ae89e13401d$40a7ec665ff1f06329003d5642c1df00a3782bdf0169645f596c38a1a253827f|379|Thanh Khe, Da Nang|ACC-000005|1
 CUS-000003|Le|Hoang|Nam|0988777666|customer003@example.com|customer003.demo|pbkdf2-sha256$600000$8a3277c7178c544b312f4c972a32167d$2203f1a9ddb095d690e0e45e16cc881aac72bf0db25db7fa79cfb92afc556f47|0|Hai Chau, Da Nang|ACC-000006|1
 CUS-000031|Em|la|Ai|0947647398|mommy246@gmail.com|mommy|pbkdf2-sha256$600000$04b9649183feb74bb82e44c9dbc722bf$5ccd1c2ea753e93e63333390801460011ada62b24c87e18fc834176517110728|0||ACC-000034|1

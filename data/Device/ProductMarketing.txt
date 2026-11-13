@@ -1,8 +1,41 @@
 productId|listPrice|saleStart|saleEnd|installmentEnabled|installmentNote|colors|warrantyMonths|returnDays
-PHN-000101|15990000|01/11/2026|30/11/2026|1|Trả góp 0% qua Home Credit / Thẻ tín dụng|Bạc Ánh Sao,Xanh Lục Bảo,Đen Huyền Bí|12|30
-PHN-000102|34990000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
-PHN-000103|33990000|01/11/2026|30/11/2026|1|Trả góp 0% qua Samsung Finance+|Xám Titan,Đen Titan,Tím Titan,Vàng Titan|12|30
-PHN-000104|27990000|01/11/2026|30/11/2026|0||Đen,Trắng|18|30
-PHN-000105|0|||0||Xanh Dương,Đen Midnight,Trắng Starlight,Hồng|12|30
-PHN-000106|10490000|01/11/2026|30/11/2026|1|Trả góp 0% kỳ hạn 6 tháng|Xanh Iceblue,Tím Lilac,Navy|12|30
-PHN-000107|24900000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Nâu Da Bò,Đen,Xanh Dương|12|30
+PHN-000101|15600000|01/11/2026|30/11/2026|1|Trả góp 0% qua Home Credit / Thẻ tín dụng|Cam Hổ Phách,Xanh Olive|12|30
+PHN-000102|35800000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
+PHN-000103|33500000|01/11/2026|30/11/2026|1|Trả góp 0% qua Samsung Finance+|Xám Titan,Đen Titan,Tím Titan,Vàng Titan|12|30
+PHN-000104|28500000|01/11/2026|30/11/2026|0||Đen,Trắng|18|30
+PHN-000105|15500000|01/11/2026|30/11/2026|0||Xanh Midnight,Hồng,Trắng Ánh Sao,Xanh Lá|12|30
+PHN-000106|10800000|01/11/2026|30/11/2026|1|Trả góp 0% kỳ hạn 6 tháng|Xanh Iceblue,Tím Lilac,Xanh Navy|12|30
+PHN-000107|25600000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Nâu Da,Đen|12|30
+PHN-000108|15600000|01/11/2026|30/11/2026|1|Trả góp 0% qua Home Credit / Thẻ tín dụng|Cam Hổ Phách,Xanh Olive|12|30
+PHN-000109|13400000|01/11/2026|30/11/2026|1|Trả góp 0% qua Home Credit / Thẻ tín dụng|Cam Hổ Phách,Xanh Olive|12|30
+PHN-000110|13400000|01/11/2026|30/11/2026|1|Trả góp 0% qua Home Credit / Thẻ tín dụng|Cam Hổ Phách,Xanh Olive|12|30
+PHN-000111|35800000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
+PHN-000112|35800000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
+PHN-000113|35800000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
+PHN-000114|41400000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
+PHN-000115|41400000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
+PHN-000116|41400000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
+PHN-000117|48100000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
+PHN-000118|48100000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Titan Tự Nhiên,Titan Xanh,Titan Đen,Titan Trắng|12|30
+PHN-000119|33500000|01/11/2026|30/11/2026|1|Trả góp 0% qua Samsung Finance+|Xám Titan,Đen Titan,Tím Titan,Vàng Titan|12|30
+PHN-000120|33500000|01/11/2026|30/11/2026|1|Trả góp 0% qua Samsung Finance+|Xám Titan,Đen Titan,Tím Titan,Vàng Titan|12|30
+PHN-000121|33500000|01/11/2026|30/11/2026|1|Trả góp 0% qua Samsung Finance+|Xám Titan,Đen Titan,Tím Titan,Vàng Titan|12|30
+PHN-000122|38600000|01/11/2026|30/11/2026|1|Trả góp 0% qua Samsung Finance+|Xám Titan,Đen Titan,Tím Titan,Vàng Titan|12|30
+PHN-000123|38600000|01/11/2026|30/11/2026|1|Trả góp 0% qua Samsung Finance+|Xám Titan,Đen Titan,Tím Titan,Vàng Titan|12|30
+PHN-000124|44700000|01/11/2026|30/11/2026|1|Trả góp 0% qua Samsung Finance+|Xám Titan,Đen Titan,Tím Titan,Vàng Titan|12|30
+PHN-000125|28500000|01/11/2026|30/11/2026|0||Đen,Trắng|18|30
+PHN-000126|33500000|01/11/2026|30/11/2026|0||Đen,Trắng|18|30
+PHN-000127|33500000|01/11/2026|30/11/2026|0||Đen,Trắng|18|30
+PHN-000128|15500000|01/11/2026|30/11/2026|0||Xanh Midnight,Hồng,Trắng Ánh Sao,Xanh Lá|12|30
+PHN-000129|15500000|01/11/2026|30/11/2026|0||Xanh Midnight,Hồng,Trắng Ánh Sao,Xanh Lá|12|30
+PHN-000130|15500000|01/11/2026|30/11/2026|0||Xanh Midnight,Hồng,Trắng Ánh Sao,Xanh Lá|12|30
+PHN-000131|18400000|01/11/2026|30/11/2026|0||Xanh Midnight,Hồng,Trắng Ánh Sao,Xanh Lá|12|30
+PHN-000132|18400000|01/11/2026|30/11/2026|0||Xanh Midnight,Hồng,Trắng Ánh Sao,Xanh Lá|12|30
+PHN-000133|23500000|01/11/2026|30/11/2026|0||Xanh Midnight,Hồng,Trắng Ánh Sao,Xanh Lá|12|30
+PHN-000134|10800000|01/11/2026|30/11/2026|1|Trả góp 0% kỳ hạn 6 tháng|Xanh Iceblue,Tím Lilac,Xanh Navy|12|30
+PHN-000135|10800000|01/11/2026|30/11/2026|1|Trả góp 0% kỳ hạn 6 tháng|Xanh Iceblue,Tím Lilac,Xanh Navy|12|30
+PHN-000136|12300000|01/11/2026|30/11/2026|1|Trả góp 0% kỳ hạn 6 tháng|Xanh Iceblue,Tím Lilac,Xanh Navy|12|30
+PHN-000137|12300000|01/11/2026|30/11/2026|1|Trả góp 0% kỳ hạn 6 tháng|Xanh Iceblue,Tím Lilac,Xanh Navy|12|30
+PHN-000138|25600000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Nâu Da,Đen|12|30
+PHN-000139|29000000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Nâu Da,Đen|12|30
+PHN-000140|29000000|01/11/2026|30/11/2026|1|Trả góp 0% qua thẻ tín dụng|Nâu Da,Đen|12|30

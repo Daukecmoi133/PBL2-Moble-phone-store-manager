@@ -2,13 +2,7 @@ phoneId|customerId|customerName|ratingStars|comment|reviewTime
 PHN-000102|CUS-000001|Nguyễn Văn B|5|Máy dùng cực mượt mà, khung titan nhẹ hơn hẳn bản 14 Pro Max. Pin dùng thoải mái cả ngày dài!|15/09/2026 14:30
 PHN-000102|CUS-000002|Trần Thị Mai|5|Camera zoom quang 5x rất ấn tượng, chụp đêm sắc nét. Cửa hàng tư vấn nhiệt tình, đóng seal nguyên vẹn.|16/09/2026 11:20
 PHN-000103|CUS-000003|Lê Hoàng Nam|5|Màn hình phẳng chống chói cực tốt ngoài trời, bút S-Pen tiện ghi chú công việc. Rất hài lòng!|17/09/2026 09:45
-PHN-000101|CUS-000001|Nguyễn Văn B|5|Thiết kế mỏng nhẹ, pin 7000mAh trâu bất ngờ. Sạc 45W cũng khá nhanh. Trong tầm giá 14 triệu quá ổn.|18/09/2026 16:15
+PHN-000101|CUS-000001|Nguyen Van B|5|Thiết kế mỏng nhẹ, pin 7000mAh trâu bất ngờ. Sạc 45W cũng khá nhanh. Trong tầm giá 14 triệu quá ổn.|18/09/2026 16:15
 PHN-000104|CUS-000002|Trần Thị Mai|5|Cụm camera Leica chụp ảnh màu sắc nghệ thuật xuất sắc. HyperOS mượt, phụ kiện tặng kèm đầy đủ.|20/09/2026 17:05
 PHN-000105|CUS-000003|Lê Hoàng Nam|4|Thiết kế nhỏ gọn, cầm 1 tay rất tiện. Màn hình sáng đẹp, iOS ổn định mượt mà.|21/09/2026 10:10
-PHN-000101|CUS-000001|Nguyen Van B|5|Máy tuyệt vời, màn hình rất đẹp!|11/11/2026 22:05
-PHN-000101|CUS-000001|Nguyen Van B|5|Máy tuyệt vời, màn hình rất đẹp!|11/11/2026 22:06
-PHN-000101|CUS-000001|Nguyen Van B|5|Máy tuyệt vời, màn hình rất đẹp!|11/11/2026 22:06
-PHN-000101|CUS-000001|Nguyen Van B|5|Máy tuyệt vời, màn hình rất đẹp!|11/11/2026 22:07
-PHN-000101|CUS-000001|Nguyen Van B|5|Máy tuyệt vời, màn hình rất đẹp!|11/11/2026 22:07
-PHN-000101|CUS-000001|Nguyen Van B|5|Máy tuyệt vời, màn hình rất đẹp!|11/11/2026 22:08
-PHN-000107|CUS-000001|Nguyen Van B|5|tuyet zoi|11/11/2026 23:36
+PHN-000107|CUS-000001|Nguyen Van B|5|Máy tuyệt vời, cầm chắc tay, camera đỉnh cao!|11/11/2026 23:36

@@ -120,9 +120,27 @@ public:
 
         // 4. Thay thế nguyên tử file chính bằng file tạm
 #ifdef _WIN32
-        // MoveFileExA với MOVEFILE_REPLACE_EXISTING và MOVEFILE_WRITE_THROUGH đảm bảo ghi flush metadata xuống đĩa
-        if (!MoveFileExA(tmpPath.c_str(), targetPath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-            DWORD winErr = GetLastError();
+        bool replaced = false;
+        DWORD winErr = 0;
+        for (int retry = 0; retry < 5; ++retry) {
+            SetFileAttributesA(targetPath.c_str(), FILE_ATTRIBUTE_NORMAL);
+            if (MoveFileExA(tmpPath.c_str(), targetPath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+                replaced = true;
+                break;
+            }
+            winErr = GetLastError();
+            Sleep(15);
+        }
+        if (!replaced) {
+            SetFileAttributesA(targetPath.c_str(), FILE_ATTRIBUTE_NORMAL);
+            DeleteFileA(targetPath.c_str());
+            if (MoveFileA(tmpPath.c_str(), targetPath.c_str())) {
+                replaced = true;
+            } else {
+                winErr = GetLastError();
+            }
+        }
+        if (!replaced) {
             std::filesystem::remove(tmpPath, ec);
             std::cerr << "[FileHelper Lỗi] MoveFileExA thất bại với mã lỗi Windows: " << winErr
                       << " cho file " << targetPath << std::endl;

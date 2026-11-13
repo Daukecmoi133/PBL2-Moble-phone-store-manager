@@ -33,14 +33,17 @@ summary.txt
 ANTI.md
 CHANGELOG.md
 PBL2_Skeleton_Spec.md
+PROJECT_OVERVIEW.md
 
 # IDE & Editor temporary files
 .vscode/
 .idea/
 Thumbs.db
 .DS_Store
-.scratch/
+scratch/
 .PhoneStore/
+docs/
+bench/
 
 # Agent UI 
 .agents/

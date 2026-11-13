@@ -24,7 +24,6 @@
 #include <iomanip>
 #include <sstream>
 
-
 namespace AppControllerHelpers {
 // ---- Tiện ích xác thực dữ liệu đầu vào dùng chung ----
 inline std::string trimCopy(const std::string &s) {
@@ -113,23 +112,23 @@ inline int calculateCivilDayDiff(const DateTime &fromDate,
     }                                                                          \
   } while (0)
 
-#define REQUIRE_ADMIN_OR_WAREHOUSE_ROLE()                                                \
-  do {                                                                                   \
-    if (!currentSession.isAuthenticated ||                                               \
-        !(currentSession.isAdmin() || currentSession.isWarehouse())) {                   \
-      return OperationResult::Fail("Từ chối truy cập: Thao tác này chỉ dành " \
-                                   "cho Quản trị viên hoặc Thủ kho!");                   \
-    }                                                                                    \
+#define REQUIRE_ADMIN_OR_WAREHOUSE_ROLE()                                      \
+  do {                                                                         \
+    if (!currentSession.isAuthenticated ||                                     \
+        !(currentSession.isAdmin() || currentSession.isWarehouse())) {         \
+      return OperationResult::Fail("Từ chối truy cập: Thao tác này chỉ dành "  \
+                                   "cho Quản trị viên hoặc Thủ kho!");         \
+    }                                                                          \
   } while (0)
 
-#define REQUIRE_ADMIN_OR_SALES_ROLE()                                                      \
-  do {                                                                                     \
-    if (!currentSession.isAuthenticated ||                                                 \
-        !(currentSession.isAdmin() || currentSession.isSales())) {                         \
-      return OperationResult::Fail(                                                        \
-          "Từ chối truy cập: Thao tác này chỉ dành cho Nhân viên Bán hàng " \
-          "hoặc Quản trị viên!");                                                          \
-    }                                                                                      \
+#define REQUIRE_ADMIN_OR_SALES_ROLE()                                          \
+  do {                                                                         \
+    if (!currentSession.isAuthenticated ||                                     \
+        !(currentSession.isAdmin() || currentSession.isSales())) {             \
+      return OperationResult::Fail(                                            \
+          "Từ chối truy cập: Thao tác này chỉ dành cho Nhân viên Bán hàng "    \
+          "hoặc Quản trị viên!");                                              \
+    }                                                                          \
   } while (0)
 
 template <typename Records>
@@ -258,6 +257,49 @@ phoneToViewModel(const Phone &p, PhoneService *ps = nullptr,
     ProductDescriptionRecord desc = descRepo->getByProductId(vm.id);
     vm.shortHighlights = desc.shortHighlights;
     vm.description = desc.description;
+  }
+
+  // Phân tích Dòng máy (baseModel), Màu sắc (color), Dung lượng (capacity)
+  // (ANTY.md mục 1)
+  std::string rawName = vm.name;
+  size_t dashPos = rawName.find(" - ");
+  std::string modelPart =
+      (dashPos != std::string::npos) ? rawName.substr(0, dashPos) : rawName;
+  if (dashPos != std::string::npos) {
+    vm.color = StringHelper::trim(rawName.substr(dashPos + 3));
+  } else if (!vm.colors.empty()) {
+    vm.color = vm.colors[0];
+  } else {
+    vm.color = "Mặc định";
+  }
+
+  std::vector<std::string> knownCaps = {"1TB", "512GB", "256GB", "128GB",
+                                        "64GB"};
+  for (const auto &cap : knownCaps) {
+    if (modelPart.find(cap) != std::string::npos ||
+        vm.specs.find(cap) != std::string::npos) {
+      vm.capacity = cap;
+      break;
+    }
+  }
+  if (vm.capacity.empty())
+    vm.capacity = "256GB";
+
+  std::string base = modelPart;
+  size_t capPos = base.find(vm.capacity);
+  if (capPos != std::string::npos) {
+    base.erase(capPos, vm.capacity.length());
+  }
+  vm.baseModel = StringHelper::trim(base);
+  if (vm.baseModel.empty())
+    vm.baseModel = modelPart;
+
+  if (vm.imageUrl.empty()) {
+    if (vm.baseModel.find("iPhone 15") != std::string::npos) {
+      vm.imageUrl = "Device/productImages/iphone_15_pro_max_256gb.png";
+    } else if (vm.baseModel.find("Oppo Reno") != std::string::npos) {
+      vm.imageUrl = "Device/productImages/oppo_reno_16_f_5g_bac.png";
+    }
   }
 
   vm.calculateStockStatus();

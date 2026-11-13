@@ -23,6 +23,7 @@ class LoginScreen {
 private:
     AppController* controller;
     GtkWidget* rootWidget;
+    GtkWidget* bgPicture;
     GtkWidget* bgScroll;
     GtkWidget* centerBox;
     GtkWidget* authStack;

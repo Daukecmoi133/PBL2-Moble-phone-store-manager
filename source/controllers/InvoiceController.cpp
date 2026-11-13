@@ -4,18 +4,27 @@ using namespace AppControllerHelpers;
 // === HÓA ĐƠN ===
 
 std::vector<InvoiceItemViewModel> AppController::getAllInvoices() {
+    if (currentSession.isAuthenticated && !currentSession.isAdmin() && !currentSession.isSales()) {
+        return {};
+    }
     return MockDataStore::getInstance().invoices;
 }
 
 InvoiceItemViewModel AppController::getInvoiceById(const std::string& invoiceId) {
     auto& store = MockDataStore::getInstance();
     for (const auto& inv : store.invoices) {
-        if (inv.id == invoiceId) return inv;
+        if (inv.id == invoiceId) {
+            if (currentSession.isAuthenticated && currentSession.isCustomer() && inv.customerId != currentSession.userId) {
+                return InvoiceItemViewModel();
+            }
+            return inv;
+        }
     }
     return InvoiceItemViewModel();
 }
 
 OperationResult AppController::createInvoiceForOrder(const std::string& orderId, const std::string& employeeId, PaymentMethod method) {
+    REQUIRE_ADMIN_OR_SALES_ROLE();
     if (!IdGenerator::isValidId(orderId, "ORD", true) ||
         !IdGenerator::isValidId(employeeId, "EMP")) {
         return OperationResult::Fail("Mã đơn hàng hoặc nhân viên không đúng định dạng ID!");
@@ -90,6 +99,7 @@ OperationResult AppController::createPosInvoice(const std::string& customerId, c
                                                 const std::vector<CartItemViewModel>& items,
                                                 const std::string& discountCode, PaymentMethod payMethod,
                                                 double cashGiven, double& outChange, std::string& outInvoiceId) {
+    REQUIRE_ADMIN_OR_SALES_ROLE();
     outChange = 0.0;
     outInvoiceId.clear();
     if (items.empty()) {

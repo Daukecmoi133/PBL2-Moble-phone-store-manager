@@ -43,7 +43,7 @@ private:
         std::filesystem::path cur = std::filesystem::absolute(filePath).parent_path();
         while (cur.has_parent_path()) {
             std::string fname = cur.filename().string();
-            if (fname == "data" || fname.find("sandbox_data") != std::string::npos) {
+            if (fname == "data" || fname.find("sandbox") != std::string::npos) {
                 return cur.string();
             }
             if (fname == "Device" || fname == "PAY" || fname == "people" || fname == "system") {

@@ -18,7 +18,10 @@ OperationResult AppController::validateReportRange(const std::string& fromDate, 
     return OperationResult::Ok("Khoảng thời gian hợp lệ.");
 }
 
-DashboardStatsViewModel AppController::getDashboardStats(const std::string& fromDate, const std::string& toDate) {
+DashboardStatsViewModel AppController::getDashboardStats(const std::string& fromDate, const std::string& toDate, int timelineMode) {
+    if (currentSession.isAuthenticated && !currentSession.isAdmin()) {
+        return DashboardStatsViewModel();
+    }
     // Bộ lọc khoảng ngày (bao gồm cả hai đầu mút). Để trống cả hai = toàn thời gian.
     const bool hasFrom = !fromDate.empty();
     const bool hasTo = !toDate.empty();
@@ -52,23 +55,32 @@ DashboardStatsViewModel AppController::getDashboardStats(const std::string& from
     std::map<std::string, BrandAcc> brandMap;
     double totalBrandSales = 0.0;
 
-    auto parseOrderDate = [](const std::string& timeStr, std::string& outLabel, long long& outDays) -> bool {
+    auto parseOrderDate = [timelineMode](const std::string& timeStr, std::string& outLabel, long long& outDays) -> bool {
         int y = 0, m = 0, d = 0;
         if (timeStr.empty()) return false;
+        bool ok = false;
         if (sscanf(timeStr.c_str(), "%d-%d-%d", &y, &m, &d) == 3) {
-            char buf[16];
-            snprintf(buf, sizeof(buf), "%02d/%02d", d, m);
-            outLabel = buf;
-            outDays = RealTimeManager::dateToEpochDays(timeStr.substr(0, 10));
-            return true;
+            ok = true;
         } else if (sscanf(timeStr.c_str(), "%d/%d/%d", &d, &m, &y) == 3) {
-            char buf[16];
+            ok = true;
+        }
+        if (!ok) return false;
+
+        char buf[32];
+        if (timelineMode == 1) { // Theo Tháng
+            snprintf(buf, sizeof(buf), "T%02d/%04d", m, y);
+            outLabel = buf;
+            outDays = (long long)y * 100 + m;
+        } else if (timelineMode == 2) { // Theo Năm
+            snprintf(buf, sizeof(buf), "Năm %04d", y);
+            outLabel = buf;
+            outDays = y;
+        } else { // Theo Ngày
             snprintf(buf, sizeof(buf), "%02d/%02d", d, m);
             outLabel = buf;
             outDays = RealTimeManager::dateToEpochDays(timeStr.substr(0, 10));
-            return true;
         }
-        return false;
+        return true;
     };
 
     for (const auto& ord : store.orders) {

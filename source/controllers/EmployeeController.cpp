@@ -4,6 +4,9 @@ using namespace AppControllerHelpers;
 // === NHÂN VIÊN ===
 
 std::vector<EmployeeItemViewModel> AppController::getEmployees(const std::string& keyword) {
+    if (currentSession.isAuthenticated && !currentSession.isAdmin()) {
+        return {};
+    }
     auto& store = MockDataStore::getInstance();
     if (keyword.empty()) return store.employees;
 
@@ -19,6 +22,9 @@ std::vector<EmployeeItemViewModel> AppController::getEmployees(const std::string
 }
 
 EmployeeItemViewModel AppController::getEmployeeById(const std::string& id) {
+    if (currentSession.isAuthenticated && !currentSession.isAdmin() && currentSession.userId != id) {
+        return EmployeeItemViewModel();
+    }
     auto& store = MockDataStore::getInstance();
     for (const auto& e : store.employees) {
         if (e.id == id) return e;

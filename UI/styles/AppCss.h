@@ -82,10 +82,12 @@ constexpr int SPACE_2XL =
 constexpr int SPACE_3XL = 32; // 4.0x (32px) - Khoảng cách phân vùng lớn
 
 // Kích thước khung điều hướng & bảng dữ liệu (bội số của 8px)
-constexpr int SIDEBAR_WIDTH = 272;     // 34 * 8px — vừa vặn menu, tối ưu diện tích bảng
-constexpr int TABLE_ROW_SPACING = 4;   // 1 * 4px
-constexpr int TABLE_CELL_SPACING = 8;  // 2 * 4px — gọn gàng, tối ưu không gian ngang
-constexpr int KPI_GRID_SPACING = 16;   // 2 * 8px
+constexpr int SIDEBAR_WIDTH =
+    272; // 34 * 8px — vừa vặn menu, tối ưu diện tích bảng
+constexpr int TABLE_ROW_SPACING = 4; // 1 * 4px
+constexpr int TABLE_CELL_SPACING =
+    8; // 2 * 4px — gọn gàng, tối ưu không gian ngang
+constexpr int KPI_GRID_SPACING = 16; // 2 * 8px
 } // namespace DesignTokens
 
 // Bộ CSS chuẩn giao diện hiện đại cho GTK4 Phone Store Manager
@@ -1298,70 +1300,199 @@ button.btn-action-delete:hover, .btn-action-delete:hover {
 }
 
 /* === LOGIN SCREEN === */
+.login-window,
+.login-overlay,
 .login-bg {
+    background-color: #0b1120;
     background-image: url("C:/DUY/PBL2/data/Device/productImages/D&N Store Phone Sales Screen.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
+/* Lớp phủ gradient tối bán trong suốt (Overlay Scrim) */
+.login-scrim {
+    background: linear-gradient(100deg,
+        rgba(15, 23, 42, 0.20) 0%,
+        rgba(15, 23, 42, 0.40) 35%,
+        rgba(15, 23, 42, 0.72) 65%,
+        rgba(15, 23, 42, 0.88) 100%);
+}
+
+scrolledwindow.login-scroll,
+.login-scroll,
+.login-scroll viewport,
+.login-scroll > viewport,
+.login-bg viewport {
+    background: transparent;
+    background-color: transparent;
+}
+
+/* Thẻ đăng nhập hiện đại (Glassmorphism & Soft Drop Shadow) */
 .login-card {
-    background-color: @pbl_surface;
-    border-radius: 16px;
-    padding: 32px 40px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 255, 255, 0.94);
+    border-radius: 20px;
+    padding: 36px 40px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.login-logo-badge {
+    font-size: 24px;
+    background-color: #e0f2fe;
+    border-radius: 10px;
+    padding: 4px 8px;
 }
 
 .login-title {
-    font-size: 30px;
+    font-size: 28px;
     font-weight: 800;
-    color: @pbl_text;
+    color: @navy_900;
+    letter-spacing: 0.5px;
+}
+
+/* Vạch accent màu cyan theo chuẩn yêu cầu thiết kế */
+.hero-accent-bar {
+    min-height: 4px;
+    min-width: 56px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #38bdf8 0%, #2563eb 100%);
+    margin-top: 4px;
+    margin-bottom: 4px;
 }
 
 .login-subtitle {
-    font-size: 17px;
+    font-size: 15px;
     color: @pbl_text_muted;
-    margin-top: 4px;
-    margin-bottom: 16px;
+    margin-top: 2px;
+    margin-bottom: 8px;
 }
 
+/* Ô nhập liệu chuẩn Design System */
+.login-card entry {
+    background-color: #f8fafc;
+    color: #0f172a;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 15px;
+    transition: all 0.22s ease-in-out;
+}
+
+.login-card entry:focus {
+    background-color: #ffffff;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+}
+
+.login-card entry placeholder {
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.login-card entry.input-error {
+    border-color: #ef4444;
+    background-color: #fff5f5;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+/* Thông báo cảnh báo / lỗi */
 .login-alert {
-    background-color: @pbl_danger_bg;
-    color: @pbl_danger;
-    border: 1px solid @pbl_danger_border;
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-left: 4px solid #ef4444;
     border-radius: 8px;
-    padding: 12px 16px;
-    font-size: 16px;
+    padding: 10px 16px;
+    font-size: 14px;
     font-weight: 600;
 }
 
-button.login-quick-pill, .login-quick-pill {
-    background-color: @pbl_surface_alt;
-    background-image: none;
-    color: @pbl_navy_2;
-    border: 1px solid @pbl_border;
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 16px;
+/* Nút chính Đăng nhập: Gradient xanh dương sang cyan */
+.login-card button.btn-primary,
+.login-card .btn-primary {
+    background-image: linear-gradient(135deg, #1d4ed8 0%, #0284c7 60%, #38bdf8 100%);
+    background-color: #0284c7;
+    color: #ffffff;
     font-weight: 700;
-    transition: all 120ms ease;
+    font-size: 16px;
+    letter-spacing: 0.3px;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 24px;
+    min-height: 46px;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+    transition: all 0.22s ease-in-out;
+}
+
+.login-card button.btn-primary:hover,
+.login-card .btn-primary:hover {
+    background-image: linear-gradient(135deg, #1e40af 0%, #0369a1 60%, #0284c7 100%);
+    box-shadow: 0 6px 20px rgba(2, 132, 199, 0.55);
+}
+
+.login-card button.btn-primary:active,
+.login-card .btn-primary:active {
+    background-image: linear-gradient(135deg, #1e3a8a 0%, #075985 100%);
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+
+.login-card button.btn-primary.loading,
+.login-card button.btn-primary:disabled {
+    opacity: 0.65;
+    background-image: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    box-shadow: none;
+}
+
+.login-quick-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+/* Nút chọn nhanh tài khoản mẫu dạng thẻ nhỏ gọn */
+button.login-quick-pill, .login-quick-pill {
+    background-color: #f1f5f9;
+    background-image: none;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition: all 0.2s ease-in-out;
 }
 
 button.login-quick-pill:hover, .login-quick-pill:hover {
-    background-color: #e2e8f0;
+    background-color: #e0f2fe;
     background-image: none;
-    color: @pbl_text;
+    border-color: #7dd3fc;
+    color: #0369a1;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
 }
 
+button.login-quick-pill:active, .login-quick-pill:active {
+    background-color: #bae6fd;
+    background-image: none;
+}
+
+/* Các link thao tác phụ (Quên mật khẩu, Đăng ký) */
 button.login-corner-btn, .login-corner-btn {
     background: transparent;
     background-image: none;
     border: none;
-    color: @pbl_primary;
-    font-size: 17px;
+    color: #0284c7;
+    font-size: 14px;
     font-weight: 700;
     padding: 4px 8px;
+    transition: color 0.18s ease-in-out;
 }
 
 button.login-corner-btn:hover, .login-corner-btn:hover {
-    color: @pbl_primary_hover;
+    color: #0369a1;
     background-image: none;
     text-decoration: underline;
 }
@@ -2092,13 +2223,15 @@ inline void applyAppStyles() {
   if (g_file_get_contents("UI/styles/theme.css", &contents, &length, &err)) {
     const char *css = contents;
     if (length >= 3 && (unsigned char)contents[0] == 0xEF &&
-        (unsigned char)contents[1] == 0xBB && (unsigned char)contents[2] == 0xBF) {
+        (unsigned char)contents[1] == 0xBB &&
+        (unsigned char)contents[2] == 0xBF) {
       css += 3;
     }
     gtk_css_provider_load_from_string(provider, css);
     g_free(contents);
   } else {
-    if (err) g_error_free(err);
+    if (err)
+      g_error_free(err);
     gtk_css_provider_load_from_string(provider, APP_CSS_STYLES);
   }
 

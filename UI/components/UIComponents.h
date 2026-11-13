@@ -3,6 +3,7 @@
 
 #include <gtk/gtk.h>
 #include <string>
+#include <functional>
 #include "../../source/models/Common.h"
 #include "../viewmodels/OrderViewModel.h"
 #include "../viewmodels/ProductViewModel.h"
@@ -197,10 +198,12 @@ void setButtonCursor(GtkWidget* btn);
 /// @brief Định dạng số tiền rút gọn cho biểu đồ & nhãn gọn (vd: "15.2 tr", "500 k", "2.5 tỷ")
 std::string formatCompactVND(double amount);
 
-/// @brief Tạo widget Biểu đồ Cột đôi Doanh thu & Lợi nhuận (Cairo DrawingArea) chuẩn DESIGN.md T14
-GtkWidget* createRevenueBarChart(const std::vector<TimelineStatPoint>& points);
+/// @brief Tạo widget Biểu đồ Cột đôi Doanh thu & Bảng số liệu chi tiết (kèm nút Trái/Phải đổi chu kỳ Ngày-Tháng-Năm)
+GtkWidget* createRevenueBarChart(const std::vector<TimelineStatPoint>& points,
+                                 int timelineMode = 0,
+                                 std::function<void(int)> onModeChanged = nullptr);
 
-/// @brief Tạo widget Thẻ Cơ cấu Doanh thu theo Thương hiệu (Segmented Bar + Brand Rows) chuẩn DESIGN.md T15
+/// @brief Tạo widget Thẻ Cơ cấu Doanh thu theo Thương hiệu / Nguyên liệu dạng Biểu đồ Tròn (Pie/Donut Chart)
 GtkWidget* createBrandDistributionCard(const std::vector<BrandShareStatItem>& brands);
 
 /// @brief Tạo thanh tỷ lệ trạng thái đơn hàng (Order Pipeline Segmented Bar) cho Admin Dashboard chuẩn DESIGN.md T17

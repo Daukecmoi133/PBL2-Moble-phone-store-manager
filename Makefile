@@ -1,18 +1,18 @@
 # Makefile — PBL2 Phone Store Manager (GTK4 + C++17)
 # Targets: all, run, clean, info
 
-CXX      = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra \
-           $(shell pkg-config --cflags gtk4) \
-           -I. \
-           -Wno-unused-parameter \
-           -Wno-deprecated-declarations \
-           -Wno-pedantic
-CXXFLAGS += $(shell pkg-config --cflags fontconfig)
+CXX      := g++
+GTK4_CFLAGS := $(shell pkg-config --cflags gtk4 fontconfig)
+GTK4_LIBS   := $(shell pkg-config --libs gtk4 fontconfig libcrypto)
 
-LDFLAGS  = $(shell pkg-config --libs gtk4)
-LDFLAGS += $(shell pkg-config --libs fontconfig)
-LDFLAGS += $(shell pkg-config --libs libcrypto)
+CXXFLAGS := -std=c++17 -Wall -Wextra \
+            $(GTK4_CFLAGS) \
+            -I. \
+            -Wno-unused-parameter \
+            -Wno-deprecated-declarations \
+            -Wno-pedantic
+
+LDFLAGS  := $(GTK4_LIBS)
 
 TARGET   = pbl2_gtk4
 
@@ -53,7 +53,7 @@ all: assets $(TARGET)
 
 # Kiểm tra tài nguyên font emoji
 assets:
-	@rem check emoji font
+	@echo [PBL2] Assets check OK
 
 # Kiểm tra fontconfig, Pango, Cairo và GTK4
 check-emoji:

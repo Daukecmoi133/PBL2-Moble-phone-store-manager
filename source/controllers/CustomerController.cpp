@@ -4,6 +4,9 @@ using namespace AppControllerHelpers;
 // === KHÁCH HÀNG ===
 
 std::vector<CustomerItemViewModel> AppController::getCustomers(const std::string& keyword) {
+    if (currentSession.isAuthenticated && !currentSession.isAdmin() && !currentSession.isSales()) {
+        return {};
+    }
     auto& store = MockDataStore::getInstance();
     if (keyword.empty()) return store.customers;
 
@@ -19,6 +22,9 @@ std::vector<CustomerItemViewModel> AppController::getCustomers(const std::string
 }
 
 CustomerItemViewModel AppController::getCustomerById(const std::string& id) {
+    if (currentSession.isAuthenticated && currentSession.isCustomer() && currentSession.userId != id) {
+        return CustomerItemViewModel();
+    }
     auto& store = MockDataStore::getInstance();
     for (const auto& c : store.customers) {
         if (c.id == id) return c;
@@ -27,6 +33,7 @@ CustomerItemViewModel AppController::getCustomerById(const std::string& id) {
 }
 
 OperationResult AppController::addCustomer(const CustomerFormRequest& req) {
+    REQUIRE_ADMIN_OR_SALES_ROLE();
     if (req.phone.empty() || req.firstName.empty() || req.lastName.empty()) {
         return OperationResult::Fail("Họ, tên và số điện thoại là bắt buộc!");
     }
@@ -86,6 +93,7 @@ OperationResult AppController::addCustomer(const CustomerFormRequest& req) {
 }
 
 OperationResult AppController::updateCustomer(const CustomerFormRequest& req) {
+    REQUIRE_ADMIN_OR_SALES_ROLE();
     if (!IdGenerator::isValidId(req.id, "CUS") || req.phone.empty()) {
         return OperationResult::Fail("Thông tin khách hàng không hợp lệ!");
     }
@@ -126,6 +134,7 @@ OperationResult AppController::updateCustomer(const CustomerFormRequest& req) {
 }
 
 OperationResult AppController::deleteCustomer(const std::string& id) {
+    REQUIRE_ADMIN_ROLE();
     if (!IdGenerator::isValidId(id, "CUS")) {
         return OperationResult::Fail("Mã khách hàng không đúng định dạng CUS-000001!");
     }

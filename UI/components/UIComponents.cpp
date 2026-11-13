@@ -1201,7 +1201,8 @@ GtkWidget *createPasswordField(GtkWidget *entryWidget) {
 
   GtkWidget *button = gtk_button_new();
   gtk_button_set_has_frame(GTK_BUTTON(button), FALSE);
-  gtk_widget_set_tooltip_text(button, "Rê chuột để hiện mật khẩu");
+  gtk_widget_set_focusable(button, FALSE);
+  gtk_widget_set_tooltip_text(button, "Bấm để hiện mật khẩu");
   setButtonCursor(button);
 
   GtkWidget *icon = gtk_image_new_from_icon_name("view-conceal-symbolic");
@@ -1210,35 +1211,34 @@ GtkWidget *createPasswordField(GtkWidget *entryWidget) {
   g_object_set_data(G_OBJECT(button), "password-entry", entryWidget);
   g_object_set_data(G_OBJECT(button), "password-icon", icon);
 
-  GtkEventController *motionController = gtk_event_controller_motion_new();
+  // Click vào nút con mắt để chuyển đổi qua lại giữa ẩn và hiện mật khẩu
   g_signal_connect(
-      motionController, "enter",
-      G_CALLBACK(+[](GtkEventControllerMotion *controller, double, double,
-                     gpointer) {
-        GtkWidget *button =
-            gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
+      button, "clicked",
+      G_CALLBACK(+[](GtkButton *btn, gpointer) {
+        GtkWidget *btnWidget = GTK_WIDGET(btn);
         GtkWidget *entry =
-            GTK_WIDGET(g_object_get_data(G_OBJECT(button), "password-entry"));
-        GtkWidget *icon =
-            GTK_WIDGET(g_object_get_data(G_OBJECT(button), "password-icon"));
-        gtk_entry_set_visibility(GTK_ENTRY(entry), TRUE);
-        gtk_image_set_from_icon_name(GTK_IMAGE(icon), "view-reveal-symbolic");
+            GTK_WIDGET(g_object_get_data(G_OBJECT(btnWidget), "password-entry"));
+        GtkWidget *ico =
+            GTK_WIDGET(g_object_get_data(G_OBJECT(btnWidget), "password-icon"));
+        if (!entry || !GTK_IS_ENTRY(entry))
+          return;
+
+        gboolean isVisible = gtk_entry_get_visibility(GTK_ENTRY(entry));
+        if (isVisible) {
+          gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
+          if (ico && GTK_IS_IMAGE(ico)) {
+            gtk_image_set_from_icon_name(GTK_IMAGE(ico), "view-conceal-symbolic");
+          }
+          gtk_widget_set_tooltip_text(btnWidget, "Bấm để hiện mật khẩu");
+        } else {
+          gtk_entry_set_visibility(GTK_ENTRY(entry), TRUE);
+          if (ico && GTK_IS_IMAGE(ico)) {
+            gtk_image_set_from_icon_name(GTK_IMAGE(ico), "view-reveal-symbolic");
+          }
+          gtk_widget_set_tooltip_text(btnWidget, "Bấm để ẩn mật khẩu");
+        }
       }),
       nullptr);
-  g_signal_connect(
-      motionController, "leave",
-      G_CALLBACK(+[](GtkEventControllerMotion *controller, gpointer) {
-        GtkWidget *button =
-            gtk_event_controller_get_widget(GTK_EVENT_CONTROLLER(controller));
-        GtkWidget *entry =
-            GTK_WIDGET(g_object_get_data(G_OBJECT(button), "password-entry"));
-        GtkWidget *icon =
-            GTK_WIDGET(g_object_get_data(G_OBJECT(button), "password-icon"));
-        gtk_entry_set_visibility(GTK_ENTRY(entry), FALSE);
-        gtk_image_set_from_icon_name(GTK_IMAGE(icon), "view-conceal-symbolic");
-      }),
-      nullptr);
-  gtk_widget_add_controller(button, motionController);
   gtk_box_append(GTK_BOX(row), button);
 
   return row;
@@ -1630,21 +1630,24 @@ std::string formatCompactVND(double amount) {
   return std::to_string(static_cast<long long>(amount)) + " đ";
 }
 
-GtkWidget* createRevenueBarChart(const std::vector<TimelineStatPoint>& points) {
+GtkWidget* createRevenueBarChart(const std::vector<TimelineStatPoint>& points,
+                                 int timelineMode,
+                                 std::function<void(int)> onModeChanged) {
   GtkWidget *card = gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_MD);
   gtk_widget_add_css_class(card, "card");
   gtk_widget_add_css_class(card, "chart-card");
 
-  // Header Box: Tiêu đề + Chú thích (Legend)
+  // Header Box: Tiêu đề + Bộ chuyển đổi chu kỳ 3 mục (◀ Ngày - Tháng - Năm ▶) + Legend
   GtkWidget *headerBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_MD);
   GtkWidget *titleCol = gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_XS);
 
-  GtkWidget *lblTitle = gtk_label_new("📊 Biểu đồ Doanh thu & Lợi nhuận");
+  std::string modeName = (timelineMode == 0 ? "Theo Ngày" : (timelineMode == 1 ? "Theo Tháng" : "Theo Năm"));
+  GtkWidget *lblTitle = gtk_label_new(("📊 Biểu đồ & Bảng Doanh thu (" + modeName + ")").c_str());
   gtk_widget_add_css_class(lblTitle, "card-title");
   gtk_label_set_xalign(GTK_LABEL(lblTitle), 0.0f);
   gtk_box_append(GTK_BOX(titleCol), lblTitle);
 
-  GtkWidget *lblSub = gtk_label_new("Theo dõi xu hướng dòng tiền và lợi nhuận gộp theo mốc thời gian.");
+  GtkWidget *lblSub = gtk_label_new("Phân tích dòng tiền, chi phí và lợi nhuận gộp theo từng mốc thời gian.");
   gtk_widget_add_css_class(lblSub, "chart-subtitle");
   gtk_label_set_xalign(GTK_LABEL(lblSub), 0.0f);
   gtk_box_append(GTK_BOX(titleCol), lblSub);
@@ -1654,6 +1657,54 @@ GtkWidget* createRevenueBarChart(const std::vector<TimelineStatPoint>& points) {
   GtkWidget *spacer = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_set_hexpand(spacer, TRUE);
   gtk_box_append(GTK_BOX(headerBox), spacer);
+
+  // Nút thay đổi trái phải với 3 mục "theo : ngày - tháng - năm"
+  if (onModeChanged) {
+    GtkWidget *periodBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+    gtk_widget_set_valign(periodBox, GTK_ALIGN_CENTER);
+
+    struct ModeBtnCtx {
+      std::function<void(int)> callback;
+      int mode;
+    };
+
+    auto createModeBtn = [&](const std::string& label, int targetMode, bool isActive) {
+      GtkWidget *btn = gtk_button_new_with_label(label.c_str());
+      gtk_widget_add_css_class(btn, isActive ? "btn-primary" : "btn-outline");
+      setButtonCursor(btn);
+      auto *ctx = new ModeBtnCtx{onModeChanged, targetMode};
+      g_signal_connect_data(
+          btn, "clicked",
+          G_CALLBACK(+[](GtkButton*, gpointer d) {
+            auto *c = static_cast<ModeBtnCtx*>(d);
+            if (c && c->callback) c->callback(c->mode);
+          }),
+          ctx,
+          [](gpointer d, GClosure*) { delete static_cast<ModeBtnCtx*>(d); },
+          (GConnectFlags)0);
+      return btn;
+    };
+
+    // Nút Lùi ◀
+    int prevMode = (timelineMode - 1 + 3) % 3;
+    GtkWidget *btnPrev = createModeBtn("◀", prevMode, false);
+    gtk_box_append(GTK_BOX(periodBox), btnPrev);
+
+    // 3 mục: Theo Ngày - Tháng - Năm
+    GtkWidget *btnDay = createModeBtn("📅 Theo: Ngày", 0, timelineMode == 0);
+    GtkWidget *btnMonth = createModeBtn("📆 Theo: Tháng", 1, timelineMode == 1);
+    GtkWidget *btnYear = createModeBtn("🗓️ Theo: Năm", 2, timelineMode == 2);
+    gtk_box_append(GTK_BOX(periodBox), btnDay);
+    gtk_box_append(GTK_BOX(periodBox), btnMonth);
+    gtk_box_append(GTK_BOX(periodBox), btnYear);
+
+    // Nút Tiến ▶
+    int nextMode = (timelineMode + 1) % 3;
+    GtkWidget *btnNext = createModeBtn("▶", nextMode, false);
+    gtk_box_append(GTK_BOX(periodBox), btnNext);
+
+    gtk_box_append(GTK_BOX(headerBox), periodBox);
+  }
 
   // Legend
   GtkWidget *legendBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_MD);
@@ -1831,6 +1882,50 @@ GtkWidget* createRevenueBarChart(const std::vector<TimelineStatPoint>& points) {
       [](gpointer d) { delete static_cast<std::vector<TimelineStatPoint> *>(d); });
 
   gtk_box_append(GTK_BOX(card), drawingArea);
+
+  // Bảng số liệu chi tiết Doanh thu theo chu kỳ đã chọn (ANTY.md)
+  GtkWidget *tableCard = gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_SM);
+  gtk_widget_add_css_class(tableCard, "table-container");
+
+  std::vector<TableColumnSpec> timelineCols = {
+      {"Mốc thời gian", 150, 0.0f, true},
+      {"Số đơn hoàn tất", 110, 1.0f, false},
+      {"Doanh thu", 160, 1.0f, false},
+      {"Lợi nhuận gộp", 160, 1.0f, false},
+      {"Tỷ suất LN", 100, 1.0f, false}};
+
+  gtk_box_append(GTK_BOX(tableCard), createTableHeaderRow(timelineCols));
+
+  if (points.empty()) {
+    GtkWidget *emptyTable = createEmptyState("📊", "Chưa có phát sinh doanh thu",
+                                             "Không có đơn hàng thành công trong kỳ lọc này.");
+    gtk_box_append(GTK_BOX(tableCard), emptyTable);
+  } else {
+    for (size_t i = 0; i < points.size(); ++i) {
+      const auto &pt = points[i];
+      GtkWidget *row = createTableDataRow(i);
+
+      std::string timeLabel = pt.label;
+      if (timelineMode == 0) timeLabel = "Ngày " + pt.label;
+      else if (timelineMode == 1) timeLabel = "Tháng " + pt.label;
+      else if (timelineMode == 2) timeLabel = pt.label;
+
+      gtk_box_append(GTK_BOX(row), createTableTextCell(timeLabel, timelineCols[0], "cell-title"));
+      gtk_box_append(GTK_BOX(row), createTableTextCell(formatNumber(pt.orderCount) + " đơn", timelineCols[1], "cell-number"));
+      gtk_box_append(GTK_BOX(row), createTableTextCell(formatVND(pt.revenue), timelineCols[2], "product-price"));
+      gtk_box_append(GTK_BOX(row), createTableTextCell(formatVND(pt.profit), timelineCols[3], "stock-ok"));
+
+      std::string marginStr = "0%";
+      if (pt.revenue > 0) {
+        int pct = static_cast<int>((pt.profit / pt.revenue) * 100.0 + 0.5);
+        marginStr = std::to_string(pct) + "%";
+      }
+      gtk_box_append(GTK_BOX(row), createTableTextCell(marginStr, timelineCols[4], "cell-badge-neutral"));
+
+      gtk_box_append(GTK_BOX(tableCard), row);
+    }
+  }
+  gtk_box_append(GTK_BOX(card), tableCard);
   return card;
 }
 
@@ -1855,12 +1950,12 @@ GtkWidget* createBrandDistributionCard(const std::vector<BrandShareStatItem>& br
   gtk_widget_add_css_class(card, "card");
   gtk_widget_add_css_class(card, "brand-dist-card");
 
-  GtkWidget *lblTitle = gtk_label_new("🏢 Cơ cấu Doanh số theo Thương hiệu");
+  GtkWidget *lblTitle = gtk_label_new("🏢 Cơ cấu Doanh số theo Thương hiệu / Nguyên liệu");
   gtk_widget_add_css_class(lblTitle, "card-title");
   gtk_label_set_xalign(GTK_LABEL(lblTitle), 0.0f);
   gtk_box_append(GTK_BOX(card), lblTitle);
 
-  GtkWidget *lblSub = gtk_label_new("Tỷ trọng % doanh thu giữa các thương hiệu trong kỳ lọc.");
+  GtkWidget *lblSub = gtk_label_new("Biểu đồ tròn tỷ trọng doanh thu giữa các thương hiệu trong kỳ lọc.");
   gtk_widget_add_css_class(lblSub, "chart-subtitle");
   gtk_label_set_xalign(GTK_LABEL(lblSub), 0.0f);
   gtk_box_append(GTK_BOX(card), lblSub);
@@ -1871,51 +1966,118 @@ GtkWidget* createBrandDistributionCard(const std::vector<BrandShareStatItem>& br
     return card;
   }
 
-  // 1. Segmented Bar
-  GtkWidget *segArea = gtk_drawing_area_new();
-  gtk_widget_set_size_request(segArea, -1, 14);
-  gtk_widget_set_hexpand(segArea, TRUE);
+  // Khung ngang chứa: Bên trái là Biểu đồ tròn, bên phải là Cột chú thích
+  GtkWidget *bodyBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_LG);
+  gtk_widget_set_hexpand(bodyBox, TRUE);
+
+  // 1. Biểu đồ tròn (Pie / Donut Chart bằng Cairo Drawing Area)
+  GtkWidget *pieArea = gtk_drawing_area_new();
+  gtk_widget_set_size_request(pieArea, 280, 260);
+  gtk_widget_set_hexpand(pieArea, FALSE);
+  gtk_widget_set_valign(pieArea, GTK_ALIGN_CENTER);
 
   auto *brandCopy = new std::vector<BrandShareStatItem>(brands);
   gtk_drawing_area_set_draw_func(
-      GTK_DRAWING_AREA(segArea),
+      GTK_DRAWING_AREA(pieArea),
       +[](GtkDrawingArea *, cairo_t *cr, int width, int height, gpointer data) {
         auto *bList = static_cast<const std::vector<BrandShareStatItem> *>(data);
-        if (!bList || bList->empty() || width <= 4) return;
+        if (!bList || bList->empty() || width <= 10 || height <= 10) return;
 
-        double r = 7.0;
-        if (r > height * 0.5) r = height * 0.5;
-        cairo_new_sub_path(cr);
-        cairo_arc(cr, width - r, r, r, -G_PI * 0.5, 0);
-        cairo_arc(cr, width - r, height - r, r, 0, G_PI * 0.5);
-        cairo_arc(cr, r, height - r, r, G_PI * 0.5, G_PI);
-        cairo_arc(cr, r, r, r, G_PI, 1.5 * G_PI);
-        cairo_close_path(cr);
-        cairo_clip(cr);
+        double cx = width * 0.5;
+        double cy = height * 0.5;
+        double radius = std::min(cx, cy) - 15.0;
+        if (radius < 20.0) radius = 20.0;
+        double innerRadius = radius * 0.52; // Donut style hiện đại
 
-        cairo_set_source_rgb(cr, 0.886, 0.910, 0.941);
-        cairo_paint(cr);
+        double currentAngle = -G_PI * 0.5; // Bắt đầu từ 12h
 
-        double currentX = 0.0;
+        PangoLayout *layout = pango_cairo_create_layout(cr);
+        PangoFontDescription *fontDesc = pango_font_description_from_string("Segoe UI Bold, Inter Bold, Sans Bold 9");
+        pango_layout_set_font_description(layout, fontDesc);
+        pango_font_description_free(fontDesc);
+
         for (const auto &item : *bList) {
           if (item.percentage <= 0.0) continue;
-          double segW = width * (item.percentage / 100.0);
+          double sliceAngle = (item.percentage / 100.0) * (2.0 * G_PI);
+          double endAngle = currentAngle + sliceAngle;
+
           double red = 0.5, green = 0.5, blue = 0.5;
-          std::string dummyHex;
-          resolveBrandColor(item.brand, red, green, blue, dummyHex);
+          std::string hex;
+          resolveBrandColor(item.brand, red, green, blue, hex);
+
+          // Vẽ lát cắt cung tròn
+          cairo_new_sub_path(cr);
+          cairo_arc(cr, cx, cy, radius, currentAngle, endAngle);
+          cairo_arc_negative(cr, cx, cy, innerRadius, endAngle, currentAngle);
+          cairo_close_path(cr);
 
           cairo_set_source_rgb(cr, red, green, blue);
-          cairo_rectangle(cr, currentX, 0, segW, height);
-          cairo_fill(cr);
-          currentX += segW;
+          cairo_fill_preserve(cr);
+
+          // Viền trắng phân tách các lát
+          cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+          cairo_set_line_width(cr, 2.0);
+          cairo_stroke(cr);
+
+          // Vẽ nhãn % nếu lát đủ lớn (>= 7%)
+          if (item.percentage >= 7.0) {
+            double midAngle = currentAngle + sliceAngle * 0.5;
+            double labelR = (radius + innerRadius) * 0.5;
+            double lx = cx + labelR * std::cos(midAngle);
+            double ly = cy + labelR * std::sin(midAngle);
+
+            char pctBuf[16];
+            std::snprintf(pctBuf, sizeof(pctBuf), "%.1f%%", item.percentage);
+            pango_layout_set_text(layout, pctBuf, -1);
+
+            int textW = 0, textH = 0;
+            pango_layout_get_pixel_size(layout, &textW, &textH);
+
+            cairo_move_to(cr, lx - textW * 0.5, ly - textH * 0.5);
+            cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+            pango_cairo_show_layout(cr, layout);
+          }
+
+          currentAngle = endAngle;
         }
+
+        // Lỗ tròn trung tâm (Donut hole)
+        cairo_new_sub_path(cr);
+        cairo_arc(cr, cx, cy, innerRadius - 1.0, 0, 2.0 * G_PI);
+        cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+        cairo_fill(cr);
+
+        // Chữ ở tâm biểu đồ
+        pango_layout_set_text(layout, "100%", -1);
+        PangoFontDescription *centerFont = pango_font_description_from_string("Segoe UI Bold, Inter Bold, Sans Bold 11");
+        pango_layout_set_font_description(layout, centerFont);
+        pango_font_description_free(centerFont);
+
+        int cW = 0, cH = 0;
+        pango_layout_get_pixel_size(layout, &cW, &cH);
+        cairo_move_to(cr, cx - cW * 0.5, cy - cH * 0.5 - 7.0);
+        cairo_set_source_rgb(cr, 0.094, 0.125, 0.192);
+        pango_cairo_show_layout(cr, layout);
+
+        pango_layout_set_text(layout, "Cơ cấu", -1);
+        PangoFontDescription *subFont = pango_font_description_from_string("Segoe UI, Inter, Sans 8");
+        pango_layout_set_font_description(layout, subFont);
+        pango_font_description_free(subFont);
+        pango_layout_get_pixel_size(layout, &cW, &cH);
+        cairo_move_to(cr, cx - cW * 0.5, cy - cH * 0.5 + 8.0);
+        cairo_set_source_rgb(cr, 0.45, 0.50, 0.58);
+        pango_cairo_show_layout(cr, layout);
+
+        g_object_unref(layout);
       },
       brandCopy,
       [](gpointer d) { delete static_cast<std::vector<BrandShareStatItem> *>(d); });
-  gtk_box_append(GTK_BOX(card), segArea);
+  gtk_box_append(GTK_BOX(bodyBox), pieArea);
 
-  // 2. Brand Rows
-  GtkWidget *listContainer = gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_XS);
+  // 2. Cột chú thích nằm bên cạnh biểu đồ tròn
+  GtkWidget *listContainer = gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_SM);
+  gtk_widget_set_hexpand(listContainer, TRUE);
+  gtk_widget_set_valign(listContainer, GTK_ALIGN_CENTER);
   for (const auto &item : brands) {
     GtkWidget *row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_MD);
     gtk_widget_add_css_class(row, "brand-row");
@@ -1973,7 +2135,8 @@ GtkWidget* createBrandDistributionCard(const std::vector<BrandShareStatItem>& br
 
     gtk_box_append(GTK_BOX(listContainer), row);
   }
-  gtk_box_append(GTK_BOX(card), listContainer);
+  gtk_box_append(GTK_BOX(bodyBox), listContainer);
+  gtk_box_append(GTK_BOX(card), bodyBox);
 
   return card;
 }

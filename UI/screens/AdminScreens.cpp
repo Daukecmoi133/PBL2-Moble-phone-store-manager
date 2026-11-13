@@ -230,7 +230,8 @@ AdminScreens::AdminScreens(AppController *ctrl, MainShellWindow *parentShell)
                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
   allInvoicesView = gtk_scrolled_window_new();
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(allInvoicesView), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(allInvoicesView),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
   warrantyMonitorView = gtk_scrolled_window_new();
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(warrantyMonitorView),
@@ -342,9 +343,11 @@ void AdminScreens::buildDashboardView() {
   gtk_grid_attach(GTK_GRID(grid), c4, 3, 0, 1, 1);
   gtk_box_append(GTK_BOX(content), grid);
 
-  // Thanh tỷ lệ trạng thái đơn hàng (Order Pipeline Segmented Bar - DESIGN.md T17)
+  // Thanh tỷ lệ trạng thái đơn hàng (Order Pipeline Segmented Bar - DESIGN.md
+  // T17)
   GtkWidget *pipelineBar = UIComponents::createOrderStatusPipelineBar(
-      stats.completedOrders, stats.shippingOrders, stats.pendingOrders, stats.cancelledOrders);
+      stats.completedOrders, stats.shippingOrders, stats.pendingOrders,
+      stats.cancelledOrders);
   gtk_box_append(GTK_BOX(content), pipelineBar);
 
   // Secondary row of metrics (Catalog, CRM, HR & System Clock)
@@ -632,27 +635,33 @@ void AdminScreens::showProductDetailView(const ProductItemViewModel &prod,
   ProductDetailView::Callbacks callbacks;
   callbacks.onSaved = [this]() {
     refreshProducts();
-    if (shell) shell->popPage();
+    if (shell)
+      shell->popPage();
   };
   callbacks.onDeleted = [this]() {
     refreshProducts();
-    if (shell) shell->popPage();
+    if (shell)
+      shell->popPage();
   };
   callbacks.onCancelled = [this]() {
-    if (shell) shell->popPage();
+    if (shell)
+      shell->popPage();
   };
   callbacks.onBrandSelected = [this](const std::string &brand) {
     refreshProducts(brand);
   };
   callbacks.onNavigateHome = [this]() {
-    if (shell) shell->navigateTo("admin_dashboard");
+    if (shell)
+      shell->navigateTo("admin_dashboard");
   };
 
-  GtkWidget *detailView = ProductDetailView::create(
-      controller, shell, workingProd, ProductDetailMode::AdminEdit, isNew, callbacks);
+  GtkWidget *detailView =
+      ProductDetailView::create(controller, shell, workingProd,
+                                ProductDetailMode::AdminEdit, isNew, callbacks);
 
   std::string pageId = isNew ? "admin_product_add" : "admin_product_edit";
-  std::string pageTitle = isNew ? "Thêm mới sản phẩm điện thoại" : ("Chỉnh sửa: " + prod.name);
+  std::string pageTitle =
+      isNew ? "Thêm mới sản phẩm điện thoại" : ("Chỉnh sửa: " + prod.name);
   shell->pushPage(pageId, detailView, pageTitle, false);
 }
 
@@ -3005,6 +3014,39 @@ void AdminScreens::showOrderListView() {
   gtk_box_append(GTK_BOX(filterRow), dropStatus);
   gtk_box_append(GTK_BOX(filterRow), dropPayment);
 
+  // Bộ lọc theo ngày & tự động sort sớm nhất (ANTY.md mục 2)
+  GtkWidget *lblFrom = gtk_label_new("Từ:");
+  gtk_widget_add_css_class(lblFrom, "stat-label");
+  gtk_box_append(GTK_BOX(filterRow), lblFrom);
+
+  entryOrderFromDate = gtk_entry_new();
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entryOrderFromDate), "DD/MM/YYYY");
+  gtk_widget_set_size_request(entryOrderFromDate, 105, -1);
+  g_signal_connect(entryOrderFromDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     AdminScreens *self = static_cast<AdminScreens *>(d);
+                     self->orderFromDate = gtk_editable_get_text(e);
+                     self->refreshOrders();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(filterRow), entryOrderFromDate);
+
+  GtkWidget *lblTo = gtk_label_new("Đến:");
+  gtk_widget_add_css_class(lblTo, "stat-label");
+  gtk_box_append(GTK_BOX(filterRow), lblTo);
+
+  entryOrderToDate = gtk_entry_new();
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entryOrderToDate), "DD/MM/YYYY");
+  gtk_widget_set_size_request(entryOrderToDate, 105, -1);
+  g_signal_connect(entryOrderToDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     AdminScreens *self = static_cast<AdminScreens *>(d);
+                     self->orderToDate = gtk_editable_get_text(e);
+                     self->refreshOrders();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(filterRow), entryOrderToDate);
+
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
       "Tìm theo Mã đơn hàng (ORD-...), Tên khách hàng hoặc Số điện thoại...",
       G_CALLBACK(+[](GtkEditable *e, gpointer d) {
@@ -3039,8 +3081,25 @@ void AdminScreens::refreshOrders() {
     child = next;
   }
 
-  std::vector<OrderItemViewModel> list = controller->filterOrders(
+  std::vector<OrderItemViewModel> rawList = controller->filterOrders(
       orderFilterKeyword, orderFilterStatus, orderFilterPayment, -1);
+  std::vector<OrderItemViewModel> list;
+  for (const auto &ord : rawList) {
+    if (!orderFromDate.empty() || !orderToDate.empty()) {
+      if (!RealTimeManager::isDateInRange(ord.orderTime, orderFromDate,
+                                          orderToDate)) {
+        continue;
+      }
+    }
+    list.push_back(ord);
+  }
+
+  // Tự động sắp xếp theo thời gian sớm nhất (ANTY.md mục 2)
+  std::sort(list.begin(), list.end(),
+            [](const OrderItemViewModel &a, const OrderItemViewModel &b) {
+              return RealTimeManager::dateTimeToEpochSeconds(a.orderTime) <
+                     RealTimeManager::dateTimeToEpochSeconds(b.orderTime);
+            });
   UIComponents::updateRecordCountBadge(ordersCountBadge, list.size(),
                                        "đơn hàng");
 
@@ -3333,6 +3392,41 @@ void AdminScreens::buildAllInvoicesView() {
       "Lịch sử hóa đơn bán lẻ và chứng từ thanh toán.");
   gtk_box_append(GTK_BOX(content), header);
 
+  GtkWidget *extraControls =
+      gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+
+  GtkWidget *lblFrom = gtk_label_new("Từ:");
+  gtk_widget_add_css_class(lblFrom, "stat-label");
+  gtk_box_append(GTK_BOX(extraControls), lblFrom);
+
+  entryInvoiceFromDate = gtk_entry_new();
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entryInvoiceFromDate), "DD/MM/YYYY");
+  gtk_widget_set_size_request(entryInvoiceFromDate, 105, -1);
+  g_signal_connect(entryInvoiceFromDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     AdminScreens *self = static_cast<AdminScreens *>(d);
+                     self->invoiceFromDate = gtk_editable_get_text(e);
+                     self->refreshInvoices();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(extraControls), entryInvoiceFromDate);
+
+  GtkWidget *lblTo = gtk_label_new("Đến:");
+  gtk_widget_add_css_class(lblTo, "stat-label");
+  gtk_box_append(GTK_BOX(extraControls), lblTo);
+
+  entryInvoiceToDate = gtk_entry_new();
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entryInvoiceToDate), "DD/MM/YYYY");
+  gtk_widget_set_size_request(entryInvoiceToDate, 105, -1);
+  g_signal_connect(entryInvoiceToDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     AdminScreens *self = static_cast<AdminScreens *>(d);
+                     self->invoiceToDate = gtk_editable_get_text(e);
+                     self->refreshInvoices();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(extraControls), entryInvoiceToDate);
+
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
       "Tìm theo mã hóa đơn, mã đơn hàng, tên khách hàng hoặc thu ngân...",
       G_CALLBACK(+[](GtkEditable *e, gpointer d) {
@@ -3341,7 +3435,7 @@ void AdminScreens::buildAllInvoicesView() {
         self->invoiceFilterKeyword = txt ? txt : "";
         self->refreshInvoices();
       }),
-      this, nullptr, &invoiceCountBadge);
+      this, nullptr, &invoiceCountBadge, extraControls);
   gtk_box_append(GTK_BOX(content), filterToolbar);
 
   GtkWidget *tableContainer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -3384,8 +3478,22 @@ void AdminScreens::refreshInvoices() {
       if (!match)
         continue;
     }
+    // Lọc theo khoảng ngày (ANTY.md mục 2)
+    if (!invoiceFromDate.empty() || !invoiceToDate.empty()) {
+      if (!RealTimeManager::isDateInRange(inv.createTime, invoiceFromDate,
+                                          invoiceToDate)) {
+        continue;
+      }
+    }
     list.push_back(inv);
   }
+
+  // Tự động sắp xếp theo thời gian sớm nhất (ANTY.md mục 2)
+  std::sort(list.begin(), list.end(),
+            [](const InvoiceItemViewModel &a, const InvoiceItemViewModel &b) {
+              return RealTimeManager::dateTimeToEpochSeconds(a.createTime) <
+                     RealTimeManager::dateTimeToEpochSeconds(b.createTime);
+            });
 
   UIComponents::updateRecordCountBadge(invoiceCountBadge, list.size(),
                                        "hóa đơn");
@@ -3458,46 +3566,44 @@ void AdminScreens::buildWarrantyMonitorView() {
 
   GtkWidget *header = UIComponents::createSectionHeader(
       "Giám sát dịch vụ bảo hành",
-      "Theo dõi, kiểm tra tiến độ và trực tiếp xử lý các yêu cầu bảo hành trên toàn hệ thống.");
+      "Theo dõi, kiểm tra tiến độ và trực tiếp xử lý các yêu cầu bảo hành trên "
+      "toàn hệ thống.");
   gtk_box_append(GTK_BOX(content), header);
 
   GtkWidget *extraControls =
       gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
 
   const char *statusOptions[] = {
-      "Tất cả trạng thái",
-      "Mới tiếp nhận (Received)",
-      "Đang xử lý (Processing)",
-      "Đã hoàn tất (Resolved)",
-      "Từ chối bảo hành (Rejected)",
-      nullptr};
+      "Tất cả trạng thái",           "Mới tiếp nhận (Received)",
+      "Đang xử lý (Processing)",     "Đã hoàn tất (Resolved)",
+      "Từ chối bảo hành (Rejected)", nullptr};
   GtkWidget *dropStatus = gtk_drop_down_new_from_strings(statusOptions);
   gtk_widget_add_css_class(dropStatus, "filter-dropdown");
-  g_signal_connect_data(
-      dropStatus, "notify::selected",
-      G_CALLBACK(+[](GObject *obj, GParamSpec *, gpointer d) {
-        AdminScreens *self = static_cast<AdminScreens *>(d);
-        guint sel = gtk_drop_down_get_selected(GTK_DROP_DOWN(obj));
-        self->warrantyFilterStatus =
-            (sel == 0) ? -1 : static_cast<int>(sel - 1);
-        self->refreshWarrantyMonitor();
-      }),
-      this, nullptr, (GConnectFlags)0);
+  g_signal_connect_data(dropStatus, "notify::selected",
+                        G_CALLBACK(+[](GObject *obj, GParamSpec *, gpointer d) {
+                          AdminScreens *self = static_cast<AdminScreens *>(d);
+                          guint sel =
+                              gtk_drop_down_get_selected(GTK_DROP_DOWN(obj));
+                          self->warrantyFilterStatus =
+                              (sel == 0) ? -1 : static_cast<int>(sel - 1);
+                          self->refreshWarrantyMonitor();
+                        }),
+                        this, nullptr, (GConnectFlags)0);
   gtk_box_append(GTK_BOX(extraControls), dropStatus);
 
   const char *sortOptions[] = {"Ngày nhận: Mới nhất", "Ngày nhận: Cũ nhất",
-                               "Khách hàng: A → Z", "Thiết bị: A → Z",
-                               "Mã phiếu: A → Z", nullptr};
+                               "Khách hàng: A → Z",   "Thiết bị: A → Z",
+                               "Mã phiếu: A → Z",     nullptr};
   GtkWidget *dropSort = gtk_drop_down_new_from_strings(sortOptions);
   gtk_widget_add_css_class(dropSort, "filter-dropdown");
-  g_signal_connect_data(
-      dropSort, "notify::selected",
-      G_CALLBACK(+[](GObject *obj, GParamSpec *, gpointer d) {
-        AdminScreens *self = static_cast<AdminScreens *>(d);
-        self->warrantySortBy = gtk_drop_down_get_selected(GTK_DROP_DOWN(obj));
-        self->refreshWarrantyMonitor();
-      }),
-      this, nullptr, (GConnectFlags)0);
+  g_signal_connect_data(dropSort, "notify::selected",
+                        G_CALLBACK(+[](GObject *obj, GParamSpec *, gpointer d) {
+                          AdminScreens *self = static_cast<AdminScreens *>(d);
+                          self->warrantySortBy =
+                              gtk_drop_down_get_selected(GTK_DROP_DOWN(obj));
+                          self->refreshWarrantyMonitor();
+                        }),
+                        this, nullptr, (GConnectFlags)0);
   gtk_box_append(GTK_BOX(extraControls), dropSort);
 
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
@@ -3575,35 +3681,33 @@ void AdminScreens::refreshWarrantyMonitor() {
 
   // Sắp xếp
   if (warrantySortBy == 0) { // Ngày nhận: Mới nhất
-    std::sort(list.begin(), list.end(),
-              [](const WarrantyItemViewModel &a,
-                 const WarrantyItemViewModel &b) {
-                return a.requestDate > b.requestDate;
-              });
+    std::sort(
+        list.begin(), list.end(),
+        [](const WarrantyItemViewModel &a, const WarrantyItemViewModel &b) {
+          return a.requestDate > b.requestDate;
+        });
   } else if (warrantySortBy == 1) { // Ngày nhận: Cũ nhất
-    std::sort(list.begin(), list.end(),
-              [](const WarrantyItemViewModel &a,
-                 const WarrantyItemViewModel &b) {
-                return a.requestDate < b.requestDate;
-              });
+    std::sort(
+        list.begin(), list.end(),
+        [](const WarrantyItemViewModel &a, const WarrantyItemViewModel &b) {
+          return a.requestDate < b.requestDate;
+        });
   } else if (warrantySortBy == 2) { // Khách hàng: A -> Z
-    std::sort(list.begin(), list.end(),
-              [](const WarrantyItemViewModel &a,
-                 const WarrantyItemViewModel &b) {
-                return a.customerName < b.customerName;
-              });
+    std::sort(
+        list.begin(), list.end(),
+        [](const WarrantyItemViewModel &a, const WarrantyItemViewModel &b) {
+          return a.customerName < b.customerName;
+        });
   } else if (warrantySortBy == 3) { // Thiết bị: A -> Z
-    std::sort(list.begin(), list.end(),
-              [](const WarrantyItemViewModel &a,
-                 const WarrantyItemViewModel &b) {
-                return a.phoneName < b.phoneName;
-              });
+    std::sort(
+        list.begin(), list.end(),
+        [](const WarrantyItemViewModel &a, const WarrantyItemViewModel &b) {
+          return a.phoneName < b.phoneName;
+        });
   } else if (warrantySortBy == 4) { // Mã phiếu: A -> Z
     std::sort(list.begin(), list.end(),
               [](const WarrantyItemViewModel &a,
-                 const WarrantyItemViewModel &b) {
-                return a.id < b.id;
-              });
+                 const WarrantyItemViewModel &b) { return a.id < b.id; });
   }
 
   UIComponents::updateRecordCountBadge(warrantyCountBadge, list.size(),
@@ -3614,10 +3718,9 @@ void AdminScreens::refreshWarrantyMonitor() {
         warrantyFilterKeyword.empty() && warrantyFilterStatus < 0
             ? "Chưa có dữ liệu bảo hành."
             : "Không tìm thấy phiếu bảo hành nào khớp với bộ lọc tìm kiếm.";
-    gtk_box_append(
-        GTK_BOX(warrantyListBox),
-        UIComponents::createEmptyState(
-            "🛡️", "Chưa có dữ liệu bảo hành", emptyMsg));
+    gtk_box_append(GTK_BOX(warrantyListBox),
+                   UIComponents::createEmptyState(
+                       "🛡️", "Chưa có dữ liệu bảo hành", emptyMsg));
     return;
   }
 
@@ -3653,10 +3756,9 @@ void AdminScreens::refreshWarrantyMonitor() {
                        w.customerName, phoneSub, kAdminWarrantyTableCols[2]));
 
     // 3: Ngày nhận
-    gtk_box_append(GTK_BOX(row),
-                   UIComponents::createTableTextCell(
-                       w.requestDate, kAdminWarrantyTableCols[3],
-                       "tabular-num"));
+    gtk_box_append(GTK_BOX(row), UIComponents::createTableTextCell(
+                                     w.requestDate, kAdminWarrantyTableCols[3],
+                                     "tabular-num"));
 
     // 4: Trạng thái (Badge)
     GtkWidget *badge = UIComponents::createWarrantyStatusBadge(w.status);
@@ -3667,10 +3769,9 @@ void AdminScreens::refreshWarrantyMonitor() {
     std::string noteSub = w.technicianNote.empty()
                               ? "Chưa có ghi chú KT"
                               : ("KT: " + w.technicianNote);
-    gtk_box_append(GTK_BOX(row),
-                   UIComponents::createTableTwoLineCell(
-                       "Lỗi: " + w.issueDescription, noteSub,
-                       kAdminWarrantyTableCols[5]));
+    gtk_box_append(GTK_BOX(row), UIComponents::createTableTwoLineCell(
+                                     "Lỗi: " + w.issueDescription, noteSub,
+                                     kAdminWarrantyTableCols[5]));
 
     // 6: Thao tác (Xử lý phiếu)
     if (w.status != WarrantyStatus::RESOLVED &&
@@ -3684,8 +3785,7 @@ void AdminScreens::refreshWarrantyMonitor() {
       };
       ProcWarAdminData *pwd = new ProcWarAdminData{this, w};
       g_signal_connect_data(
-          btnProcess, "clicked",
-          G_CALLBACK(+[](GtkButton *b, gpointer d) {
+          btnProcess, "clicked", G_CALLBACK(+[](GtkButton *b, gpointer d) {
             (void)b;
             ProcWarAdminData *data = static_cast<ProcWarAdminData *>(d);
             data->s->showProcessWarrantyModal(data->item);
@@ -3698,10 +3798,9 @@ void AdminScreens::refreshWarrantyMonitor() {
       gtk_box_append(GTK_BOX(row), UIComponents::createTableWidgetCell(
                                        btnProcess, kAdminWarrantyTableCols[6]));
     } else {
-      gtk_box_append(GTK_BOX(row),
-                     UIComponents::createTableTextCell(
-                         "Đã đóng", kAdminWarrantyTableCols[6],
-                         "cell-subtitle"));
+      gtk_box_append(GTK_BOX(row), UIComponents::createTableTextCell(
+                                       "Đã đóng", kAdminWarrantyTableCols[6],
+                                       "cell-subtitle"));
     }
 
     gtk_box_append(GTK_BOX(warrantyListBox), row);
@@ -3726,8 +3825,7 @@ void AdminScreens::showProcessWarrantyModal(const WarrantyItemViewModel &w) {
   gtk_widget_add_css_class(card, "pdp-card");
   gtk_widget_set_hexpand(card, TRUE);
 
-  GtkWidget *title =
-      gtk_label_new(("⚙️ Xử lý phiếu bảo hành: " + w.id).c_str());
+  GtkWidget *title = gtk_label_new(("⚙️ Xử lý phiếu bảo hành: " + w.id).c_str());
   gtk_widget_add_css_class(title, "card-title");
   gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
   gtk_box_append(GTK_BOX(card), title);
@@ -3774,8 +3872,8 @@ void AdminScreens::showProcessWarrantyModal(const WarrantyItemViewModel &w) {
     devDisp += " [" + w.phoneId + "]";
   addInfoRow(1, "Thiết bị:", devDisp);
 
-  addInfoRow(2, "Mã đơn hàng:",
-             w.orderId.empty() ? "Đơn vãng lai (POS)" : w.orderId);
+  addInfoRow(
+      2, "Mã đơn hàng:", w.orderId.empty() ? "Đơn vãng lai (POS)" : w.orderId);
 
   std::string expDisp;
   if (w.remainingDays > 0) {
@@ -3836,9 +3934,9 @@ void AdminScreens::showProcessWarrantyModal(const WarrantyItemViewModel &w) {
   if (!w.technicianNote.empty()) {
     gtk_editable_set_text(GTK_EDITABLE(entryNote), w.technicianNote.c_str());
   }
-  gtk_entry_set_placeholder_text(
-      GTK_ENTRY(entryNote),
-      "Ghi nhận tình trạng kỹ thuật, nguyên nhân hư hỏng, linh kiện cần thay...");
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entryNote),
+                                 "Ghi nhận tình trạng kỹ thuật, nguyên nhân hư "
+                                 "hỏng, linh kiện cần thay...");
   gtk_box_append(GTK_BOX(card), UIComponents::createFormField(
                                     "Ghi chú kỹ thuật viên *", entryNote));
 
@@ -3851,9 +3949,8 @@ void AdminScreens::showProcessWarrantyModal(const WarrantyItemViewModel &w) {
       GTK_ENTRY(entryRes),
       "Biện pháp giải quyết: Đã thay linh kiện / Đã cài đặt lại / Trả máy từ "
       "chối...");
-  gtk_box_append(
-      GTK_BOX(card),
-      UIComponents::createFormField("Kết quả xử lý & Biện pháp *", entryRes));
+  gtk_box_append(GTK_BOX(card), UIComponents::createFormField(
+                                    "Kết quả xử lý & Biện pháp *", entryRes));
 
   GtkWidget *lblHint = gtk_label_new(
       "💡 Lưu ý: Khi chuyển sang Hoàn tất (RESOLVED) hoặc Từ chối (REJECTED), "
@@ -3887,12 +3984,11 @@ void AdminScreens::showProcessWarrantyModal(const WarrantyItemViewModel &w) {
     GtkWidget *entryRes;
     std::vector<WarrantyStatus> allowedStatuses;
   };
-  ProcessAdminCtx *ctx = new ProcessAdminCtx{
-      this, w.id, comboStatus, entryNote, entryRes, nextStatuses};
+  ProcessAdminCtx *ctx = new ProcessAdminCtx{this,      w.id,     comboStatus,
+                                             entryNote, entryRes, nextStatuses};
 
   g_signal_connect_data(
-      btnSubmit, "clicked",
-      G_CALLBACK(+[](GtkButton *b, gpointer d) {
+      btnSubmit, "clicked", G_CALLBACK(+[](GtkButton *b, gpointer d) {
         ProcessAdminCtx *c = static_cast<ProcessAdminCtx *>(d);
         GtkWindow *win =
             c->screens->shell ? c->screens->shell->getWindow() : nullptr;
@@ -3905,8 +4001,7 @@ void AdminScreens::showProcessWarrantyModal(const WarrantyItemViewModel &w) {
         }
 
         WarrantyStatus targetStatus = c->allowedStatuses[sel];
-        const char *rawNote =
-            gtk_editable_get_text(GTK_EDITABLE(c->entryNote));
+        const char *rawNote = gtk_editable_get_text(GTK_EDITABLE(c->entryNote));
         const char *rawRes = gtk_editable_get_text(GTK_EDITABLE(c->entryRes));
         std::string note = rawNote ? rawNote : "";
         std::string resText = rawRes ? rawRes : "";
@@ -3927,7 +4022,8 @@ void AdminScreens::showProcessWarrantyModal(const WarrantyItemViewModel &w) {
           if (cleanNote.empty() && cleanRes.empty()) {
             UIComponents::showWarningDialog(
                 win, "Thiếu thông tin bắt buộc",
-                "Khi hoàn tất hoặc từ chối bảo hành, bắt buộc phải nhập ghi chú "
+                "Khi hoàn tất hoặc từ chối bảo hành, bắt buộc phải nhập ghi "
+                "chú "
                 "kỹ thuật hoặc kết quả giải quyết!");
             return;
           }
@@ -3998,6 +4094,23 @@ void AdminScreens::buildReportsView() {
   gtk_editable_set_text(GTK_EDITABLE(eTo), reportToDate.c_str());
   GtkWidget *toField = UIComponents::createFormField("Đến ngày", eTo);
   gtk_box_append(GTK_BOX(filterBar), toField);
+
+  // Chuyển đổi giữa 3 view: Theo Ngày - Tháng - Năm (ANTY.md dòng 38)
+  const char *periodOpts[] = {"Theo: Ngày", "Theo: Tháng", "Theo: Năm",
+                              nullptr};
+  GtkWidget *dropPeriod = gtk_drop_down_new_from_strings(periodOpts);
+  gtk_drop_down_set_selected(GTK_DROP_DOWN(dropPeriod), reportTimelineMode);
+  g_signal_connect_swapped(
+      dropPeriod, "notify::selected",
+      G_CALLBACK(+[](AdminScreens *s, GParamSpec *, GtkDropDown *dd) {
+        s->reportTimelineMode =
+            static_cast<int>(gtk_drop_down_get_selected(dd));
+        s->refreshReports();
+      }),
+      this);
+  GtkWidget *periodField =
+      UIComponents::createFormField("Chu kỳ hiển thị", dropPeriod);
+  gtk_box_append(GTK_BOX(filterBar), periodField);
 
   struct ReportFilterCtx {
     AdminScreens *s;
@@ -4075,8 +4188,8 @@ void AdminScreens::buildReportsView() {
   gtk_label_set_xalign(GTK_LABEL(lblRange), 0.0f);
   gtk_box_append(GTK_BOX(content), lblRange);
 
-  DashboardStatsViewModel stats =
-      controller->getDashboardStats(reportFromDate, reportToDate);
+  DashboardStatsViewModel stats = controller->getDashboardStats(
+      reportFromDate, reportToDate, reportTimelineMode);
 
   // Summary KPIs
   GtkWidget *grid = gtk_grid_new();
@@ -4104,22 +4217,21 @@ void AdminScreens::buildReportsView() {
   gtk_grid_attach(GTK_GRID(grid), c3, 2, 0, 1, 1);
   gtk_box_append(GTK_BOX(content), grid);
 
-  // Hàng biểu đồ phân tích kinh doanh (Grid 2 cột: Cột trái 65% - Cột phải 35%) (DESIGN.md T16)
-  GtkWidget *chartGrid = gtk_grid_new();
-  gtk_grid_set_row_spacing(GTK_GRID(chartGrid), DesignTokens::SPACE_LG);
-  gtk_grid_set_column_spacing(GTK_GRID(chartGrid), DesignTokens::SPACE_LG);
-  gtk_grid_set_column_homogeneous(GTK_GRID(chartGrid), FALSE);
-
-  GtkWidget *revChart = UIComponents::createRevenueBarChart(stats.timelineStats);
+  // 1. Biểu đồ & Bảng doanh thu chiếm TOÀN BỘ CHIỀU RỘNG (100% width)
+  GtkWidget *revChart = UIComponents::createRevenueBarChart(
+      stats.timelineStats, reportTimelineMode,
+      [this](int newMode) {
+        reportTimelineMode = newMode;
+        refreshReports();
+      });
   gtk_widget_set_hexpand(revChart, TRUE);
+  gtk_box_append(GTK_BOX(content), revChart);
 
-  GtkWidget *brandChart = UIComponents::createBrandDistributionCard(stats.brandStats);
-  gtk_widget_set_hexpand(brandChart, FALSE);
-  gtk_widget_set_size_request(brandChart, 380, -1);
-
-  gtk_grid_attach(GTK_GRID(chartGrid), revChart, 0, 0, 1, 1);
-  gtk_grid_attach(GTK_GRID(chartGrid), brandChart, 1, 0, 1, 1);
-  gtk_box_append(GTK_BOX(content), chartGrid);
+  // 2. Biểu đồ tròn cơ cấu doanh số đặt ngay bên dưới biểu đồ cột, với cột chú thích nằm bên cạnh
+  GtkWidget *brandChart =
+      UIComponents::createBrandDistributionCard(stats.brandStats);
+  gtk_widget_set_hexpand(brandChart, TRUE);
+  gtk_box_append(GTK_BOX(content), brandChart);
 
   // Top Selling Products Table Card
   GtkWidget *topCard =

@@ -52,6 +52,7 @@ public:
   std::vector<WarrantyItemViewModel> warranties;
   std::vector<AccountItemViewModel> accounts;
   CartSummaryViewModel customerCart;
+  std::map<std::string, CartSummaryViewModel> userCarts;
   std::map<std::string, std::string> customPasswords;
 
   static MockDataStore &getInstance() {
@@ -822,32 +823,8 @@ public:
   }
 
   void initCart() {
-    customerCart.customerId = "CUS-000001";
-    customerCart.items.clear();
-
-    CartItemViewModel ci1;
-    ci1.phoneId = "PHN-000101";
-    ci1.phoneName = "Oppo Reno 16F 5G";
-    ci1.brand = "Oppo";
-    ci1.unitPrice = 14000000;
-    ci1.quantity = 1;
-    ci1.availableStock = 40;
-    ci1.calculateSubtotal();
-    customerCart.items.push_back(ci1);
-
-    CartItemViewModel ci2;
-    ci2.phoneId = "PHN-000106";
-    ci2.phoneName = "Samsung Galaxy A55 5G 128GB";
-    ci2.brand = "Samsung";
-    ci2.unitPrice = 9690000;
-    ci2.quantity = 1;
-    ci2.availableStock = 46;
-    ci2.calculateSubtotal();
-    customerCart.items.push_back(ci2);
-
-    customerCart.appliedDiscountCode = "SALE10";
-    customerCart.discountAmount = 500000;
-    customerCart.recalculate();
+    customerCart = CartSummaryViewModel();
+    userCarts.clear();
   }
 };
 

@@ -22,9 +22,9 @@
 #include "WarehouseScreens.h"
 #include "../../source/utils/Utf8Helper.h"
 #include "../components/UIComponents.h"
+#include "../mock/RealTimeManager.h"
 #include "../styles/AppCss.h"
 #include "MainShellWindow.h"
-
 
 namespace {
 const std::vector<UIComponents::TableColumnSpec> kWarehouseInvCols = {
@@ -80,7 +80,8 @@ WarehouseScreens::WarehouseScreens(AppController *ctrl,
                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
   receiptsView = gtk_scrolled_window_new();
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(receiptsView), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(receiptsView),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
   createReceiptView = gtk_scrolled_window_new();
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(createReceiptView),
@@ -476,7 +477,8 @@ void WarehouseScreens::refreshLowStock() {
 
 void WarehouseScreens::buildReceiptsView() {
   receiptsView = gtk_scrolled_window_new();
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(receiptsView), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(receiptsView),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
   GtkWidget *content =
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
@@ -497,6 +499,44 @@ void WarehouseScreens::buildReceiptsView() {
       "Theo dõi lịch sử nhập hàng từ các nhà cung cấp.", btnNew);
   gtk_box_append(GTK_BOX(content), header);
 
+  GtkWidget *extraControls =
+      gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+
+  GtkWidget *lblFrom = gtk_label_new("Từ:");
+  gtk_widget_add_css_class(lblFrom, "stat-label");
+  gtk_box_append(GTK_BOX(extraControls), lblFrom);
+
+  entryReceiptsFromDate = gtk_entry_new();
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entryReceiptsFromDate),
+                                 "DD/MM/YYYY");
+  gtk_widget_set_size_request(entryReceiptsFromDate, 105, -1);
+  g_signal_connect(entryReceiptsFromDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     WarehouseScreens *self =
+                         static_cast<WarehouseScreens *>(d);
+                     self->receiptsFromDate = gtk_editable_get_text(e);
+                     self->refreshReceipts();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(extraControls), entryReceiptsFromDate);
+
+  GtkWidget *lblTo = gtk_label_new("Đến:");
+  gtk_widget_add_css_class(lblTo, "stat-label");
+  gtk_box_append(GTK_BOX(extraControls), lblTo);
+
+  entryReceiptsToDate = gtk_entry_new();
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entryReceiptsToDate), "DD/MM/YYYY");
+  gtk_widget_set_size_request(entryReceiptsToDate, 105, -1);
+  g_signal_connect(entryReceiptsToDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     WarehouseScreens *self =
+                         static_cast<WarehouseScreens *>(d);
+                     self->receiptsToDate = gtk_editable_get_text(e);
+                     self->refreshReceipts();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(extraControls), entryReceiptsToDate);
+
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
       "Tìm theo mã phiếu, nhà cung cấp hoặc thủ kho nhập...",
       G_CALLBACK(+[](GtkEditable *e, gpointer d) {
@@ -505,7 +545,7 @@ void WarehouseScreens::buildReceiptsView() {
         self->receiptsKeyword = txt ? txt : "";
         self->refreshReceipts();
       }),
-      this, nullptr, &receiptsCountBadge);
+      this, nullptr, &receiptsCountBadge, extraControls);
   gtk_box_append(GTK_BOX(content), filterToolbar);
 
   GtkWidget *tableContainer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -545,8 +585,23 @@ void WarehouseScreens::refreshReceipts() {
         continue;
       }
     }
+    // Lọc theo khoảng ngày (ANTY.md mục 2)
+    if (!receiptsFromDate.empty() || !receiptsToDate.empty()) {
+      if (!RealTimeManager::isDateInRange(r.importTime, receiptsFromDate,
+                                          receiptsToDate)) {
+        continue;
+      }
+    }
     list.push_back(r);
   }
+
+  // Tự động sắp xếp theo thời gian sớm nhất (ANTY.md mục 2)
+  std::sort(list.begin(), list.end(),
+            [](const GoodsReceiptSummaryViewModel &a,
+               const GoodsReceiptSummaryViewModel &b) {
+              return RealTimeManager::dateTimeToEpochSeconds(a.importTime) <
+                     RealTimeManager::dateTimeToEpochSeconds(b.importTime);
+            });
 
   UIComponents::updateRecordCountBadge(receiptsCountBadge, list.size(),
                                        "phiếu nhập");
@@ -638,8 +693,7 @@ void WarehouseScreens::showReceiptDetailModal(
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_MD);
   gtk_widget_add_css_class(card, "card");
 
-  GtkWidget *title =
-      gtk_label_new(("📥 PHIẾU NHẬP KHO " + receipt.id).c_str());
+  GtkWidget *title = gtk_label_new(("📥 PHIẾU NHẬP KHO " + receipt.id).c_str());
   gtk_widget_add_css_class(title, "card-title");
   gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
   gtk_box_append(GTK_BOX(card), title);
@@ -1194,9 +1248,8 @@ void WarehouseScreens::showAddProductToReceiptModal() {
     GtkWidget *errPrice;
     std::vector<ProductItemViewModel> prods;
   };
-  AddProdReceiptCtx *ctx =
-      new AddProdReceiptCtx{this,     comboProd, entryQty, entryPrice,
-                            errCombo, errQty,    errPrice, prods};
+  AddProdReceiptCtx *ctx = new AddProdReceiptCtx{
+      this, comboProd, entryQty, entryPrice, errCombo, errQty, errPrice, prods};
 
   GtkWidget *btnAdd = gtk_button_new_with_label("Thêm vào phiếu");
   gtk_widget_add_css_class(btnAdd, "btn-primary");
@@ -1319,6 +1372,45 @@ void WarehouseScreens::buildFulfillmentView() {
                                         "vận chuyển hoặc để tại quầy nhận.");
   gtk_box_append(GTK_BOX(content), header);
 
+  GtkWidget *extraControls =
+      gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+
+  GtkWidget *lblFrom = gtk_label_new("Từ:");
+  gtk_widget_add_css_class(lblFrom, "stat-label");
+  gtk_box_append(GTK_BOX(extraControls), lblFrom);
+
+  entryFulfillmentFromDate = gtk_entry_new();
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entryFulfillmentFromDate),
+                                 "DD/MM/YYYY");
+  gtk_widget_set_size_request(entryFulfillmentFromDate, 105, -1);
+  g_signal_connect(entryFulfillmentFromDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     WarehouseScreens *self =
+                         static_cast<WarehouseScreens *>(d);
+                     self->fulfillmentFromDate = gtk_editable_get_text(e);
+                     self->refreshFulfillmentQueue();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(extraControls), entryFulfillmentFromDate);
+
+  GtkWidget *lblTo = gtk_label_new("Đến:");
+  gtk_widget_add_css_class(lblTo, "stat-label");
+  gtk_box_append(GTK_BOX(extraControls), lblTo);
+
+  entryFulfillmentToDate = gtk_entry_new();
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entryFulfillmentToDate),
+                                 "DD/MM/YYYY");
+  gtk_widget_set_size_request(entryFulfillmentToDate, 105, -1);
+  g_signal_connect(entryFulfillmentToDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     WarehouseScreens *self =
+                         static_cast<WarehouseScreens *>(d);
+                     self->fulfillmentToDate = gtk_editable_get_text(e);
+                     self->refreshFulfillmentQueue();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(extraControls), entryFulfillmentToDate);
+
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
       "Tìm theo mã đơn, người nhận, SĐT hoặc tên máy cần lấy...",
       G_CALLBACK(+[](GtkEditable *e, gpointer d) {
@@ -1327,7 +1419,7 @@ void WarehouseScreens::buildFulfillmentView() {
         self->fulfillmentKeyword = txt ? txt : "";
         self->refreshFulfillmentQueue();
       }),
-      this, nullptr, &fulfillmentCountBadge);
+      this, nullptr, &fulfillmentCountBadge, extraControls);
   gtk_box_append(GTK_BOX(content), filterToolbar);
 
   GtkWidget *tableContainer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -1379,8 +1471,22 @@ void WarehouseScreens::refreshFulfillmentQueue() {
         continue;
       }
     }
+    // Lọc theo khoảng ngày (ANTY.md mục 2)
+    if (!fulfillmentFromDate.empty() || !fulfillmentToDate.empty()) {
+      if (!RealTimeManager::isDateInRange(ord.orderTime, fulfillmentFromDate,
+                                          fulfillmentToDate)) {
+        continue;
+      }
+    }
     toFulfill.push_back(ord);
   }
+
+  // Tự động sắp xếp theo thời gian sớm nhất (ANTY.md mục 2)
+  std::sort(toFulfill.begin(), toFulfill.end(),
+            [](const OrderItemViewModel &a, const OrderItemViewModel &b) {
+              return RealTimeManager::dateTimeToEpochSeconds(a.orderTime) <
+                     RealTimeManager::dateTimeToEpochSeconds(b.orderTime);
+            });
 
   UIComponents::updateRecordCountBadge(fulfillmentCountBadge, toFulfill.size(),
                                        "đơn cần đóng gói");

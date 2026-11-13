@@ -69,8 +69,16 @@ private:
     static bool replaceFile(const std::string& temporaryPath,
                             const std::string& destinationPath) {
 #ifdef _WIN32
-        return MoveFileExA(temporaryPath.c_str(), destinationPath.c_str(),
-                           MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+        for (int i = 0; i < 5; ++i) {
+            SetFileAttributesA(destinationPath.c_str(), FILE_ATTRIBUTE_NORMAL);
+            if (MoveFileExA(temporaryPath.c_str(), destinationPath.c_str(),
+                            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0) {
+                return true;
+            }
+            Sleep(15);
+        }
+        DeleteFileA(destinationPath.c_str());
+        return MoveFileA(temporaryPath.c_str(), destinationPath.c_str()) != 0;
 #else
         return std::rename(temporaryPath.c_str(), destinationPath.c_str()) == 0;
 #endif
@@ -155,8 +163,9 @@ private:
             std::remove(temporaryPath.c_str());
             return false;
         }
+        bool writeOk = output.good() && !output.fail();
         output.close();
-        if (!output || !replaceFile(temporaryPath, path)) {
+        if (!writeOk || !replaceFile(temporaryPath, path)) {
             errorMessage = "Không thể cập nhật bộ đếm ID tại " + path + ".";
             std::remove(temporaryPath.c_str());
             return false;

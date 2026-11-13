@@ -592,7 +592,10 @@ OperationResult AppController::changePassword(const std::string &oldPassword,
       "Đổi mật khẩu thành công! Hãy dùng mật khẩu mới ở lần đăng nhập sau.");
 }
 
-void AppController::logout() { currentSession = UserSessionViewModel(); }
+void AppController::logout() {
+  currentSession = UserSessionViewModel();
+  MockDataStore::getInstance().customerCart = CartSummaryViewModel();
+}
 
 const UserSessionViewModel &AppController::getCurrentUser() const {
   return currentSession;
@@ -649,12 +652,7 @@ OperationResult AppController::updateProfile(const std::string &fullName,
     return OperationResult::Fail("Email không hợp lệ!");
   }
 
-  currentSession.fullName = fullName;
-  currentSession.phone = phone;
-  currentSession.email = email;
-  currentSession.address = address;
-
-  // Cập nhật xuống file qua Service
+  // Cập nhật xuống file qua Service trước
   if (currentSession.isCustomer() && customerService != nullptr) {
     Customer *cust = customerService->getCustomerById(currentSession.userId);
     if (cust != nullptr) {
@@ -702,6 +700,12 @@ OperationResult AppController::updateProfile(const std::string &fullName,
       }
     }
   }
+
+  // Cập nhật session RAM sau khi lưu file thành công
+  currentSession.fullName = fullName;
+  currentSession.phone = phone;
+  currentSession.email = email;
+  currentSession.address = address;
 
   // Cập nhật trong Mock Store
   auto &store = MockDataStore::getInstance();

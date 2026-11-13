@@ -92,17 +92,75 @@ OperationResult AppController::changeAccountRole(const std::string &username,
     return OperationResult::Fail(
         "Không thể tự đổi quyền tài khoản đang đăng nhập!");
   }
+  if (newRole == RoleType::CUSTOMER) {
+    return OperationResult::Fail(
+        "Không thể chuyển đổi tài khoản nhân sự sang khách hàng!");
+  }
+
+  if (employeeService == nullptr) {
+    return OperationResult::Fail("Dịch vụ nhân sự chưa sẵn sàng!");
+  }
+
+  Employee *emp = employeeService->getEmployeeByUsername(username);
+  if (emp == nullptr) {
+    return OperationResult::Fail("Không tìm thấy nhân viên có tên đăng nhập '" +
+                                 username + "' để đổi quyền!");
+  }
+
+  if (emp->getRoleType() == newRole) {
+    return OperationResult::Ok("Tài khoản đã có quyền này từ trước.");
+  }
+
+  Employee *newEmp = nullptr;
+  if (newRole == RoleType::ADMIN) {
+    newEmp = new AdminEmployee(
+        emp->getID(), emp->getName(), emp->getPhoneNumber(), emp->getEmail(),
+        emp->getAddress(), emp->getAccount().getUsername(),
+        emp->getAccount().getPasswordHash(), emp->getSalary());
+  } else if (newRole == RoleType::WAREHOUSE_EMPLOYEE) {
+    newEmp = new WarehouseEmployee(
+        emp->getID(), emp->getName(), emp->getPhoneNumber(), emp->getEmail(),
+        emp->getAddress(), emp->getAccount().getUsername(),
+        emp->getAccount().getPasswordHash(), emp->getSalary());
+  } else if (newRole == RoleType::SALE_EMPLOYEE) {
+    newEmp = new SalesEmployee(
+        emp->getID(), emp->getName(), emp->getPhoneNumber(), emp->getEmail(),
+        emp->getAddress(), emp->getAccount().getUsername(),
+        emp->getAccount().getPasswordHash(), emp->getSalary());
+  } else {
+    return OperationResult::Fail("Loại quyền không hợp lệ cho nhân sự!");
+  }
+
+  newEmp->getAccount().setID(emp->getAccount().getID());
+  newEmp->getAccount().setActive(emp->getAccount().isActive());
+
+  std::string serviceErr;
+  if (!employeeService->updateEmployee(newEmp, serviceErr)) {
+    delete newEmp;
+    return OperationResult::Fail(
+        !serviceErr.empty()
+            ? serviceErr
+            : "Lỗi khi lưu chức vụ nhân viên vào file dữ liệu!");
+  }
 
   auto &store = MockDataStore::getInstance();
   for (auto &a : store.accounts) {
     if (a.username == username) {
       a.role = newRole;
       a.roleName = roleTypeToString(newRole);
-      return OperationResult::Ok("Đã đổi quyền tài khoản '" + username +
-                                 "' thành " + a.roleName);
+      break;
     }
   }
-  return OperationResult::Fail("Không tìm thấy tài khoản!");
+  for (auto &e : store.employees) {
+    if (e.username == username) {
+      e.role = newRole;
+      e.roleName = roleTypeToString(newRole);
+      break;
+    }
+  }
+
+  return OperationResult::Ok("Đã đổi quyền tài khoản '" + username + "' thành " +
+                             roleTypeToString(newRole));
 }
 
 // === BẢO HÀNH ===
