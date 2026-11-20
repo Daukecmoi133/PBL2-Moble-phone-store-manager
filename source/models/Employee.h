@@ -5,6 +5,7 @@
 #include "People.h"
 #include "Account.h"
 #include "../utils/StringHelper.h"
+#include "../utils/TextCodec.h"
 
 class Employee : public People {
 protected:
@@ -17,6 +18,9 @@ public:
              std::string address, std::string username, std::string password, 
              RoleType roleType, double salary = 0.0); // Hàm dựng đủ tham số
     virtual ~Employee() = default; // Hàm hủy ảo đảm bảo hủy đúng đối tượng lớp dẫn xuất
+    Employee(const Employee&) = default;
+    Employee& operator=(const Employee&) = default;
+    virtual Employee* clone() const = 0; // Tạo bản sao đa hình an toàn khi cập nhật hồ sơ
 
     Account& getAccount(); // Hàm trả về tài khoản nhân viên - cho phép sửa
     const Account& getAccount() const; // Hàm trả về tài khoản nhân viên - chỉ đọc
@@ -45,6 +49,7 @@ public:
 
     std::string getRole() const override; // Ghi đè phương thức trả về tên chức danh Admin
     RoleType getRoleType() const override; // Ghi đè phương thức trả về mã RoleType::ADMIN
+    Employee* clone() const override;
 };
 
 // Role SALESEMPLOYEE - Nhân viên bán hàng (kế thừa từ Employee)
@@ -56,6 +61,7 @@ public:
 
     std::string getRole() const override; // Ghi đè phương thức trả về tên chức danh Nhân viên bán hàng
     RoleType getRoleType() const override; // Ghi đè phương thức trả về mã RoleType::SALE_EMPLOYEE
+    Employee* clone() const override;
 };
 
 // Role WAREHOUSEEMPLOYEE - Nhân viên kho (kế thừa từ Employee)
@@ -67,6 +73,7 @@ public:
 
     std::string getRole() const override; // Ghi đè phương thức trả về tên chức danh Nhân viên kho
     RoleType getRoleType() const override; // Ghi đè phương thức trả về mã RoleType::WAREHOUSE_EMPLOYEE
+    Employee* clone() const override;
 };
 
 // ================= IMPLEMENTATION =================
@@ -110,38 +117,46 @@ inline std::string Employee::toFileString() const {
         fileRoleCode = 3;
     }
 
-    return id + "|" + name.firstName + "|" + name.middleName + "|" + name.lastName + "|" +
-           phoneNumber + "|" + email + "|" + account.getUsername() + "|" + account.getPasswordHash() + "|" +
-           std::to_string(fileRoleCode) + "|" + address + "|" +
-           std::to_string(static_cast<long long>(salary)) + "|" + account.getID() + "|" +
+    return TextCodec::escapeField(id) + "|" +
+           TextCodec::escapeField(name.firstName) + "|" +
+           TextCodec::escapeField(name.middleName) + "|" +
+           TextCodec::escapeField(name.lastName) + "|" +
+           TextCodec::escapeField(phoneNumber) + "|" +
+           TextCodec::escapeField(email) + "|" +
+           TextCodec::escapeField(account.getUsername()) + "|" +
+           TextCodec::escapeField(account.getPasswordHash()) + "|" +
+           std::to_string(fileRoleCode) + "|" +
+           TextCodec::escapeField(address) + "|" +
+           StringHelper::formatMoneyDisk(salary) + "|" +
+           TextCodec::escapeField(account.getID()) + "|" +
            (account.isActive() ? "1" : "0");
 }
 
 // Phân tích dòng dữ liệu từ Employee.txt, trả về con trỏ Employee* đúng kiểu
 // Note: Caller có trách nhiệm gọi delete sau khi sử dụng xong
 inline Employee* Employee::fromFileLine(const std::string& line) {
-    Vector<std::string> parts = StringHelper::split(line, '|');
+    Vector<std::string> parts = TextCodec::splitFields(line, '|');
     if (parts.getSize() < 10) return nullptr; // Dòng không hợp lệ
 
-    std::string id       = StringHelper::trim(parts[0]);
-    Name name(StringHelper::trim(parts[1]), StringHelper::trim(parts[2]), StringHelper::trim(parts[3]));
-    std::string phone    = StringHelper::trim(parts[4]);
-    std::string email    = StringHelper::trim(parts[5]);
-    std::string username = StringHelper::trim(parts[6]);
-    std::string password = StringHelper::trim(parts[7]); // Giá trị đã lưu: hash PBKDF2 hoặc plaintext cũ
+    std::string id       = StringHelper::trim(TextCodec::unescape(parts[0]));
+    Name name(TextCodec::unescape(parts[1]), TextCodec::unescape(parts[2]), TextCodec::unescape(parts[3]));
+    std::string phone    = StringHelper::trim(TextCodec::unescape(parts[4]));
+    std::string email    = StringHelper::trim(TextCodec::unescape(parts[5]));
+    std::string username = TextCodec::unescape(parts[6]);
+    std::string password = TextCodec::unescape(parts[7]); // Giá trị đã lưu: hash PBKDF2 hoặc plaintext cũ
     
     // FIX LỖI: Bắt ngoại lệ chuyển đổi kiểu số an toàn, tránh crash ứng dụng khi gặp dữ liệu lỗi
     int roleInt = 0;
     double salary = 0.0;
     try {
         roleInt = std::stoi(StringHelper::trim(parts[8]));
-        if (parts.getSize() >= 11) {
+        if (parts.getSize() >= 11 && !StringHelper::trim(parts[10]).empty()) {
             salary = std::stod(StringHelper::trim(parts[10]));
         }
     } catch (...) {
         return nullptr; // Dòng dữ liệu số không hợp lệ
     }
-    std::string address  = StringHelper::trim(parts[9]);
+    std::string address  = TextCodec::unescape(parts[9]);
 
     // Mapper từ số role sang RoleType (1=Admin, 2=Sale, 3=Warehouse)
     Employee* employee = nullptr;
@@ -153,7 +168,7 @@ inline Employee* Employee::fromFileLine(const std::string& line) {
         employee = new WarehouseEmployee(id, name, phone, email, address, username, password, salary);
     }
     if (employee != nullptr && parts.getSize() >= 12) {
-        employee->getAccount().setID(StringHelper::trim(parts[11]));
+        employee->getAccount().setID(StringHelper::trim(TextCodec::unescape(parts[11])));
     }
     if (employee != nullptr && parts.getSize() >= 13) {
         // Chỉ "0" mới là tài khoản bị vô hiệu hóa; thiếu/giá trị khác = đang hoạt động
@@ -184,6 +199,10 @@ inline RoleType AdminEmployee::getRoleType() const {
     return RoleType::ADMIN;
 }
 
+inline Employee* AdminEmployee::clone() const {
+    return new AdminEmployee(*this);
+}
+
 // --- SalesEmployee ---
 
 // Hàm dựng mặc định Nhân viên bán hàng
@@ -206,6 +225,10 @@ inline RoleType SalesEmployee::getRoleType() const {
     return RoleType::SALE_EMPLOYEE;
 }
 
+inline Employee* SalesEmployee::clone() const {
+    return new SalesEmployee(*this);
+}
+
 // --- WarehouseEmployee ---
 
 // Hàm dựng mặc định Nhân viên kho
@@ -226,6 +249,10 @@ inline std::string WarehouseEmployee::getRole() const {
 // Trả về mã chức vụ Nhân viên kho
 inline RoleType WarehouseEmployee::getRoleType() const {
     return RoleType::WAREHOUSE_EMPLOYEE;
+}
+
+inline Employee* WarehouseEmployee::clone() const {
+    return new WarehouseEmployee(*this);
 }
 
 #endif // EMPLOYEE_H

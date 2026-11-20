@@ -26,7 +26,9 @@
 
 #include "AdminScreens.h"
 #include "../../source/utils/DateTime.h"
+#include "../../source/utils/ExportHelper.h"
 #include "../../source/utils/PathHelper.h"
+#include "../../source/utils/PricingCalculator.h"
 #include "../../source/utils/StringHelper.h"
 #include "../../source/utils/Utf8Helper.h"
 #include "../components/ProductDetailView.h"
@@ -39,9 +41,9 @@
 namespace {
 const std::vector<UIComponents::TableColumnSpec> kProductTableCols = {
     {"Ảnh", 64, 0.5f, false},      {"Tên & Hãng sản phẩm", 220, 0.0f, true},
-    {"Tồn kho", 110, 0.5f, false}, {"Giá vốn", 145, 0.5f, false},
-    {"Giá bán", 145, 0.5f, false}, {"Trạng thái", 145, 0.5f, false},
-    {"Thao tác", 120, 0.5f, false}};
+    {"Tồn kho", 110, 0.5f, false}, {"Giá vốn", 170, 0.5f, false},
+    {"Giá bán", 170, 0.5f, false}, {"Trạng thái", 145, 0.5f, false},
+    {"Thao tác", 210, 0.5f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kEmployeeTableCols = {
     {"Mã & Họ tên", 210, 0.0f, true},    {"Tài khoản", 155, 0.0f, false},
@@ -61,7 +63,7 @@ const std::vector<UIComponents::TableColumnSpec> kSupplierTableCols = {
     {"Địa chỉ", 200, 0.0f, true},           {"Thao tác", 175, 0.5f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kCustomerOrderHistoryCols = {
-    {"Mã đơn", 185, 0.0f, false},         {"Thời gian đặt", 160, 0.0f, false},
+    {"Mã đơn", 185, 0.0f, false},         {"Thời gian đặt", 190, 0.0f, false},
     {"Sản phẩm đã mua", 240, 0.0f, true}, {"Tổng tiền", 150, 1.0f, false},
     {"Trạng thái đơn", 150, 0.5f, false}, {"Thanh toán", 150, 0.5f, false}};
 
@@ -69,11 +71,11 @@ const std::vector<UIComponents::TableColumnSpec> kCustomerReviewHistoryCols = {
     {"Sản phẩm", 200, 0.0f, false},
     {"Đánh giá", 145, 0.5f, false},
     {"Nội dung nhận xét", 240, 0.0f, true},
-    {"Thời gian", 160, 0.0f, false}};
+    {"Thời gian", 190, 0.0f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kSupplierReceiptHistoryCols = {
     {"Mã phiếu", 185, 0.0f, false},
-    {"Thời gian nhập", 160, 0.0f, false},
+    {"Thời gian nhập", 190, 0.0f, false},
     {"Người lập phiếu", 175, 0.0f, false},
     {"Sản phẩm nhập", 240, 0.0f, true},
     {"Tổng tiền nhập", 155, 1.0f, false}};
@@ -81,7 +83,7 @@ const std::vector<UIComponents::TableColumnSpec> kSupplierReceiptHistoryCols = {
 const std::vector<UIComponents::TableColumnSpec> kDiscountTableCols = {
     {"Mã Voucher", 140, 0.0f, false}, {"Mô tả chương trình", 220, 0.0f, true},
     {"Mức giảm", 125, 0.5f, false},   {"Đơn tối thiểu", 145, 0.5f, false},
-    {"Hạn dùng", 120, 0.5f, false},   {"Đã dùng", 115, 0.5f, false},
+    {"Hạn dùng", 145, 0.5f, false},   {"Đã dùng", 115, 0.5f, false},
     {"Trạng thái", 165, 0.5f, false}, {"Thao tác", 120, 0.5f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kAccountTableCols = {
@@ -91,7 +93,7 @@ const std::vector<UIComponents::TableColumnSpec> kAccountTableCols = {
 
 const std::vector<UIComponents::TableColumnSpec> kAdminOrderTableCols = {
     {"Mã đơn", 190, 0.0f, false},         {"Khách hàng / SĐT", 190, 0.0f, true},
-    {"Thời gian", 165, 0.0f, false},      {"Giao nhận", 155, 0.0f, false},
+    {"Thời gian", 190, 0.0f, false},      {"Giao nhận", 155, 0.0f, false},
     {"Trạng thái đơn", 155, 0.5f, false}, {"Thanh toán", 155, 0.5f, false},
     {"Tổng tiền", 150, 0.5f, false},      {"Thao tác", 120, 0.5f, false}};
 
@@ -105,12 +107,16 @@ const std::vector<UIComponents::TableColumnSpec> kAdminInvoiceTableCols = {
     {"Mã hóa đơn", 190, 0.0f, false},  {"Mã đơn hàng", 190, 0.0f, false},
     {"Khách hàng", 180, 0.0f, true},   {"Thu ngân", 165, 0.0f, false},
     {"Phương thức", 150, 0.5f, false}, {"Thời gian", 145, 0.0f, false},
-    {"Tổng tiền", 155, 1.0f, false}};
+    {"Tổng tiền", 155, 1.0f, false},   {"Thao tác", 120, 0.5f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kAdminWarrantyTableCols = {
-    {"Mã phiếu", 195, 0.0f, false},   {"Thiết bị", 210, 0.0f, false},
-    {"Khách hàng", 185, 0.0f, false}, {"Ngày hẹn", 165, 0.0f, false},
-    {"Trạng thái", 155, 0.5f, false}, {"Mô tả sự cố", 200, 0.0f, true}};
+    {"Mã phiếu & Mã đơn", 185, 0.0f, false},
+    {"Thiết bị & Bảo hành", 200, 0.0f, false},
+    {"Khách hàng", 175, 0.0f, false},
+    {"Ngày nhận", 185, 0.0f, false},
+    {"Trạng thái", 145, 0.5f, false},
+    {"Mô tả sự cố & Ghi chú", 220, 0.0f, true},
+    {"Thao tác", 110, 0.5f, false}};
 
 const std::vector<UIComponents::TableColumnSpec> kReportTopProdCols = {
     {"Tên sản phẩm", 220, 0.0f, true},
@@ -189,7 +195,8 @@ AdminScreens::AdminScreens(AppController *ctrl, MainShellWindow *parentShell)
       discountListBox(nullptr), accountListBox(nullptr), ordersListBox(nullptr),
       invoiceListBox(nullptr), warrantyListBox(nullptr),
       reportsListBox(nullptr), realTimeReconcileBox(nullptr),
-      orderFilterKeyword(""), orderFilterStatus(-1), orderFilterPayment(-1) {
+      orderFilterKeyword(""), orderFilterStatus(-1), orderFilterPayment(-1),
+      warrantyFilterKeyword(""), warrantyFilterStatus(-1), warrantySortBy(0) {
 
   // Khởi tạo cố định các ScrolledWindow gắn vào GtkStack của Shell
   dashboardView = gtk_scrolled_window_new();
@@ -225,7 +232,8 @@ AdminScreens::AdminScreens(AppController *ctrl, MainShellWindow *parentShell)
                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
   allInvoicesView = gtk_scrolled_window_new();
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(allInvoicesView), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(allInvoicesView),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
   warrantyMonitorView = gtk_scrolled_window_new();
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(warrantyMonitorView),
@@ -311,25 +319,57 @@ void AdminScreens::buildDashboardView() {
 
   DashboardStatsViewModel stats = controller->getDashboardStats();
 
-  GtkWidget *c1 = UIComponents::createStatCard(
+  GtkWidget *c1 = UIComponents::createClickableStatCard(
       "Doanh thu thực tế", UIComponents::formatVND(stats.totalRevenue),
       "Hoàn tất: " + UIComponents::formatNumber(stats.completedOrders) + " / " +
           UIComponents::formatNumber(stats.totalOrders) + " đơn",
-      "💰", "green");
-  GtkWidget *c2 = UIComponents::createStatCard(
+      "💰", "green",
+      G_CALLBACK(+[](GtkGestureClick *, int, double, double, gpointer d) {
+        AdminScreens *s = static_cast<AdminScreens *>(d);
+        if (s && s->shell)
+          s->shell->navigateTo("admin_reports");
+      }),
+      this);
+  gtk_widget_set_tooltip_text(c1, "Nhấp để xem báo cáo doanh thu chi tiết");
+
+  GtkWidget *c2 = UIComponents::createClickableStatCard(
       "Lợi nhuận gộp ước tính", UIComponents::formatVND(stats.estimatedProfit),
-      "Doanh thu trừ giá vốn hàng bán", "📈", "green");
-  GtkWidget *c3 = UIComponents::createStatCard(
+      "Doanh thu trừ giá vốn hàng bán", "📈", "green",
+      G_CALLBACK(+[](GtkGestureClick *, int, double, double, gpointer d) {
+        AdminScreens *s = static_cast<AdminScreens *>(d);
+        if (s && s->shell)
+          s->shell->navigateTo("admin_reports");
+      }),
+      this);
+  gtk_widget_set_tooltip_text(c2, "Nhấp để xem báo cáo & phân tích lợi nhuận");
+
+  GtkWidget *c3 = UIComponents::createClickableStatCard(
       "Tổng số đơn hàng",
       UIComponents::formatNumber(stats.totalOrders) + " đơn",
       "Chờ xử lý: " + std::to_string(stats.pendingOrders) +
           " • Đang giao: " + std::to_string(stats.shippingOrders),
-      "📦", stats.pendingOrders > 0 ? "amber" : "blue");
-  GtkWidget *c4 = UIComponents::createStatCard(
+      "📦", stats.pendingOrders > 0 ? "amber" : "blue",
+      G_CALLBACK(+[](GtkGestureClick *, int, double, double, gpointer d) {
+        AdminScreens *s = static_cast<AdminScreens *>(d);
+        if (s && s->shell)
+          s->shell->navigateTo("admin_orders");
+      }),
+      this);
+  gtk_widget_set_tooltip_text(c3, "Nhấp để quản lý toàn bộ đơn hàng");
+
+  GtkWidget *c4 = UIComponents::createClickableStatCard(
       "Giá trị tồn kho", UIComponents::formatVND(stats.totalInventoryValue),
       "Tổng số máy: " + UIComponents::formatNumber(stats.totalStockQuantity) +
           " máy",
-      "🏢", "purple");
+      "🏢", "purple",
+      G_CALLBACK(+[](GtkGestureClick *, int, double, double, gpointer d) {
+        AdminScreens *s = static_cast<AdminScreens *>(d);
+        if (s && s->shell)
+          s->shell->navigateTo("admin_products");
+      }),
+      this);
+  gtk_widget_set_tooltip_text(c4,
+                              "Nhấp để kiểm tra danh mục sản phẩm & tồn kho");
 
   gtk_grid_attach(GTK_GRID(grid), c1, 0, 0, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), c2, 1, 0, 1, 1);
@@ -337,35 +377,84 @@ void AdminScreens::buildDashboardView() {
   gtk_grid_attach(GTK_GRID(grid), c4, 3, 0, 1, 1);
   gtk_box_append(GTK_BOX(content), grid);
 
-  // Thanh tỷ lệ trạng thái đơn hàng (Order Pipeline Segmented Bar - DESIGN.md T17)
+  // Thanh tỷ lệ trạng thái đơn hàng (Order Pipeline Segmented Bar - DESIGN.md
+  // T17) — nhấp vào để mở danh sách đơn hàng
   GtkWidget *pipelineBar = UIComponents::createOrderStatusPipelineBar(
-      stats.completedOrders, stats.shippingOrders, stats.pendingOrders, stats.cancelledOrders);
+      stats.completedOrders, stats.shippingOrders, stats.pendingOrders,
+      stats.cancelledOrders);
+  gtk_widget_add_css_class(pipelineBar, "clickable");
+  UIComponents::setButtonCursor(pipelineBar);
+  gtk_widget_set_tooltip_text(pipelineBar,
+                              "Nhấp để xem chi tiết danh sách đơn hàng");
+  GtkGesture *pipeClick = gtk_gesture_click_new();
+  g_signal_connect(
+      pipeClick, "released",
+      G_CALLBACK(+[](GtkGestureClick *, int, double, double, gpointer d) {
+        AdminScreens *s = static_cast<AdminScreens *>(d);
+        if (s && s->shell)
+          s->shell->navigateTo("admin_orders");
+      }),
+      this);
+  gtk_widget_add_controller(pipelineBar, GTK_EVENT_CONTROLLER(pipeClick));
   gtk_box_append(GTK_BOX(content), pipelineBar);
 
-  // Secondary row of metrics (Catalog, CRM, HR & System Clock)
+  // Secondary row of metrics (Catalog, CRM, HR & Suppliers)
   GtkWidget *grid2 = gtk_grid_new();
   gtk_grid_set_row_spacing(GTK_GRID(grid2), DesignTokens::KPI_GRID_SPACING);
   gtk_grid_set_column_spacing(GTK_GRID(grid2), DesignTokens::KPI_GRID_SPACING);
   gtk_grid_set_column_homogeneous(GTK_GRID(grid2), TRUE);
 
-  GtkWidget *c5 = UIComponents::createStatCard(
+  GtkWidget *c5 = UIComponents::createClickableStatCard(
       "Số mặt hàng điện thoại",
       UIComponents::formatNumber(stats.totalProducts) + " mẫu",
       stats.lowStockCount > 0 ? ("Cảnh báo sắp hết: " +
                                  std::to_string(stats.lowStockCount) + " mẫu")
                               : "Tồn kho ổn định",
-      "📱", stats.lowStockCount > 0 ? "red" : "blue");
-  GtkWidget *c6 = UIComponents::createStatCard(
+      "📱", stats.lowStockCount > 0 ? "red" : "blue",
+      G_CALLBACK(+[](GtkGestureClick *, int, double, double, gpointer d) {
+        AdminScreens *s = static_cast<AdminScreens *>(d);
+        if (s && s->shell)
+          s->shell->navigateTo("admin_products");
+      }),
+      this);
+  gtk_widget_set_tooltip_text(c5, "Nhấp để quản lý danh mục sản phẩm");
+
+  GtkWidget *c6 = UIComponents::createClickableStatCard(
       "Khách hàng đăng ký",
       UIComponents::formatNumber(stats.totalCustomers) + " khách",
-      "Đã tích điểm thành viên", "👥", "blue");
-  GtkWidget *c7 = UIComponents::createStatCard(
+      "Đã tích điểm thành viên", "👥", "blue",
+      G_CALLBACK(+[](GtkGestureClick *, int, double, double, gpointer d) {
+        AdminScreens *s = static_cast<AdminScreens *>(d);
+        if (s && s->shell)
+          s->shell->navigateTo("admin_customers");
+      }),
+      this);
+  gtk_widget_set_tooltip_text(c6, "Nhấp để quản lý danh sách khách hàng");
+
+  GtkWidget *c7 = UIComponents::createClickableStatCard(
       "Đội ngũ nhân sự",
       UIComponents::formatNumber(stats.totalEmployees) + " nhân sự",
-      "Quản trị, Bán hàng & Kho", "💼", "cyan");
-  GtkWidget *c8 = UIComponents::createStatCard(
-      "Thời gian thực hệ thống", controller->getSimulatedDate(),
-      "Mốc thời gian mô phỏng", "⏱️", "blue");
+      "Quản trị, Bán hàng & Kho", "💼", "cyan",
+      G_CALLBACK(+[](GtkGestureClick *, int, double, double, gpointer d) {
+        AdminScreens *s = static_cast<AdminScreens *>(d);
+        if (s && s->shell)
+          s->shell->navigateTo("admin_employees");
+      }),
+      this);
+  gtk_widget_set_tooltip_text(c7, "Nhấp để quản lý đội ngũ nhân viên");
+
+  int totalSuppliers = static_cast<int>(controller->getSuppliers().size());
+  GtkWidget *c8 = UIComponents::createClickableStatCard(
+      "Số lượng nhà cung cấp",
+      UIComponents::formatNumber(totalSuppliers) + " nhà cung cấp",
+      "Đối tác cung ứng chính hãng", "🏭", "blue",
+      G_CALLBACK(+[](GtkGestureClick *, int, double, double, gpointer d) {
+        AdminScreens *s = static_cast<AdminScreens *>(d);
+        if (s && s->shell)
+          s->shell->navigateTo("admin_suppliers");
+      }),
+      this);
+  gtk_widget_set_tooltip_text(c8, "Nhấp để quản lý danh sách nhà cung cấp");
 
   gtk_grid_attach(GTK_GRID(grid2), c5, 0, 0, 1, 1);
   gtk_grid_attach(GTK_GRID(grid2), c6, 1, 0, 1, 1);
@@ -448,6 +537,31 @@ void AdminScreens::showProductListView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *actionBox =
+      gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+  GtkWidget *btnExport = UIComponents::createExportButton(
+      "📥 Xuất CSV", "Xuất danh sách sản phẩm & tồn kho ra file .csv",
+      [this]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName =
+            "DanhSach_SanPham_" +
+            ExportHelper::makeSafeDateToken(controller->getSimulatedDate()) +
+            ".csv";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất danh sách sản phẩm (.csv)", defName, "Tệp CSV (*.csv)",
+            "*.csv", [this, win](const std::string &path) {
+              OperationResult res = controller->exportProductsCsv(path);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(win, "Xuất CSV thành công",
+                                                res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+  gtk_box_append(GTK_BOX(actionBox), btnExport);
+
   GtkWidget *btnAdd = gtk_button_new_with_label("➕ Thêm sản phẩm mới");
   gtk_widget_add_css_class(btnAdd, "btn-primary");
   UIComponents::setButtonCursor(btnAdd);
@@ -457,10 +571,11 @@ void AdminScreens::showProductListView() {
                              s->showProductDetailView(newProd, true);
                            }),
                            this);
+  gtk_box_append(GTK_BOX(actionBox), btnAdd);
 
   GtkWidget *header = UIComponents::createSectionHeader(
       "Quản lý danh mục sản phẩm",
-      "Danh mục thiết bị di động, tình trạng kho và chính sách giá.", btnAdd);
+      "Danh mục thiết bị di động, tình trạng kho và chính sách giá.", actionBox);
   gtk_box_append(GTK_BOX(content), header);
 
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
@@ -501,10 +616,8 @@ void AdminScreens::refreshProducts(const std::string &keyword) {
   filter.keyword = keyword;
   std::vector<ProductItemViewModel> products = controller->getProducts(filter);
 
-  UIComponents::updateRecordCountBadge(productCountBadge, products.size(),
-                                       "sản phẩm");
-
   if (products.empty()) {
+    UIComponents::updateRecordCountBadge(productCountBadge, 0, "dòng sản phẩm");
     std::string emptyMsg =
         keyword.empty()
             ? "Không tìm thấy sản phẩm nào trong hệ thống."
@@ -523,68 +636,265 @@ void AdminScreens::refreshProducts(const std::string &keyword) {
     return;
   }
 
-  for (size_t i = 0; i < products.size(); ++i) {
-    const auto &p = products[i];
+  // Gom nhóm các tổ hợp theo Dòng sản phẩm (baseModel) để chống trùng lặp & giật lag
+  struct ProductFamilyGroup {
+    std::string baseModel;
+    std::string brand;
+    std::string os;
+    std::string imageUrl;
+    ProductItemViewModel representative;
+    std::vector<ProductItemViewModel> variants;
+    int totalActualStock = 0;
+    int lowStockCount = 0;
+    int outOfStockCount = 0;
+    double minImportPrice = 0.0;
+    double maxImportPrice = 0.0;
+    double minSellingPrice = 0.0;
+    double maxSellingPrice = 0.0;
+  };
+
+  std::vector<ProductFamilyGroup> groups;
+  for (const auto &p : products) {
+    std::string bKey = p.baseModel.empty() ? p.name : p.baseModel;
+    ProductFamilyGroup *targetGrp = nullptr;
+    for (auto &g : groups) {
+      if (g.baseModel == bKey && g.brand == p.brand) {
+        targetGrp = &g;
+        break;
+      }
+    }
+    if (!targetGrp) {
+      ProductFamilyGroup ng;
+      ng.baseModel = bKey;
+      ng.brand = p.brand;
+      ng.os = p.os;
+      ng.imageUrl = p.imageUrl;
+      ng.representative = p;
+      ng.minImportPrice = p.importPrice;
+      ng.maxImportPrice = p.importPrice;
+      ng.minSellingPrice = p.sellingPrice;
+      ng.maxSellingPrice = p.sellingPrice;
+      groups.push_back(ng);
+      targetGrp = &groups.back();
+    }
+    if (targetGrp->imageUrl.empty() && !p.imageUrl.empty()) {
+      targetGrp->imageUrl = p.imageUrl;
+    }
+    targetGrp->variants.push_back(p);
+    targetGrp->totalActualStock += p.actualStock;
+    if (p.status == StockDisplayStatus::OUT_OF_STOCK) {
+      targetGrp->outOfStockCount++;
+    } else if (p.status == StockDisplayStatus::LOW_STOCK) {
+      targetGrp->lowStockCount++;
+    }
+    if (p.importPrice < targetGrp->minImportPrice)
+      targetGrp->minImportPrice = p.importPrice;
+    if (p.importPrice > targetGrp->maxImportPrice)
+      targetGrp->maxImportPrice = p.importPrice;
+    if (p.sellingPrice < targetGrp->minSellingPrice)
+      targetGrp->minSellingPrice = p.sellingPrice;
+    if (p.sellingPrice > targetGrp->maxSellingPrice)
+      targetGrp->maxSellingPrice = p.sellingPrice;
+  }
+
+  UIComponents::updateRecordCountBadge(
+      productCountBadge, groups.size(),
+      "dòng máy (" + std::to_string(products.size()) + " tổ hợp)");
+
+  for (size_t i = 0; i < groups.size(); ++i) {
+    const auto &g = groups[i];
+
+    GtkWidget *groupContainer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     GtkWidget *row = UIComponents::createTableDataRow(i);
 
-    // Col 0: Ảnh (Thumbnail preview)
-    GtkWidget *imgThumb = nullptr;
-    std::string resolvedImg = PathHelper::resolveDataPath(p.imageUrl);
-    if (!p.imageUrl.empty() &&
-        g_file_test(resolvedImg.c_str(), G_FILE_TEST_EXISTS)) {
-      imgThumb = gtk_image_new_from_file(resolvedImg.c_str());
-      gtk_image_set_pixel_size(GTK_IMAGE(imgThumb), 48);
-    } else {
-      imgThumb = gtk_label_new("📱");
-      gtk_widget_set_size_request(imgThumb, 48, 48);
-    }
+    // Col 0: Ảnh (Thumbnail đã cache trong RAM, cuộn mượt không lag)
+    GtkWidget *imgThumb = UIComponents::createCachedThumbnail(g.imageUrl, 48);
     gtk_box_append(GTK_BOX(row), UIComponents::createTableWidgetCell(
                                      imgThumb, kProductTableCols[0]));
 
-    // Col 1: Tên & Hãng sản phẩm
-    std::string sub =
-        "[" + p.brand + "] Mã: " + p.id + (p.os.empty() ? "" : (" • " + p.os));
-    gtk_box_append(GTK_BOX(row), UIComponents::createTableTwoLineCell(
-                                     p.name, sub, kProductTableCols[1]));
+    // Col 1: Tên dòng máy & Tóm tắt cấu hình/màu sắc
+    std::vector<std::string> caps;
+    std::vector<std::string> cols;
+    for (const auto &v : g.variants) {
+      if (!v.capacity.empty() &&
+          std::find(caps.begin(), caps.end(), v.capacity) == caps.end()) {
+        caps.push_back(v.capacity);
+      }
+      if (!v.color.empty() &&
+          std::find(cols.begin(), cols.end(), v.color) == cols.end()) {
+        cols.push_back(v.color);
+      }
+    }
+    std::string capSummary;
+    for (size_t cIdx = 0; cIdx < caps.size(); ++cIdx) {
+      if (cIdx > 0)
+        capSummary += "/";
+      capSummary += caps[cIdx];
+    }
+    std::string colSummary;
+    for (size_t cIdx = 0; cIdx < cols.size(); ++cIdx) {
+      if (cIdx > 0)
+        colSummary += ", ";
+      colSummary += cols[cIdx];
+    }
 
-    // Col 2: Tồn kho (Căn phải, màu ngữ nghĩa theo trạng thái tồn kho)
+    std::string primaryTitle =
+        g.baseModel + " (" + std::to_string(g.variants.size()) + " tổ hợp)";
+    std::string sub = "[" + g.brand + "]" +
+                      (g.os.empty() ? "" : (" • " + g.os)) +
+                      (capSummary.empty() ? "" : (" • " + capSummary)) +
+                      (colSummary.empty() ? "" : (" • Màu: " + colSummary));
+    gtk_box_append(GTK_BOX(row), UIComponents::createTableTwoLineCell(
+                                     primaryTitle, sub, kProductTableCols[1]));
+
+    // Col 2: Tổng tồn kho của cả dòng sản phẩm
+    StockDisplayStatus groupStatus = StockDisplayStatus::IN_STOCK;
+    if (g.totalActualStock <= 0 ||
+        g.outOfStockCount == static_cast<int>(g.variants.size())) {
+      groupStatus = StockDisplayStatus::OUT_OF_STOCK;
+    } else if (g.outOfStockCount > 0 || g.lowStockCount > 0 ||
+               g.totalActualStock <= 5) {
+      groupStatus = StockDisplayStatus::LOW_STOCK;
+    }
+
     std::string stockCssClass = "stock-ok";
-    if (p.status == StockDisplayStatus::OUT_OF_STOCK) {
+    if (groupStatus == StockDisplayStatus::OUT_OF_STOCK) {
       stockCssClass = "stock-critical";
-    } else if (p.status == StockDisplayStatus::LOW_STOCK) {
+    } else if (groupStatus == StockDisplayStatus::LOW_STOCK) {
       stockCssClass = "stock-low";
     }
     gtk_box_append(GTK_BOX(row),
                    UIComponents::createTableTextCell(
-                       UIComponents::formatNumber(p.actualStock) + " máy",
+                       UIComponents::formatNumber(g.totalActualStock) + " máy",
                        kProductTableCols[2], stockCssClass));
 
-    // Col 3: Giá vốn (Căn phải, tabular numerals)
-    gtk_box_append(GTK_BOX(row), UIComponents::createTableTextCell(
-                                     UIComponents::formatVND(p.importPrice),
-                                     kProductTableCols[3], "cell-number"));
+    // Col 3: Giá vốn (Hiển thị khoảng giá nếu các dung lượng có giá vốn khác nhau)
+    std::string importPriceTxt =
+        (std::abs(g.minImportPrice - g.maxImportPrice) < 1.0)
+            ? UIComponents::formatVND(g.minImportPrice)
+            : (UIComponents::formatCompactVND(g.minImportPrice) + " – " +
+               UIComponents::formatCompactVND(g.maxImportPrice));
+    gtk_box_append(GTK_BOX(row),
+                   UIComponents::createTableTextCell(
+                       importPriceTxt, kProductTableCols[3], "cell-number"));
 
-    // Col 4: Giá bán (Căn phải, màu nổi bật, tabular numerals)
-    gtk_box_append(GTK_BOX(row), UIComponents::createTableTextCell(
-                                     UIComponents::formatVND(p.sellingPrice),
-                                     kProductTableCols[4], "product-price"));
+    // Col 4: Giá bán (Hiển thị khoảng giá nếu các dung lượng có giá bán khác nhau)
+    std::string sellingPriceTxt =
+        (std::abs(g.minSellingPrice - g.maxSellingPrice) < 1.0)
+            ? UIComponents::formatVND(g.minSellingPrice)
+            : (UIComponents::formatCompactVND(g.minSellingPrice) + " – " +
+               UIComponents::formatCompactVND(g.maxSellingPrice));
+    gtk_box_append(GTK_BOX(row),
+                   UIComponents::createTableTextCell(
+                       sellingPriceTxt, kProductTableCols[4], "product-price"));
 
-    // Col 5: Trạng thái kho (Huy hiệu màu)
-    GtkWidget *badgeStock = UIComponents::createStockStatusBadge(p.status);
+    // Col 5: Trạng thái kho tổng hợp
+    GtkWidget *badgeStock = UIComponents::createStockStatusBadge(groupStatus);
     gtk_box_append(GTK_BOX(row), UIComponents::createTableWidgetCell(
                                      badgeStock, kProductTableCols[5]));
 
-    // Col 6: Thao tác: Nút nhỏ gọn kèm tooltip
-    GtkWidget *btnDetail = UIComponents::createTableActionButton(
-        "🔍 Sửa", "Xem chi tiết và chỉnh sửa thông tin sản phẩm",
-        "btn-action-edit");
-    gtk_widget_set_hexpand(btnDetail, TRUE);
+    // Khung chi tiết các tổ hợp: dùng đúng cấu trúc cột kProductTableCols để thẳng hàng tuyệt đối
+    GtkWidget *variantsDetailBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_visible(variantsDetailBox, !keyword.empty());
 
     struct ProdClickData {
       AdminScreens *s;
       ProductItemViewModel p;
     };
-    ProdClickData *pcd = new ProdClickData{this, p};
+
+    for (const auto &v : g.variants) {
+      GtkWidget *subRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,
+                                      DesignTokens::TABLE_CELL_SPACING);
+      gtk_widget_add_css_class(subRow, "table-row");
+      gtk_widget_add_css_class(subRow, "row-odd");
+
+      // Col 0: Ký hiệu nhánh tổ hợp con (cùng độ rộng Col 0 = 64px)
+      GtkWidget *branchIcon = gtk_label_new("↳ 📦");
+      gtk_widget_add_css_class(branchIcon, "cell-subtitle");
+      gtk_box_append(GTK_BOX(subRow), UIComponents::createTableWidgetCell(
+                                          branchIcon, kProductTableCols[0]));
+
+      // Col 1: Phiên bản Dung lượng - Màu sắc & Mã SKU (cùng độ rộng Col 1)
+      std::string vTitle =
+          "Phiên bản: " +
+          (v.capacity.empty() ? v.name : (v.capacity + " — " + v.color));
+      std::string vSub = "Mã SKU: " + v.id;
+      gtk_box_append(GTK_BOX(subRow), UIComponents::createTableTwoLineCell(
+                                          vTitle, vSub, kProductTableCols[1]));
+
+      // Col 2: Tồn kho của tổ hợp (thẳng cột Tồn kho)
+      std::string vStockClass = "stock-ok";
+      if (v.status == StockDisplayStatus::OUT_OF_STOCK) {
+        vStockClass = "stock-critical";
+      } else if (v.status == StockDisplayStatus::LOW_STOCK) {
+        vStockClass = "stock-low";
+      }
+      gtk_box_append(GTK_BOX(subRow),
+                     UIComponents::createTableTextCell(
+                         UIComponents::formatNumber(v.actualStock) + " máy",
+                         kProductTableCols[2], vStockClass));
+
+      // Col 3: Giá vốn của tổ hợp (thẳng cột Giá vốn)
+      gtk_box_append(GTK_BOX(subRow),
+                     UIComponents::createTableTextCell(
+                         UIComponents::formatVND(v.importPrice),
+                         kProductTableCols[3], "cell-number"));
+
+      // Col 4: Giá bán của tổ hợp (thẳng cột Giá bán)
+      gtk_box_append(GTK_BOX(subRow),
+                     UIComponents::createTableTextCell(
+                         UIComponents::formatVND(v.sellingPrice),
+                         kProductTableCols[4], "product-price"));
+
+      // Col 5: Trạng thái của tổ hợp (thẳng cột Trạng thái)
+      GtkWidget *vBadge = UIComponents::createStockStatusBadge(v.status);
+      gtk_box_append(GTK_BOX(subRow), UIComponents::createTableWidgetCell(
+                                          vBadge, kProductTableCols[5]));
+
+      // Col 6: Nút sửa trực tiếp tổ hợp này (thẳng cột Thao tác)
+      GtkWidget *vBtn = UIComponents::createTableActionButton(
+          "✏️ Sửa mẫu này", "Chỉnh sửa trực tiếp tổ hợp " + v.id,
+          "btn-action-edit");
+      ProdClickData *vpcd = new ProdClickData{this, v};
+      g_signal_connect_data(
+          vBtn, "clicked", G_CALLBACK(+[](GtkButton *, gpointer d) {
+            ProdClickData *data = static_cast<ProdClickData *>(d);
+            data->s->showProductDetailView(data->p, false);
+          }),
+          vpcd,
+          [](gpointer d, GClosure *) { delete static_cast<ProdClickData *>(d); },
+          (GConnectFlags)0);
+      gtk_box_append(GTK_BOX(subRow), UIComponents::createTableWidgetCell(
+                                          vBtn, kProductTableCols[6]));
+
+      gtk_box_append(GTK_BOX(variantsDetailBox), subRow);
+    }
+
+    // Col 6: Thao tác: Nút Xem/Ẩn Tổ hợp + 1 Nút Sửa duy nhất cho cả dòng máy
+    GtkWidget *actBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    gtk_widget_set_halign(actBox, GTK_ALIGN_CENTER);
+
+    if (g.variants.size() > 1) {
+      GtkWidget *btnToggleVars = UIComponents::createTableActionButton(
+          !keyword.empty() ? "▴ Thu gọn" : "▾ Chi tiết",
+          "Xem hoặc ẩn chi tiết từng tổ hợp dung lượng & màu sắc",
+          "btn-action-view");
+      g_signal_connect(
+          btnToggleVars, "clicked",
+          G_CALLBACK(+[](GtkButton *btn, gpointer d) {
+            GtkWidget *vBox = static_cast<GtkWidget *>(d);
+            bool vis = !gtk_widget_get_visible(vBox);
+            gtk_widget_set_visible(vBox, vis);
+            gtk_button_set_label(btn, vis ? "▴ Thu gọn" : "▾ Chi tiết");
+          }),
+          variantsDetailBox);
+      gtk_box_append(GTK_BOX(actBox), btnToggleVars);
+    }
+
+    GtkWidget *btnDetail = UIComponents::createTableActionButton(
+        "🔍 Sửa", "Chỉnh sửa thông tin dòng sản phẩm và các tổ hợp",
+        "btn-action-edit");
+    ProdClickData *pcd = new ProdClickData{this, g.representative};
     g_signal_connect_data(
         btnDetail, "clicked", G_CALLBACK(+[](GtkButton *b, gpointer d) {
           (void)b;
@@ -594,10 +904,14 @@ void AdminScreens::refreshProducts(const std::string &keyword) {
         pcd,
         [](gpointer d, GClosure *) { delete static_cast<ProdClickData *>(d); },
         (GConnectFlags)0);
+    gtk_box_append(GTK_BOX(actBox), btnDetail);
 
     gtk_box_append(GTK_BOX(row), UIComponents::createTableWidgetCell(
-                                     btnDetail, kProductTableCols[6]));
-    gtk_box_append(GTK_BOX(productListBox), row);
+                                     actBox, kProductTableCols[6]));
+
+    gtk_box_append(GTK_BOX(groupContainer), row);
+    gtk_box_append(GTK_BOX(groupContainer), variantsDetailBox);
+    gtk_box_append(GTK_BOX(productListBox), groupContainer);
   }
 }
 
@@ -627,27 +941,33 @@ void AdminScreens::showProductDetailView(const ProductItemViewModel &prod,
   ProductDetailView::Callbacks callbacks;
   callbacks.onSaved = [this]() {
     refreshProducts();
-    if (shell) shell->popPage();
+    if (shell)
+      shell->popPage();
   };
   callbacks.onDeleted = [this]() {
     refreshProducts();
-    if (shell) shell->popPage();
+    if (shell)
+      shell->popPage();
   };
   callbacks.onCancelled = [this]() {
-    if (shell) shell->popPage();
+    if (shell)
+      shell->popPage();
   };
   callbacks.onBrandSelected = [this](const std::string &brand) {
     refreshProducts(brand);
   };
   callbacks.onNavigateHome = [this]() {
-    if (shell) shell->navigateTo("admin_dashboard");
+    if (shell)
+      shell->navigateTo("admin_dashboard");
   };
 
-  GtkWidget *detailView = ProductDetailView::create(
-      controller, shell, workingProd, ProductDetailMode::AdminEdit, isNew, callbacks);
+  GtkWidget *detailView =
+      ProductDetailView::create(controller, shell, workingProd,
+                                ProductDetailMode::AdminEdit, isNew, callbacks);
 
   std::string pageId = isNew ? "admin_product_add" : "admin_product_edit";
-  std::string pageTitle = isNew ? "Thêm mới sản phẩm điện thoại" : ("Chỉnh sửa: " + prod.name);
+  std::string pageTitle =
+      isNew ? "Thêm mới sản phẩm điện thoại" : ("Chỉnh sửa: " + prod.name);
   shell->pushPage(pageId, detailView, pageTitle, false);
 }
 
@@ -658,6 +978,30 @@ void AdminScreens::buildEmployeeMgmtView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *actionBox =
+      gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+  GtkWidget *btnExport = UIComponents::createExportButton(
+      "📥 Xuất CSV", "Xuất danh sách nhân viên ra file .csv", [this]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName =
+            "DanhSach_NhanVien_" +
+            ExportHelper::makeSafeDateToken(controller->getSimulatedDate()) +
+            ".csv";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất danh sách nhân viên (.csv)", defName, "Tệp CSV (*.csv)",
+            "*.csv", [this, win](const std::string &path) {
+              OperationResult res = controller->exportEmployeesCsv(path);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(win, "Xuất CSV thành công",
+                                                res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+  gtk_box_append(GTK_BOX(actionBox), btnExport);
+
   GtkWidget *btnAdd = gtk_button_new_with_label("➕ Thêm nhân viên");
   gtk_widget_add_css_class(btnAdd, "btn-primary");
   UIComponents::setButtonCursor(btnAdd);
@@ -665,10 +1009,11 @@ void AdminScreens::buildEmployeeMgmtView() {
                              s->showEmployeeFormModal(nullptr);
                            }),
                            this);
+  gtk_box_append(GTK_BOX(actionBox), btnAdd);
 
   GtkWidget *header = UIComponents::createSectionHeader(
       "Quản lý đội ngũ nhân viên",
-      "Danh sách nhân viên, vị trí công tác và quyền truy cập.", btnAdd);
+      "Danh sách nhân viên, vị trí công tác và quyền truy cập.", actionBox);
   gtk_box_append(GTK_BOX(content), header);
 
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
@@ -873,12 +1218,540 @@ void AdminScreens::showEmployeeFormModal(
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(pageContent, "page-container");
 
-  GtkWidget *card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 14);
+  GtkWidget *card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 16);
   gtk_widget_add_css_class(card, "pdp-card");
   gtk_widget_set_hexpand(card, TRUE);
 
-  GtkWidget *title = gtk_label_new(isEdit ? "✏️ Chỉnh sửa thông tin nhân sự"
-                                          : "➕ Tạo mới tài khoản nhân viên");
+  // =========================================================================
+  // TRƯỜNG HỢP 1: THÊM NHÂN VIÊN MỚI (2 BẢNG TRÁI/PHẢI + UNLOCK BỎ CHỌN)
+  // =========================================================================
+  if (!isEdit) {
+    GtkWidget *title =
+        gtk_label_new("➕ Thêm nhân viên (Phân quyền cho tài khoản)");
+    gtk_widget_add_css_class(title, "card-title");
+    gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
+    gtk_box_append(GTK_BOX(card), title);
+
+    GtkWidget *subtitle = gtk_label_new(
+        "Tìm kiếm tài khoản ở bảng bên trái, chọn sang bảng bên phải và cấp "
+        "quyền chức vụ (Role) mong muốn. Có thể bấm 'Bỏ chọn' để hủy chọn bất "
+        "kỳ lúc nào.");
+    gtk_widget_add_css_class(subtitle, "page-subtitle");
+    gtk_label_set_xalign(GTK_LABEL(subtitle), 0.0f);
+    gtk_label_set_wrap(GTK_LABEL(subtitle), TRUE);
+    gtk_box_append(GTK_BOX(card), subtitle);
+
+    // 1. Ô tìm kiếm tài khoản
+    GtkWidget *eSearch = gtk_entry_new();
+    gtk_entry_set_placeholder_text(
+        GTK_ENTRY(eSearch),
+        "Nhập tên đăng nhập, họ tên hoặc số điện thoại để tìm tài khoản...");
+    GtkWidget *errUser = nullptr;
+    gtk_box_append(GTK_BOX(card),
+                   UIComponents::createFormField("Tìm kiếm tài khoản *",
+                                                 eSearch, &errUser));
+
+    // 2. Bố cục 2 bảng song song: Bên trái (List tài khoản) — Bên phải (List tài khoản đã chọn)
+    GtkWidget *dualPaneBox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 16);
+    gtk_box_set_homogeneous(GTK_BOX(dualPaneBox), TRUE);
+    gtk_widget_set_hexpand(dualPaneBox, TRUE);
+
+    // --- BẢNG BÊN TRÁI: DANH SÁCH TÀI KHOẢN HỆ THỐNG ---
+    GtkWidget *leftPanel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_widget_add_css_class(leftPanel, "table-container");
+    gtk_widget_set_hexpand(leftPanel, TRUE);
+
+    GtkWidget *leftHeader = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_margin_start(leftHeader, 12);
+    gtk_widget_set_margin_end(leftHeader, 12);
+    gtk_widget_set_margin_top(leftHeader, 10);
+    gtk_widget_set_margin_bottom(leftHeader, 4);
+
+    GtkWidget *lblLeftTitle = gtk_label_new("📋 Danh sách tài khoản");
+    gtk_widget_add_css_class(lblLeftTitle, "cell-title");
+    gtk_label_set_xalign(GTK_LABEL(lblLeftTitle), 0.0f);
+    gtk_widget_set_hexpand(lblLeftTitle, TRUE);
+    gtk_box_append(GTK_BOX(leftHeader), lblLeftTitle);
+
+    GtkWidget *lblLeftCount = gtk_label_new("0 tài khoản");
+    gtk_widget_add_css_class(lblLeftCount, "badge-confirmed");
+    gtk_widget_set_valign(lblLeftCount, GTK_ALIGN_CENTER);
+    gtk_box_append(GTK_BOX(leftHeader), lblLeftCount);
+    gtk_box_append(GTK_BOX(leftPanel), leftHeader);
+
+    GtkWidget *leftScroll = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(leftScroll),
+                                   GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(leftScroll),
+                                               260);
+    gtk_widget_set_hexpand(leftScroll, TRUE);
+    gtk_widget_set_vexpand(leftScroll, TRUE);
+
+    GtkWidget *leftRowsBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(leftScroll), leftRowsBox);
+    gtk_box_append(GTK_BOX(leftPanel), leftScroll);
+
+    // --- BẢNG BÊN PHẢI: DANH SÁCH TÀI KHOẢN ĐÃ CHỌN ---
+    GtkWidget *rightPanel = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_widget_add_css_class(rightPanel, "table-container");
+    gtk_widget_set_hexpand(rightPanel, TRUE);
+
+    GtkWidget *rightHeader = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_widget_set_margin_start(rightHeader, 12);
+    gtk_widget_set_margin_end(rightHeader, 12);
+    gtk_widget_set_margin_top(rightHeader, 10);
+    gtk_widget_set_margin_bottom(rightHeader, 4);
+
+    GtkWidget *lblRightTitle = gtk_label_new("✅ Tài khoản đã chọn");
+    gtk_widget_add_css_class(lblRightTitle, "cell-title");
+    gtk_label_set_xalign(GTK_LABEL(lblRightTitle), 0.0f);
+    gtk_widget_set_hexpand(lblRightTitle, TRUE);
+    gtk_box_append(GTK_BOX(rightHeader), lblRightTitle);
+
+    GtkWidget *lblRightCount = gtk_label_new("Đã chọn: 0");
+    gtk_widget_add_css_class(lblRightCount, "badge-completed");
+    gtk_widget_set_valign(lblRightCount, GTK_ALIGN_CENTER);
+    gtk_box_append(GTK_BOX(rightHeader), lblRightCount);
+
+    GtkWidget *btnClearAll = gtk_button_new_with_label("🔓 Bỏ chọn tất cả");
+    gtk_widget_add_css_class(btnClearAll, "btn-outline");
+    gtk_widget_set_valign(btnClearAll, GTK_ALIGN_CENTER);
+    UIComponents::setButtonCursor(btnClearAll);
+    gtk_widget_set_visible(btnClearAll, FALSE);
+    gtk_box_append(GTK_BOX(rightHeader), btnClearAll);
+
+    gtk_box_append(GTK_BOX(rightPanel), rightHeader);
+
+    GtkWidget *rightScroll = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(rightScroll),
+                                   GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(rightScroll),
+                                               260);
+    gtk_widget_set_hexpand(rightScroll, TRUE);
+    gtk_widget_set_vexpand(rightScroll, TRUE);
+
+    GtkWidget *rightRowsBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(rightScroll),
+                                  rightRowsBox);
+    gtk_box_append(GTK_BOX(rightPanel), rightScroll);
+
+    gtk_box_append(GTK_BOX(dualPaneBox), leftPanel);
+    gtk_box_append(GTK_BOX(dualPaneBox), rightPanel);
+    gtk_box_append(GTK_BOX(card), dualPaneBox);
+
+    // 3. Chọn Chức vụ / Role
+    const char *roles[] = {"Quản trị viên (Admin)",
+                           "Nhân viên Bán hàng (Sales)",
+                           "Thủ kho (Warehouse)", nullptr};
+    GtkWidget *comboRole = gtk_drop_down_new_from_strings(roles);
+    gtk_drop_down_set_selected(GTK_DROP_DOWN(comboRole), 1); // Mặc định Sales
+    gtk_box_append(
+        GTK_BOX(card),
+        UIComponents::createFormField("Phân quyền chức vụ (Role) *", comboRole));
+
+    struct AssignRoleCtx {
+      AdminScreens *s;
+      GtkWidget *eSearch;
+      GtkWidget *errUser;
+      GtkWidget *leftRowsBox;
+      GtkWidget *rightRowsBox;
+      GtkWidget *lblLeftCount;
+      GtkWidget *lblRightCount;
+      GtkWidget *btnClearAll;
+      GtkWidget *cRole;
+      std::vector<std::string> selectedUsernames;
+      bool suppressSearchSignal = false;
+
+      bool isUserSelected(const std::string &uname) const {
+        return std::find(selectedUsernames.begin(), selectedUsernames.end(),
+                         uname) != selectedUsernames.end();
+      }
+
+      void toggleSelectUser(const std::string &uname) {
+        auto it = std::find(selectedUsernames.begin(), selectedUsernames.end(),
+                            uname);
+        if (it != selectedUsernames.end()) {
+          selectedUsernames.erase(it);
+        } else {
+          selectedUsernames.push_back(uname);
+        }
+        UIComponents::clearFieldError(errUser, eSearch);
+        const char *curKw = gtk_editable_get_text(GTK_EDITABLE(eSearch));
+        rebuildBothLists(curKw ? curKw : "");
+      }
+
+      void rebuildBothLists(const std::string &kw) {
+        // Xóa danh sách cũ ở cả 2 bảng
+        GtkWidget *child = gtk_widget_get_first_child(leftRowsBox);
+        while (child != nullptr) {
+          GtkWidget *next = gtk_widget_get_next_sibling(child);
+          gtk_box_remove(GTK_BOX(leftRowsBox), child);
+          child = next;
+        }
+        child = gtk_widget_get_first_child(rightRowsBox);
+        while (child != nullptr) {
+          GtkWidget *next = gtk_widget_get_next_sibling(child);
+          gtk_box_remove(GTK_BOX(rightRowsBox), child);
+          child = next;
+        }
+
+        std::vector<AccountItemViewModel> allAccounts =
+            s->controller->getAccounts();
+        std::vector<CustomerItemViewModel> allCusts =
+            s->controller->getCustomers();
+        std::vector<EmployeeItemViewModel> allEmps =
+            s->controller->getEmployees();
+        std::string currentAdminUser =
+            s->controller->getCurrentUser().username;
+
+        auto findPhoneForAccount = [&](const std::string &uname) -> std::string {
+          for (const auto &c : allCusts) {
+            if (c.username == uname)
+              return c.phone;
+          }
+          for (const auto &e : allEmps) {
+            if (e.username == uname)
+              return e.phone;
+          }
+          return "";
+        };
+
+        // Ưu tiên hiển thị các tài khoản Khách hàng (chưa là nhân viên) lên đầu
+        std::vector<AccountItemViewModel> sortedAccounts;
+        for (const auto &a : allAccounts) {
+          if (a.username == currentAdminUser)
+            continue;
+          if (a.role == RoleType::CUSTOMER)
+            sortedAccounts.push_back(a);
+        }
+        for (const auto &a : allAccounts) {
+          if (a.username == currentAdminUser)
+            continue;
+          if (a.role != RoleType::CUSTOMER)
+            sortedAccounts.push_back(a);
+        }
+
+        struct ToggleAccountData {
+          AssignRoleCtx *ctx;
+          std::string username;
+        };
+
+        // --- DỰNG BẢNG BÊN TRÁI (DANH SÁCH TÀI KHOẢN) ---
+        int leftMatchCount = 0;
+        for (const auto &a : sortedAccounts) {
+          std::string phone = findPhoneForAccount(a.username);
+          if (!kw.empty()) {
+            bool match =
+                Utf8Helper::containsCaseInsensitive(a.username, kw) ||
+                Utf8Helper::containsCaseInsensitive(a.linkedFullName, kw) ||
+                Utf8Helper::containsCaseInsensitive(a.linkedEntityId, kw) ||
+                Utf8Helper::containsCaseInsensitive(phone, kw);
+            if (!match)
+              continue;
+          }
+
+          leftMatchCount++;
+          bool selected = isUserSelected(a.username);
+
+          GtkWidget *rowBox =
+              gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+          gtk_widget_add_css_class(rowBox, "table-row");
+          gtk_widget_set_margin_start(rowBox, 10);
+          gtk_widget_set_margin_end(rowBox, 10);
+          gtk_widget_set_margin_top(rowBox, 6);
+          gtk_widget_set_margin_bottom(rowBox, 6);
+
+          GtkWidget *infoCol = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+          gtk_widget_set_hexpand(infoCol, TRUE);
+
+          std::string titleLine =
+              a.linkedFullName.empty()
+                  ? a.username
+                  : (a.linkedFullName + " (" + a.username + ")");
+          GtkWidget *lblMain = gtk_label_new(titleLine.c_str());
+          gtk_widget_add_css_class(lblMain, "cell-title");
+          gtk_label_set_xalign(GTK_LABEL(lblMain), 0.0f);
+          gtk_label_set_ellipsize(GTK_LABEL(lblMain), PANGO_ELLIPSIZE_END);
+          gtk_box_append(GTK_BOX(infoCol), lblMain);
+
+          std::string subLine = "Mã: " + a.linkedEntityId +
+                                (phone.empty() ? "" : (" • SĐT: " + phone));
+          GtkWidget *lblSubInfo = gtk_label_new(subLine.c_str());
+          gtk_widget_add_css_class(lblSubInfo, "cell-subtitle");
+          gtk_label_set_xalign(GTK_LABEL(lblSubInfo), 0.0f);
+          gtk_label_set_ellipsize(GTK_LABEL(lblSubInfo), PANGO_ELLIPSIZE_END);
+          gtk_box_append(GTK_BOX(infoCol), lblSubInfo);
+
+          gtk_box_append(GTK_BOX(rowBox), infoCol);
+
+          GtkWidget *roleBadge = UIComponents::createStatusBadge(
+              a.roleName, a.role == RoleType::CUSTOMER ? "badge-pending"
+                                                       : "badge-confirmed");
+          gtk_widget_set_valign(roleBadge, GTK_ALIGN_CENTER);
+          gtk_box_append(GTK_BOX(rowBox), roleBadge);
+
+          GtkWidget *btnToggle = gtk_button_new_with_label(
+              selected ? "🔓 Bỏ chọn" : "➕ Chọn →");
+          gtk_widget_add_css_class(
+              btnToggle, selected ? "btn-secondary" : "btn-outline");
+          gtk_widget_set_valign(btnToggle, GTK_ALIGN_CENTER);
+          gtk_widget_set_tooltip_text(
+              btnToggle, selected ? "Bấm để hủy chọn tài khoản này"
+                                  : "Bấm để đưa sang danh sách đã chọn");
+          UIComponents::setButtonCursor(btnToggle);
+
+          ToggleAccountData *tad = new ToggleAccountData{this, a.username};
+          g_signal_connect_data(
+              btnToggle, "clicked",
+              G_CALLBACK(+[](GtkButton *, gpointer d) {
+                ToggleAccountData *t = static_cast<ToggleAccountData *>(d);
+                t->ctx->toggleSelectUser(t->username);
+              }),
+              tad,
+              [](gpointer d, GClosure *) {
+                delete static_cast<ToggleAccountData *>(d);
+              },
+              (GConnectFlags)0);
+
+          gtk_box_append(GTK_BOX(rowBox), btnToggle);
+          gtk_box_append(GTK_BOX(leftRowsBox), rowBox);
+        }
+
+        if (leftMatchCount == 0) {
+          GtkWidget *emptyLbl = gtk_label_new(
+              "Không tìm thấy tài khoản phù hợp.\nHãy đăng ký tài khoản mới ở "
+              "màn hình Đăng nhập trước khi phân quyền.");
+          gtk_widget_add_css_class(emptyLbl, "page-subtitle");
+          gtk_label_set_justify(GTK_LABEL(emptyLbl), GTK_JUSTIFY_CENTER);
+          gtk_widget_set_margin_top(emptyLbl, 36);
+          gtk_widget_set_margin_bottom(emptyLbl, 36);
+          gtk_box_append(GTK_BOX(leftRowsBox), emptyLbl);
+        }
+
+        gtk_label_set_text(
+            GTK_LABEL(lblLeftCount),
+            (std::to_string(leftMatchCount) + " tài khoản").c_str());
+
+        // --- DỰNG BẢNG BÊN PHẢI (DANH SÁCH TÀI KHOẢN ĐÃ CHỌN) ---
+        int rightCount = 0;
+        for (const auto &selUser : selectedUsernames) {
+          const AccountItemViewModel *matchedAcc = nullptr;
+          for (const auto &a : sortedAccounts) {
+            if (a.username == selUser) {
+              matchedAcc = &a;
+              break;
+            }
+          }
+          std::string fullName = matchedAcc ? matchedAcc->linkedFullName : "";
+          std::string entityId = matchedAcc ? matchedAcc->linkedEntityId : "";
+          std::string roleName = matchedAcc ? matchedAcc->roleName : "Khách hàng";
+          std::string phone = findPhoneForAccount(selUser);
+
+          rightCount++;
+          GtkWidget *rowBox =
+              gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+          gtk_widget_add_css_class(rowBox, "table-row");
+          gtk_widget_set_margin_start(rowBox, 10);
+          gtk_widget_set_margin_end(rowBox, 10);
+          gtk_widget_set_margin_top(rowBox, 6);
+          gtk_widget_set_margin_bottom(rowBox, 6);
+
+          GtkWidget *infoCol = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+          gtk_widget_set_hexpand(infoCol, TRUE);
+
+          std::string titleLine =
+              fullName.empty() ? selUser : (fullName + " (" + selUser + ")");
+          GtkWidget *lblMain = gtk_label_new(titleLine.c_str());
+          gtk_widget_add_css_class(lblMain, "cell-title");
+          gtk_label_set_xalign(GTK_LABEL(lblMain), 0.0f);
+          gtk_label_set_ellipsize(GTK_LABEL(lblMain), PANGO_ELLIPSIZE_END);
+          gtk_box_append(GTK_BOX(infoCol), lblMain);
+
+          std::string subLine =
+              (entityId.empty() ? "" : ("Mã: " + entityId)) +
+              (phone.empty() ? "" : (" • SĐT: " + phone)) +
+              " • Hiện tại: " + roleName;
+          GtkWidget *lblSubInfo = gtk_label_new(subLine.c_str());
+          gtk_widget_add_css_class(lblSubInfo, "cell-subtitle");
+          gtk_label_set_xalign(GTK_LABEL(lblSubInfo), 0.0f);
+          gtk_label_set_ellipsize(GTK_LABEL(lblSubInfo), PANGO_ELLIPSIZE_END);
+          gtk_box_append(GTK_BOX(infoCol), lblSubInfo);
+
+          gtk_box_append(GTK_BOX(rowBox), infoCol);
+
+          GtkWidget *btnUnselect =
+              gtk_button_new_with_label("🔓 Bỏ chọn");
+          gtk_widget_add_css_class(btnUnselect, "btn-action-delete");
+          gtk_widget_set_valign(btnUnselect, GTK_ALIGN_CENTER);
+          gtk_widget_set_tooltip_text(
+              btnUnselect, "Mở khóa / Bỏ tài khoản này khỏi danh sách đã chọn");
+          UIComponents::setButtonCursor(btnUnselect);
+
+          ToggleAccountData *tad = new ToggleAccountData{this, selUser};
+          g_signal_connect_data(
+              btnUnselect, "clicked",
+              G_CALLBACK(+[](GtkButton *, gpointer d) {
+                ToggleAccountData *t = static_cast<ToggleAccountData *>(d);
+                t->ctx->toggleSelectUser(t->username);
+              }),
+              tad,
+              [](gpointer d, GClosure *) {
+                delete static_cast<ToggleAccountData *>(d);
+              },
+              (GConnectFlags)0);
+
+          gtk_box_append(GTK_BOX(rowBox), btnUnselect);
+          gtk_box_append(GTK_BOX(rightRowsBox), rowBox);
+        }
+
+        if (rightCount == 0) {
+          GtkWidget *emptyRight = gtk_label_new(
+              "Chưa có tài khoản nào được chọn.\nHãy bấm '➕ Chọn →' ở bảng bên "
+              "trái để thêm tài khoản vào đây.");
+          gtk_widget_add_css_class(emptyRight, "page-subtitle");
+          gtk_label_set_justify(GTK_LABEL(emptyRight), GTK_JUSTIFY_CENTER);
+          gtk_widget_set_margin_top(emptyRight, 48);
+          gtk_widget_set_margin_bottom(emptyRight, 48);
+          gtk_box_append(GTK_BOX(rightRowsBox), emptyRight);
+        }
+
+        gtk_label_set_text(
+            GTK_LABEL(lblRightCount),
+            ("Đã chọn: " + std::to_string(rightCount)).c_str());
+        gtk_widget_set_visible(btnClearAll, rightCount > 0);
+      }
+    };
+
+    AssignRoleCtx *ctx = new AssignRoleCtx{
+        this,          eSearch,       errUser,      leftRowsBox,
+        rightRowsBox,  lblLeftCount,  lblRightCount, btnClearAll,
+        comboRole,     {},            false};
+    ctx->rebuildBothLists("");
+
+    g_signal_connect(
+        btnClearAll, "clicked",
+        G_CALLBACK(+[](GtkButton *, gpointer d) {
+          AssignRoleCtx *c = static_cast<AssignRoleCtx *>(d);
+          if (!c)
+            return;
+          c->selectedUsernames.clear();
+          const char *curKw = gtk_editable_get_text(GTK_EDITABLE(c->eSearch));
+          c->rebuildBothLists(curKw ? curKw : "");
+        }),
+        ctx);
+
+    g_signal_connect(
+        eSearch, "changed",
+        G_CALLBACK(+[](GtkEditable *ed, gpointer d) {
+          AssignRoleCtx *c = static_cast<AssignRoleCtx *>(d);
+          if (!c || c->suppressSearchSignal)
+            return;
+          UIComponents::clearFieldError(c->errUser, c->eSearch);
+          const char *txt = gtk_editable_get_text(ed);
+          std::string kw = txt ? txt : "";
+          c->rebuildBothLists(kw);
+        }),
+        ctx);
+
+    GtkWidget *btnRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+    gtk_widget_set_halign(btnRow, GTK_ALIGN_END);
+    gtk_widget_set_margin_top(btnRow, 12);
+
+    GtkWidget *btnCancel = gtk_button_new_with_label("Hủy bỏ");
+    gtk_widget_add_css_class(btnCancel, "btn-secondary");
+    UIComponents::setButtonCursor(btnCancel);
+    g_signal_connect_swapped(
+        btnCancel, "clicked", G_CALLBACK(+[](AdminScreens *s) {
+          if (s && s->shell) {
+            s->shell->popPage();
+          }
+        }),
+        this);
+    gtk_box_append(GTK_BOX(btnRow), btnCancel);
+
+    GtkWidget *btnSave = gtk_button_new_with_label("Cấp quyền nhân viên");
+    gtk_widget_add_css_class(btnSave, "btn-primary");
+    UIComponents::setButtonCursor(btnSave);
+    g_signal_connect_data(
+        btnSave, "clicked",
+        G_CALLBACK(+[](GtkButton *, gpointer d) {
+          AssignRoleCtx *c = static_cast<AssignRoleCtx *>(d);
+          UIComponents::clearFieldError(c->errUser, c->eSearch);
+
+          std::vector<std::string> targets = c->selectedUsernames;
+          if (targets.empty()) {
+            UIComponents::setFieldError(
+                c->errUser, c->eSearch,
+                "Vui lòng chọn ít nhất một tài khoản sang bảng bên phải để cấp "
+                "quyền nhân viên!");
+            gtk_widget_grab_focus(c->eSearch);
+            return;
+          }
+
+          guint sel = gtk_drop_down_get_selected(GTK_DROP_DOWN(c->cRole));
+          RoleType targetRole =
+              (sel == 0) ? RoleType::ADMIN
+                         : (sel == 1 ? RoleType::SALE_EMPLOYEE
+                                     : RoleType::WAREHOUSE_EMPLOYEE);
+
+          int successCount = 0;
+          std::string lastMessage;
+          std::string firstError;
+
+          for (const auto &uname : targets) {
+            EmployeeFormRequest req;
+            req.username = uname;
+            req.role = targetRole;
+            OperationResult res = c->s->controller->addEmployee(req);
+            if (res.success) {
+              successCount++;
+              lastMessage = res.message;
+            } else if (firstError.empty()) {
+              firstError = res.message;
+            }
+          }
+
+          if (successCount > 0) {
+            c->s->refreshEmployees();
+            c->s->refreshCustomers();
+            c->s->refreshAccounts();
+            if (c->s->shell) {
+              c->s->shell->popPage();
+            }
+            std::string summaryMsg =
+                (targets.size() == 1)
+                    ? lastMessage
+                    : ("Đã cấp quyền thành công cho " +
+                       std::to_string(successCount) + "/" +
+                       std::to_string(targets.size()) + " tài khoản đã chọn!");
+            UIComponents::showSuccessDialog(
+                c->s->shell ? c->s->shell->getWindow() : nullptr, "Thành công",
+                summaryMsg);
+          } else {
+            UIComponents::setFieldError(c->errUser, c->eSearch, firstError);
+            gtk_widget_grab_focus(c->eSearch);
+          }
+        }),
+        ctx,
+        [](gpointer d, GClosure *) { delete static_cast<AssignRoleCtx *>(d); },
+        (GConnectFlags)0);
+
+    gtk_box_append(GTK_BOX(btnRow), btnSave);
+    gtk_box_append(GTK_BOX(card), btnRow);
+
+    UIComponents::setupDialogShortcuts(card, btnSave, btnCancel);
+
+    gtk_box_append(GTK_BOX(pageContent), card);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), pageContent);
+    shell->pushPage("admin_employee_form", scroll, "Thêm nhân sự mới", false);
+    gtk_widget_grab_focus(eSearch);
+    return;
+  }
+
+  // =========================================================================
+  // TRƯỜNG HỢP 2: CHỈNH SỬA THÔNG TIN & PHÂN QUYỀN NHÂN SỰ ĐÃ CÓ
+  // =========================================================================
+  GtkWidget *title = gtk_label_new("✏️ Chỉnh sửa thông tin nhân sự");
   gtk_widget_add_css_class(title, "card-title");
   gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
   gtk_box_append(GTK_BOX(card), title);
@@ -920,8 +1793,10 @@ void AdminScreens::showEmployeeFormModal(
   GtkWidget *eUser = gtk_entry_new();
   gtk_editable_set_text(GTK_EDITABLE(eUser),
                         isEdit ? existingEmp->username.c_str() : "");
+  gtk_editable_set_editable(GTK_EDITABLE(eUser), FALSE);
+  gtk_widget_set_sensitive(eUser, FALSE);
   GtkWidget *errUser = nullptr;
-  gtk_box_append(GTK_BOX(card), UIComponents::createFormField("Tên đăng nhập *",
+  gtk_box_append(GTK_BOX(card), UIComponents::createFormField("Tên đăng nhập",
                                                               eUser, &errUser));
 
   const char *roles[] = {"Quản trị viên (Admin)", "Nhân viên Bán hàng (Sales)",
@@ -1063,6 +1938,7 @@ void AdminScreens::showEmployeeFormModal(
                                         : c->s->controller->addEmployee(req);
         if (res.success) {
           c->s->refreshEmployees();
+          c->s->refreshAccounts();
           if (c->s->shell) {
             c->s->shell->popPage();
           }
@@ -1120,9 +1996,32 @@ void AdminScreens::showCustomerListView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *btnExportCust = UIComponents::createExportButton(
+      "📥 Xuất CSV", "Xuất danh sách khách hàng ra file .csv", [this]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName =
+            "DanhSach_KhachHang_" +
+            ExportHelper::makeSafeDateToken(controller->getSimulatedDate()) +
+            ".csv";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất danh sách khách hàng (.csv)", defName, "Tệp CSV (*.csv)",
+            "*.csv", [this, win](const std::string &path) {
+              OperationResult res =
+                  controller->exportCustomersCsv(path, customerFilterKeyword);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(win, "Xuất CSV thành công",
+                                                res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+
   GtkWidget *header = UIComponents::createSectionHeader(
       "Quản lý danh sách khách hàng",
-      "Danh sách khách hàng, phân hạng thành viên và lịch sử giao dịch.");
+      "Danh sách khách hàng, phân hạng thành viên và lịch sử giao dịch.",
+      btnExportCust);
   gtk_box_append(GTK_BOX(content), header);
 
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
@@ -1139,6 +2038,9 @@ void AdminScreens::showCustomerListView() {
                          "Kim Cương (VIP)", nullptr};
   GtkWidget *comboTier = gtk_drop_down_new_from_strings(tiers);
   gtk_widget_add_css_class(comboTier, "filter-dropdown");
+  UIComponents::applyFilterDropdownBadges(
+      comboTier,
+      {"", "rank-bronze", "rank-silver", "rank-gold", "rank-diamond"});
   g_signal_connect_data(comboTier, "notify::selected",
                         G_CALLBACK(+[](GObject *obj, GParamSpec *, gpointer d) {
                           AdminScreens *self = static_cast<AdminScreens *>(d);
@@ -1679,6 +2581,30 @@ void AdminScreens::buildSupplierMgmtView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *actionBox =
+      gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+  GtkWidget *btnExport = UIComponents::createExportButton(
+      "📥 Xuất CSV", "Xuất danh sách nhà cung cấp ra file .csv", [this]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName =
+            "DanhSach_NhaCungCap_" +
+            ExportHelper::makeSafeDateToken(controller->getSimulatedDate()) +
+            ".csv";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất danh sách nhà cung cấp (.csv)", defName,
+            "Tệp CSV (*.csv)", "*.csv", [this, win](const std::string &path) {
+              OperationResult res = controller->exportSuppliersCsv(path);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(win, "Xuất CSV thành công",
+                                                res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+  gtk_box_append(GTK_BOX(actionBox), btnExport);
+
   GtkWidget *btnAdd = gtk_button_new_with_label("➕ Thêm nhà cung cấp");
   gtk_widget_add_css_class(btnAdd, "btn-primary");
   UIComponents::setButtonCursor(btnAdd);
@@ -1686,10 +2612,11 @@ void AdminScreens::buildSupplierMgmtView() {
                              s->showSupplierFormModal(nullptr);
                            }),
                            this);
+  gtk_box_append(GTK_BOX(actionBox), btnAdd);
 
   GtkWidget *header = UIComponents::createSectionHeader(
       "Nhà cung cấp điện thoại",
-      "Đối tác cung ứng thiết bị và linh kiện chính hãng.", btnAdd);
+      "Đối tác cung ứng thiết bị và linh kiện chính hãng.", actionBox);
   gtk_box_append(GTK_BOX(content), header);
 
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
@@ -1948,6 +2875,7 @@ void AdminScreens::showSupplierFormModal(
                     inner->s->controller->deleteSupplier(inner->id);
                 if (res.success) {
                   inner->s->refreshSuppliers();
+                  inner->s->refreshDashboard();
                   if (inner->s->shell)
                     inner->s->shell->popPage();
                   UIComponents::showSuccessDialog(
@@ -2000,6 +2928,7 @@ void AdminScreens::showSupplierFormModal(
                                         : c->s->controller->addSupplier(req);
         if (res.success) {
           c->s->refreshSuppliers();
+          c->s->refreshDashboard();
           if (c->s->shell) {
             c->s->shell->popPage();
           }
@@ -2142,6 +3071,30 @@ void AdminScreens::showDiscountListView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *actionBox =
+      gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+  GtkWidget *btnExport = UIComponents::createExportButton(
+      "📥 Xuất CSV", "Xuất danh sách mã giảm giá ra file .csv", [this]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName =
+            "DanhSach_KhuyenMai_" +
+            ExportHelper::makeSafeDateToken(controller->getSimulatedDate()) +
+            ".csv";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất danh sách mã giảm giá (.csv)", defName,
+            "Tệp CSV (*.csv)", "*.csv", [this, win](const std::string &path) {
+              OperationResult res = controller->exportDiscountsCsv(path);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(win, "Xuất CSV thành công",
+                                                res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+  gtk_box_append(GTK_BOX(actionBox), btnExport);
+
   GtkWidget *btnAdd = gtk_button_new_with_label("➕ Tạo mã giảm giá mới");
   gtk_widget_add_css_class(btnAdd, "btn-primary");
   UIComponents::setButtonCursor(btnAdd);
@@ -2153,11 +3106,12 @@ void AdminScreens::showDiscountListView() {
                              s->showDiscountEditView(newD, true);
                            }),
                            this);
+  gtk_box_append(GTK_BOX(actionBox), btnAdd);
 
   std::string sub = "Quản lý danh sách chương trình ưu đãi, mã giảm giá và "
                     "thời hạn áp dụng.";
   GtkWidget *header = UIComponents::createSectionHeader(
-      "Chương trình khuyến mãi & Voucher", sub, btnAdd);
+      "Chương trình khuyến mãi & Voucher", sub, actionBox);
   gtk_box_append(GTK_BOX(content), header);
 
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
@@ -2175,6 +3129,9 @@ void AdminScreens::showDiscountListView() {
       "Còn hiệu lực",        "Đã hết hạn",  nullptr};
   GtkWidget *comboDiscType = gtk_drop_down_new_from_strings(discTypes);
   gtk_widget_add_css_class(comboDiscType, "filter-dropdown");
+  UIComponents::applyFilterDropdownBadges(
+      comboDiscType, {"", "badge-confirmed", "badge-preparing",
+                      "badge-in-stock", "badge-out-of-stock"});
   g_signal_connect_data(comboDiscType, "notify::selected",
                         G_CALLBACK(+[](GObject *obj, GParamSpec *, gpointer d) {
                           AdminScreens *self = static_cast<AdminScreens *>(d);
@@ -2553,6 +3510,7 @@ void AdminScreens::showDiscountEditView(const DiscountItemViewModel &disc,
   std::string defaultExp = "31/12/" + std::to_string(curYear);
   gtk_editable_set_text(GTK_EDITABLE(eExpiry),
                         isNew ? defaultExp.c_str() : disc.expiryDate.c_str());
+  UIComponents::setupDatePicker(eExpiry);
   gtk_grid_attach(
       GTK_GRID(grid),
       UIComponents::createFormField("Ngày hết hạn (DD/MM/YYYY) *", eExpiry), 2,
@@ -2597,11 +3555,11 @@ void AdminScreens::showDiscountEditView(const DiscountItemViewModel &disc,
           const char *curText =
               gtk_editable_get_text(GTK_EDITABLE(data->entry));
           std::string curStr = curText ? StringHelper::trim(curText) : "";
-          DateTime baseDt;
+          DateTime baseDt(0, 0, 0, 0, 0, 0);
           if (DateTime::isValidDateString(curStr)) {
             baseDt = DateTime::fromDateString(curStr);
           } else {
-            baseDt = DateTime::now();
+            baseDt = AppClock::now();
           }
           DateTime newDt = baseDt.addDays(data->days);
           gtk_editable_set_text(GTK_EDITABLE(data->entry),
@@ -2786,10 +3744,33 @@ void AdminScreens::buildAccountMgmtView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *btnExportAcc = UIComponents::createExportButton(
+      "📥 Xuất CSV", "Xuất danh sách tài khoản hệ thống ra file .csv",
+      [this]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName =
+            "DanhSach_TaiKhoan_" +
+            ExportHelper::makeSafeDateToken(controller->getSimulatedDate()) +
+            ".csv";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất danh sách tài khoản (.csv)", defName, "Tệp CSV (*.csv)",
+            "*.csv", [this, win](const std::string &path) {
+              OperationResult res = controller->exportAccountsCsv(path);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(win, "Xuất CSV thành công",
+                                                res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+
   GtkWidget *header = UIComponents::createSectionHeader(
       "Quản trị tài khoản & Khóa người dùng",
       "Kiểm soát trạng thái hoạt động của toàn bộ tài khoản nhân viên và khách "
-      "hàng.");
+      "hàng.",
+      btnExportAcc);
   gtk_box_append(GTK_BOX(content), header);
 
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
@@ -2948,9 +3929,33 @@ void AdminScreens::showOrderListView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *btnExportOrd = UIComponents::createExportButton(
+      "📥 Xuất CSV", "Xuất danh sách đơn hàng theo bộ lọc hiện tại ra .csv",
+      [this]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName =
+            "DanhSach_DonHang_" +
+            ExportHelper::makeSafeDateToken(controller->getSimulatedDate()) +
+            ".csv";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất danh sách đơn hàng (.csv)", defName, "Tệp CSV (*.csv)",
+            "*.csv", [this, win](const std::string &path) {
+              OperationResult res = controller->exportOrdersCsv(
+                  path, orderFilterKeyword, orderFilterStatus,
+                  orderFilterPayment, orderFromDate, orderToDate);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(win, "Xuất CSV thành công",
+                                                res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+
   GtkWidget *header = UIComponents::createSectionHeader(
       "Quản lý toàn bộ đơn hàng",
-      "Quy trình xử lý đơn đặt hàng và điều phối giao nhận.");
+      "Quy trình xử lý đơn đặt hàng và điều phối giao nhận.", btnExportOrd);
   gtk_box_append(GTK_BOX(content), header);
 
   // Extra Controls for Order Status & Payment Status
@@ -2967,6 +3972,10 @@ void AdminScreens::showOrderListView() {
                                  "Đã hủy (Cancelled)",
                                  nullptr};
   GtkWidget *dropStatus = gtk_drop_down_new_from_strings(statusOptions);
+  UIComponents::applyFilterDropdownBadges(
+      dropStatus, {"", "badge-pending", "badge-confirmed", "badge-preparing",
+                   "badge-ready", "badge-shipping", "badge-completed",
+                   "badge-cancelled"});
   if (orderFilterStatus >= 0) {
     gtk_drop_down_set_selected(GTK_DROP_DOWN(dropStatus),
                                static_cast<guint>(orderFilterStatus + 1));
@@ -2984,6 +3993,8 @@ void AdminScreens::showOrderListView() {
                                   "Chưa thanh toán (Unpaid)",
                                   "Đã thanh toán (Paid)", nullptr};
   GtkWidget *dropPayment = gtk_drop_down_new_from_strings(paymentOptions);
+  UIComponents::applyFilterDropdownBadges(dropPayment,
+                                          {"", "badge-unpaid", "badge-paid"});
   if (orderFilterPayment >= 0) {
     gtk_drop_down_set_selected(GTK_DROP_DOWN(dropPayment),
                                static_cast<guint>(orderFilterPayment + 1));
@@ -2999,6 +4010,37 @@ void AdminScreens::showOrderListView() {
 
   gtk_box_append(GTK_BOX(filterRow), dropStatus);
   gtk_box_append(GTK_BOX(filterRow), dropPayment);
+
+  // Bộ lọc theo ngày & tự động sort sớm nhất (ANTY.md mục 2)
+  GtkWidget *lblFrom = gtk_label_new("Từ:");
+  gtk_widget_add_css_class(lblFrom, "stat-label");
+  gtk_box_append(GTK_BOX(filterRow), lblFrom);
+
+  entryOrderFromDate = gtk_entry_new();
+  UIComponents::setupDatePicker(entryOrderFromDate);
+  g_signal_connect(entryOrderFromDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     AdminScreens *self = static_cast<AdminScreens *>(d);
+                     self->orderFromDate = gtk_editable_get_text(e);
+                     self->refreshOrders();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(filterRow), entryOrderFromDate);
+
+  GtkWidget *lblTo = gtk_label_new("Đến:");
+  gtk_widget_add_css_class(lblTo, "stat-label");
+  gtk_box_append(GTK_BOX(filterRow), lblTo);
+
+  entryOrderToDate = gtk_entry_new();
+  UIComponents::setupDatePicker(entryOrderToDate);
+  g_signal_connect(entryOrderToDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     AdminScreens *self = static_cast<AdminScreens *>(d);
+                     self->orderToDate = gtk_editable_get_text(e);
+                     self->refreshOrders();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(filterRow), entryOrderToDate);
 
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
       "Tìm theo Mã đơn hàng (ORD-...), Tên khách hàng hoặc Số điện thoại...",
@@ -3034,8 +4076,25 @@ void AdminScreens::refreshOrders() {
     child = next;
   }
 
-  std::vector<OrderItemViewModel> list = controller->filterOrders(
+  std::vector<OrderItemViewModel> rawList = controller->filterOrders(
       orderFilterKeyword, orderFilterStatus, orderFilterPayment, -1);
+  std::vector<OrderItemViewModel> list;
+  for (const auto &ord : rawList) {
+    if (!orderFromDate.empty() || !orderToDate.empty()) {
+      if (!RealTimeManager::isDateInRange(ord.orderTime, orderFromDate,
+                                          orderToDate)) {
+        continue;
+      }
+    }
+    list.push_back(ord);
+  }
+
+  // Tự động sắp xếp theo thời gian sớm nhất (ANTY.md mục 2)
+  std::sort(list.begin(), list.end(),
+            [](const OrderItemViewModel &a, const OrderItemViewModel &b) {
+              return RealTimeManager::dateTimeToEpochSeconds(a.orderTime) <
+                     RealTimeManager::dateTimeToEpochSeconds(b.orderTime);
+            });
   UIComponents::updateRecordCountBadge(ordersCountBadge, list.size(),
                                        "đơn hàng");
 
@@ -3124,10 +4183,32 @@ void AdminScreens::showOrderDetailView(const OrderItemViewModel &ord) {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_XL);
   gtk_widget_add_css_class(content, "page-container");
 
+  std::string ordIdCopy = ord.id;
+  GtkWidget *btnExportOrdTxt = UIComponents::createExportButton(
+      "📄 Xuất phiếu đơn (.txt)",
+      "Xuất phiếu xác nhận đơn hàng chi tiết sang tệp văn bản (.txt)",
+      [this, ordIdCopy]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName = "PhieuDonHang_" + ordIdCopy + ".txt";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất phiếu đơn hàng (.txt)", defName, "Tệp văn bản (*.txt)",
+            "*.txt", [this, win, ordIdCopy](const std::string &path) {
+              OperationResult res = controller->exportOrderTxt(path, ordIdCopy);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(win, "Xuất đơn hàng thành công",
+                                                res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+
   GtkWidget *header = UIComponents::createSectionHeader(
       "Chi tiết đơn hàng " + ord.id,
       "Xem danh sách mặt hàng, trạng thái thanh toán và cập nhật tiến trình "
-      "đơn.");
+      "đơn.",
+      btnExportOrdTxt);
   gtk_box_append(GTK_BOX(content), header);
 
   GtkWidget *card =
@@ -3205,6 +4286,15 @@ void AdminScreens::showOrderDetailView(const OrderItemViewModel &ord) {
     gtk_label_set_xalign(GTK_LABEL(discLbl), 1.0f);
     gtk_box_append(GTK_BOX(sumBox), discLbl);
   }
+
+  std::string vatText =
+      ord.isLegacyNoVat
+          ? "Thuế VAT: Không áp dụng (Đơn cũ)"
+          : ("Thuế VAT (" + PricingCalculator::formatVatPercent(ord.vatRate) +
+             "): " + UIComponents::formatVND(ord.vatAmount));
+  GtkWidget *vatLbl = gtk_label_new(vatText.c_str());
+  gtk_label_set_xalign(GTK_LABEL(vatLbl), 1.0f);
+  gtk_box_append(GTK_BOX(sumBox), vatLbl);
 
   GtkWidget *finalTotLbl = gtk_label_new(
       ("TỔNG CỘNG THANH TOÁN: " + UIComponents::formatVND(ord.total)).c_str());
@@ -3300,7 +4390,8 @@ void AdminScreens::showOrderDetailView(const OrderItemViewModel &ord) {
              ord.status == OrderStatus::PREPARING) {
     addStatusBtn("🚚 Giao hàng", OrderStatus::SHIPPING, "btn-primary");
     addStatusBtn("❌ Hủy đơn", OrderStatus::CANCELLED, "btn-danger");
-  } else if (ord.status == OrderStatus::SHIPPING) {
+  } else if (ord.status == OrderStatus::SHIPPING ||
+             ord.status == OrderStatus::READY_FOR_PICKUP) {
     addStatusBtn("🎉 Hoàn tất giao & Thu tiền", OrderStatus::COMPLETED,
                  "btn-success");
     addStatusBtn("❌ Hủy đơn", OrderStatus::CANCELLED, "btn-danger");
@@ -3323,10 +4414,66 @@ void AdminScreens::buildAllInvoicesView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *btnExportInv = UIComponents::createExportButton(
+      "📥 Xuất CSV", "Xuất danh sách hóa đơn theo bộ lọc hiện tại ra .csv",
+      [this]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName =
+            "DanhSach_HoaDon_" +
+            ExportHelper::makeSafeDateToken(controller->getSimulatedDate()) +
+            ".csv";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất danh sách hóa đơn (.csv)", defName, "Tệp CSV (*.csv)",
+            "*.csv", [this, win](const std::string &path) {
+              OperationResult res = controller->exportInvoicesCsv(
+                  path, invoiceFilterKeyword, invoiceFromDate, invoiceToDate);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(win, "Xuất CSV thành công",
+                                                res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+
   GtkWidget *header = UIComponents::createSectionHeader(
       "Danh sách hóa đơn bán hàng",
-      "Lịch sử hóa đơn bán lẻ và chứng từ thanh toán.");
+      "Lịch sử hóa đơn bán lẻ và chứng từ thanh toán.", btnExportInv);
   gtk_box_append(GTK_BOX(content), header);
+
+  GtkWidget *extraControls =
+      gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+
+  GtkWidget *lblFrom = gtk_label_new("Từ:");
+  gtk_widget_add_css_class(lblFrom, "stat-label");
+  gtk_box_append(GTK_BOX(extraControls), lblFrom);
+
+  entryInvoiceFromDate = gtk_entry_new();
+  UIComponents::setupDatePicker(entryInvoiceFromDate);
+  g_signal_connect(entryInvoiceFromDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     AdminScreens *self = static_cast<AdminScreens *>(d);
+                     self->invoiceFromDate = gtk_editable_get_text(e);
+                     self->refreshInvoices();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(extraControls), entryInvoiceFromDate);
+
+  GtkWidget *lblTo = gtk_label_new("Đến:");
+  gtk_widget_add_css_class(lblTo, "stat-label");
+  gtk_box_append(GTK_BOX(extraControls), lblTo);
+
+  entryInvoiceToDate = gtk_entry_new();
+  UIComponents::setupDatePicker(entryInvoiceToDate);
+  g_signal_connect(entryInvoiceToDate, "changed",
+                   G_CALLBACK(+[](GtkEditable *e, gpointer d) {
+                     AdminScreens *self = static_cast<AdminScreens *>(d);
+                     self->invoiceToDate = gtk_editable_get_text(e);
+                     self->refreshInvoices();
+                   }),
+                   this);
+  gtk_box_append(GTK_BOX(extraControls), entryInvoiceToDate);
 
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
       "Tìm theo mã hóa đơn, mã đơn hàng, tên khách hàng hoặc thu ngân...",
@@ -3336,7 +4483,7 @@ void AdminScreens::buildAllInvoicesView() {
         self->invoiceFilterKeyword = txt ? txt : "";
         self->refreshInvoices();
       }),
-      this, nullptr, &invoiceCountBadge);
+      this, nullptr, &invoiceCountBadge, extraControls);
   gtk_box_append(GTK_BOX(content), filterToolbar);
 
   GtkWidget *tableContainer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -3379,8 +4526,22 @@ void AdminScreens::refreshInvoices() {
       if (!match)
         continue;
     }
+    // Lọc theo khoảng ngày (ANTY.md mục 2)
+    if (!invoiceFromDate.empty() || !invoiceToDate.empty()) {
+      if (!RealTimeManager::isDateInRange(inv.createTime, invoiceFromDate,
+                                          invoiceToDate)) {
+        continue;
+      }
+    }
     list.push_back(inv);
   }
+
+  // Tự động sắp xếp theo thời gian sớm nhất (ANTY.md mục 2)
+  std::sort(list.begin(), list.end(),
+            [](const InvoiceItemViewModel &a, const InvoiceItemViewModel &b) {
+              return RealTimeManager::dateTimeToEpochSeconds(a.createTime) <
+                     RealTimeManager::dateTimeToEpochSeconds(b.createTime);
+            });
 
   UIComponents::updateRecordCountBadge(invoiceCountBadge, list.size(),
                                        "hóa đơn");
@@ -3440,6 +4601,32 @@ void AdminScreens::refreshInvoices() {
                        UIComponents::formatVND(inv.total),
                        kAdminInvoiceTableCols[6], "product-price"));
 
+    // 7: Thao tác (Xuất hóa đơn .txt)
+    std::string invIdCopy = inv.id;
+    GtkWidget *btnTxt = UIComponents::createExportButton(
+        "📄 Xuất TXT", "Xuất hóa đơn bán hàng sang tệp văn bản (.txt)",
+        [this, invIdCopy]() {
+          GtkWindow *win = shell ? shell->getWindow() : nullptr;
+          std::string defName = "HoaDon_" + invIdCopy + ".txt";
+          UIComponents::showSaveFileDialog(
+              win, "Xuất hóa đơn bán hàng (.txt)", defName,
+              "Tệp văn bản (*.txt)", "*.txt",
+              [this, win, invIdCopy](const std::string &path) {
+                OperationResult res =
+                    controller->exportInvoiceTxt(path, invIdCopy);
+                if (res.isSuccess()) {
+                  UIComponents::showSuccessDialog(win, "Xuất hóa đơn thành công",
+                                                  res.message);
+                } else {
+                  UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                                res.message);
+                }
+              });
+        });
+    gtk_widget_add_css_class(btnTxt, "btn-table-action");
+    gtk_box_append(GTK_BOX(row), UIComponents::createTableWidgetCell(
+                                     btnTxt, kAdminInvoiceTableCols[7]));
+
     gtk_box_append(GTK_BOX(invoiceListBox), row);
   }
 }
@@ -3451,20 +4638,83 @@ void AdminScreens::buildWarrantyMonitorView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *btnExportWar = UIComponents::createExportButton(
+      "📥 Xuất CSV", "Xuất danh sách phiếu bảo hành ra file .csv", [this]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName =
+            "DanhSach_BaoHanh_" +
+            ExportHelper::makeSafeDateToken(controller->getSimulatedDate()) +
+            ".csv";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất danh sách bảo hành (.csv)", defName, "Tệp CSV (*.csv)",
+            "*.csv", [this, win](const std::string &path) {
+              OperationResult res = controller->exportWarrantiesCsv(
+                  path, warrantyFilterKeyword, warrantyFilterStatus);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(win, "Xuất CSV thành công",
+                                                res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+
   GtkWidget *header = UIComponents::createSectionHeader(
       "Giám sát dịch vụ bảo hành",
-      "Theo dõi tiếp nhận và xử lý bảo hành thiết bị.");
+      "Theo dõi, kiểm tra tiến độ và trực tiếp xử lý các yêu cầu bảo hành trên "
+      "toàn hệ thống.",
+      btnExportWar);
   gtk_box_append(GTK_BOX(content), header);
 
+  GtkWidget *extraControls =
+      gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_SM);
+
+  const char *statusOptions[] = {
+      "Tất cả trạng thái",           "Mới tiếp nhận (Received)",
+      "Đang xử lý (Processing)",     "Đã hoàn tất (Resolved)",
+      "Từ chối bảo hành (Rejected)", nullptr};
+  GtkWidget *dropStatus = gtk_drop_down_new_from_strings(statusOptions);
+  gtk_widget_add_css_class(dropStatus, "filter-dropdown");
+  UIComponents::applyFilterDropdownBadges(
+      dropStatus, {"", "badge-pending", "badge-under-warranty",
+                   "badge-completed", "badge-out-of-stock"});
+  g_signal_connect_data(dropStatus, "notify::selected",
+                        G_CALLBACK(+[](GObject *obj, GParamSpec *, gpointer d) {
+                          AdminScreens *self = static_cast<AdminScreens *>(d);
+                          guint sel =
+                              gtk_drop_down_get_selected(GTK_DROP_DOWN(obj));
+                          self->warrantyFilterStatus =
+                              (sel == 0) ? -1 : static_cast<int>(sel - 1);
+                          self->refreshWarrantyMonitor();
+                        }),
+                        this, nullptr, (GConnectFlags)0);
+  gtk_box_append(GTK_BOX(extraControls), dropStatus);
+
+  const char *sortOptions[] = {"Ngày nhận: Mới nhất", "Ngày nhận: Cũ nhất",
+                               "Khách hàng: A → Z",   "Thiết bị: A → Z",
+                               "Mã phiếu: A → Z",     nullptr};
+  GtkWidget *dropSort = gtk_drop_down_new_from_strings(sortOptions);
+  gtk_widget_add_css_class(dropSort, "filter-dropdown");
+  g_signal_connect_data(dropSort, "notify::selected",
+                        G_CALLBACK(+[](GObject *obj, GParamSpec *, gpointer d) {
+                          AdminScreens *self = static_cast<AdminScreens *>(d);
+                          self->warrantySortBy =
+                              gtk_drop_down_get_selected(GTK_DROP_DOWN(obj));
+                          self->refreshWarrantyMonitor();
+                        }),
+                        this, nullptr, (GConnectFlags)0);
+  gtk_box_append(GTK_BOX(extraControls), dropSort);
+
   GtkWidget *filterToolbar = UIComponents::createFilterToolbar(
-      "Tìm theo mã phiếu, thiết bị, tên khách hàng hoặc mô tả sự cố...",
+      "Tìm theo mã phiếu, mã đơn, thiết bị hoặc khách hàng...",
       G_CALLBACK(+[](GtkEditable *e, gpointer d) {
         AdminScreens *self = static_cast<AdminScreens *>(d);
         const char *txt = gtk_editable_get_text(e);
         self->warrantyFilterKeyword = txt ? txt : "";
         self->refreshWarrantyMonitor();
       }),
-      this, nullptr, &warrantyCountBadge);
+      this, nullptr, &warrantyCountBadge, extraControls);
   gtk_box_append(GTK_BOX(content), filterToolbar);
 
   GtkWidget *tableContainer = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -3472,7 +4722,8 @@ void AdminScreens::buildWarrantyMonitorView() {
   gtk_box_append(GTK_BOX(tableContainer),
                  UIComponents::createTableHeaderRow(kAdminWarrantyTableCols));
 
-  warrantyListBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  warrantyListBox =
+      gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::TABLE_ROW_SPACING);
   gtk_box_append(GTK_BOX(tableContainer), warrantyListBox);
   gtk_box_append(GTK_BOX(content), tableContainer);
 
@@ -3497,6 +4748,8 @@ void AdminScreens::refreshWarrantyMonitor() {
     if (!warrantyFilterKeyword.empty()) {
       bool match =
           Utf8Helper::containsCaseInsensitive(w.id, warrantyFilterKeyword) ||
+          Utf8Helper::containsCaseInsensitive(w.orderId,
+                                              warrantyFilterKeyword) ||
           Utf8Helper::containsCaseInsensitive(w.phoneName,
                                               warrantyFilterKeyword) ||
           Utf8Helper::containsCaseInsensitive(w.customerName,
@@ -3504,27 +4757,70 @@ void AdminScreens::refreshWarrantyMonitor() {
           Utf8Helper::containsCaseInsensitive(w.customerPhone,
                                               warrantyFilterKeyword) ||
           Utf8Helper::containsCaseInsensitive(w.issueDescription,
+                                              warrantyFilterKeyword) ||
+          Utf8Helper::containsCaseInsensitive(w.technicianNote,
                                               warrantyFilterKeyword);
       if (!match)
         continue;
     }
+
+    // Lọc theo trạng thái bảo hành
+    if (warrantyFilterStatus >= 0) {
+      if (warrantyFilterStatus == 0 && w.status != WarrantyStatus::RECEIVED)
+        continue;
+      if (warrantyFilterStatus == 1 && w.status != WarrantyStatus::PROCESSING)
+        continue;
+      if (warrantyFilterStatus == 2 && w.status != WarrantyStatus::RESOLVED)
+        continue;
+      if (warrantyFilterStatus == 3 && w.status != WarrantyStatus::REJECTED)
+        continue;
+    }
+
     list.push_back(w);
+  }
+
+  // Sắp xếp
+  if (warrantySortBy == 0) { // Ngày nhận: Mới nhất
+    std::sort(
+        list.begin(), list.end(),
+        [](const WarrantyItemViewModel &a, const WarrantyItemViewModel &b) {
+          return a.requestDate > b.requestDate;
+        });
+  } else if (warrantySortBy == 1) { // Ngày nhận: Cũ nhất
+    std::sort(
+        list.begin(), list.end(),
+        [](const WarrantyItemViewModel &a, const WarrantyItemViewModel &b) {
+          return a.requestDate < b.requestDate;
+        });
+  } else if (warrantySortBy == 2) { // Khách hàng: A -> Z
+    std::sort(
+        list.begin(), list.end(),
+        [](const WarrantyItemViewModel &a, const WarrantyItemViewModel &b) {
+          return a.customerName < b.customerName;
+        });
+  } else if (warrantySortBy == 3) { // Thiết bị: A -> Z
+    std::sort(
+        list.begin(), list.end(),
+        [](const WarrantyItemViewModel &a, const WarrantyItemViewModel &b) {
+          return a.phoneName < b.phoneName;
+        });
+  } else if (warrantySortBy == 4) { // Mã phiếu: A -> Z
+    std::sort(list.begin(), list.end(),
+              [](const WarrantyItemViewModel &a,
+                 const WarrantyItemViewModel &b) { return a.id < b.id; });
   }
 
   UIComponents::updateRecordCountBadge(warrantyCountBadge, list.size(),
                                        "phiếu bảo hành");
 
   if (list.empty()) {
-    gtk_box_append(
-        GTK_BOX(warrantyListBox),
-        UIComponents::createEmptyState(
-            "🛡️",
-            warrantyFilterKeyword.empty()
-                ? "Chưa có dữ liệu"
-                : "Không tìm thấy phiếu bảo hành phù hợp",
-            warrantyFilterKeyword.empty()
-                ? "Chưa có yêu cầu hoặc biên nhận bảo hành nào trong hệ thống."
-                : "Thử tìm kiếm với từ khóa hoặc mã phiếu khác."));
+    std::string emptyMsg =
+        warrantyFilterKeyword.empty() && warrantyFilterStatus < 0
+            ? "Chưa có dữ liệu bảo hành."
+            : "Không tìm thấy phiếu bảo hành nào khớp với bộ lọc tìm kiếm.";
+    gtk_box_append(GTK_BOX(warrantyListBox),
+                   UIComponents::createEmptyState(
+                       "🛡️", "Chưa có dữ liệu bảo hành", emptyMsg));
     return;
   }
 
@@ -3532,22 +4828,34 @@ void AdminScreens::refreshWarrantyMonitor() {
     const auto &w = list[i];
     GtkWidget *row = UIComponents::createTableDataRow(i);
 
-    // 0: Mã phiếu
+    // 0: Mã phiếu & Mã đơn
+    std::string orderSub =
+        w.orderId.empty() ? "Đơn vãng lai" : ("Đơn: " + w.orderId);
     gtk_box_append(GTK_BOX(row),
-                   UIComponents::createTableTextCell(
-                       w.id, kAdminWarrantyTableCols[0], "cell-code"));
+                   UIComponents::createTableTwoLineCell(
+                       w.id, orderSub, kAdminWarrantyTableCols[0]));
 
-    // 1: Thiết bị
+    // 1: Thiết bị & Bảo hành
+    std::string remSub;
+    if (w.remainingDays > 0) {
+      remSub = "Còn " + std::to_string(w.remainingDays) + " ngày bảo hành";
+    } else if (!w.expireDate.empty()) {
+      remSub = "Hết hạn (" + w.expireDate + ")";
+    } else {
+      remSub = "Bảo hành tiêu chuẩn";
+    }
     gtk_box_append(GTK_BOX(row),
-                   UIComponents::createTableTextCell(
-                       w.phoneName, kAdminWarrantyTableCols[1], "cell-title"));
+                   UIComponents::createTableTwoLineCell(
+                       w.phoneName, remSub, kAdminWarrantyTableCols[1]));
 
     // 2: Khách hàng (tên + SĐT)
-    gtk_box_append(GTK_BOX(row), UIComponents::createTableTwoLineCell(
-                                     w.customerName, w.customerPhone,
-                                     kAdminWarrantyTableCols[2]));
+    std::string phoneSub =
+        w.customerPhone.empty() ? "Không có SĐT" : ("SĐT: " + w.customerPhone);
+    gtk_box_append(GTK_BOX(row),
+                   UIComponents::createTableTwoLineCell(
+                       w.customerName, phoneSub, kAdminWarrantyTableCols[2]));
 
-    // 3: Ngày hẹn
+    // 3: Ngày nhận
     gtk_box_append(GTK_BOX(row), UIComponents::createTableTextCell(
                                      w.requestDate, kAdminWarrantyTableCols[3],
                                      "tabular-num"));
@@ -3557,14 +4865,324 @@ void AdminScreens::refreshWarrantyMonitor() {
     gtk_box_append(GTK_BOX(row), UIComponents::createTableWidgetCell(
                                      badge, kAdminWarrantyTableCols[4]));
 
-    // 5: Mô tả sự cố
-    gtk_box_append(GTK_BOX(row),
-                   UIComponents::createTableTextCell(w.issueDescription,
-                                                     kAdminWarrantyTableCols[5],
-                                                     "cell-subtitle"));
+    // 5: Mô tả sự cố & Ghi chú KT
+    std::string noteSub = w.technicianNote.empty()
+                              ? "Chưa có ghi chú KT"
+                              : ("KT: " + w.technicianNote);
+    gtk_box_append(GTK_BOX(row), UIComponents::createTableTwoLineCell(
+                                     "Lỗi: " + w.issueDescription, noteSub,
+                                     kAdminWarrantyTableCols[5]));
+
+    // 6: Thao tác (Xử lý phiếu)
+    if (w.status != WarrantyStatus::RESOLVED &&
+        w.status != WarrantyStatus::REJECTED) {
+      GtkWidget *btnProcess = UIComponents::createTableActionButton(
+          "⚙️ Xử lý", "Tiến hành xử lý và cập nhật tiến độ bảo hành",
+          "btn-action-primary");
+      struct ProcWarAdminData {
+        AdminScreens *s;
+        WarrantyItemViewModel item;
+      };
+      ProcWarAdminData *pwd = new ProcWarAdminData{this, w};
+      g_signal_connect_data(
+          btnProcess, "clicked", G_CALLBACK(+[](GtkButton *b, gpointer d) {
+            (void)b;
+            ProcWarAdminData *data = static_cast<ProcWarAdminData *>(d);
+            data->s->showProcessWarrantyModal(data->item);
+          }),
+          pwd,
+          [](gpointer d, GClosure *) {
+            delete static_cast<ProcWarAdminData *>(d);
+          },
+          (GConnectFlags)0);
+      gtk_box_append(GTK_BOX(row), UIComponents::createTableWidgetCell(
+                                       btnProcess, kAdminWarrantyTableCols[6]));
+    } else {
+      gtk_box_append(GTK_BOX(row), UIComponents::createTableTextCell(
+                                       "Đã đóng", kAdminWarrantyTableCols[6],
+                                       "cell-subtitle"));
+    }
 
     gtk_box_append(GTK_BOX(warrantyListBox), row);
   }
+}
+
+void AdminScreens::showProcessWarrantyModal(const WarrantyItemViewModel &w) {
+  if (!shell)
+    return;
+
+  GtkWidget *scroll = gtk_scrolled_window_new();
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
+                                 GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_widget_set_hexpand(scroll, TRUE);
+  gtk_widget_set_vexpand(scroll, TRUE);
+
+  GtkWidget *pageContent =
+      gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_LG);
+  gtk_widget_add_css_class(pageContent, "page-container");
+
+  GtkWidget *card = gtk_box_new(GTK_ORIENTATION_VERTICAL, 14);
+  gtk_widget_add_css_class(card, "pdp-card");
+  gtk_widget_set_hexpand(card, TRUE);
+
+  GtkWidget *title = gtk_label_new(("⚙️ Xử lý phiếu bảo hành: " + w.id).c_str());
+  gtk_widget_add_css_class(title, "card-title");
+  gtk_label_set_xalign(GTK_LABEL(title), 0.0f);
+  gtk_box_append(GTK_BOX(card), title);
+
+  GtkWidget *subtitle = gtk_label_new(
+      "Kiểm tra tình trạng thiết bị, chẩn đoán kỹ thuật và cập nhật trạng thái "
+      "xử lý theo quy trình.");
+  gtk_widget_add_css_class(subtitle, "page-subtitle");
+  gtk_label_set_xalign(GTK_LABEL(subtitle), 0.0f);
+  gtk_label_set_wrap(GTK_LABEL(subtitle), TRUE);
+  gtk_box_append(GTK_BOX(card), subtitle);
+
+  // Grid thông tin phiếu
+  GtkWidget *infoGrid = gtk_grid_new();
+  gtk_grid_set_row_spacing(GTK_GRID(infoGrid), 8);
+  gtk_grid_set_column_spacing(GTK_GRID(infoGrid), 16);
+
+  auto addInfoRow = [&](int rowIdx, const std::string &lblText,
+                        const std::string &valText,
+                        GtkWidget *customWidget = nullptr) {
+    GtkWidget *lbl = gtk_label_new(lblText.c_str());
+    gtk_widget_add_css_class(lbl, "stat-label");
+    gtk_label_set_xalign(GTK_LABEL(lbl), 0.0f);
+    gtk_grid_attach(GTK_GRID(infoGrid), lbl, 0, rowIdx, 1, 1);
+
+    if (customWidget != nullptr) {
+      gtk_grid_attach(GTK_GRID(infoGrid), customWidget, 1, rowIdx, 1, 1);
+    } else {
+      GtkWidget *vLbl = gtk_label_new(valText.c_str());
+      gtk_widget_add_css_class(vLbl, "cell-title");
+      gtk_label_set_xalign(GTK_LABEL(vLbl), 0.0f);
+      gtk_label_set_wrap(GTK_LABEL(vLbl), TRUE);
+      gtk_grid_attach(GTK_GRID(infoGrid), vLbl, 1, rowIdx, 1, 1);
+    }
+  };
+
+  std::string custDisp = w.customerName;
+  if (!w.customerPhone.empty())
+    custDisp += " (SĐT: " + w.customerPhone + ")";
+  addInfoRow(0, "Khách hàng:", custDisp);
+
+  std::string devDisp = w.phoneName;
+  if (!w.phoneId.empty())
+    devDisp += " [" + w.phoneId + "]";
+  addInfoRow(1, "Thiết bị:", devDisp);
+
+  addInfoRow(
+      2, "Mã đơn hàng:", w.orderId.empty() ? "Đơn vãng lai (POS)" : w.orderId);
+
+  std::string expDisp;
+  if (w.remainingDays > 0) {
+    expDisp = "Còn " + std::to_string(w.remainingDays) +
+              " ngày (Hết hạn: " + w.expireDate + ")";
+  } else if (!w.expireDate.empty()) {
+    expDisp = "Đã hết hạn (" + w.expireDate + ")";
+  } else {
+    expDisp = "Bảo hành tiêu chuẩn";
+  }
+  addInfoRow(3, "Thời hạn bảo hành:", expDisp);
+
+  addInfoRow(4, "Ngày tiếp nhận:", w.requestDate);
+
+  GtkWidget *curBadge = UIComponents::createWarrantyStatusBadge(w.status);
+  gtk_widget_set_halign(curBadge, GTK_ALIGN_START);
+  addInfoRow(5, "Trạng thái hiện tại:", "", curBadge);
+
+  addInfoRow(6, "Mô tả lỗi từ khách:", w.issueDescription);
+
+  gtk_box_append(GTK_BOX(card), infoGrid);
+
+  GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_widget_set_margin_top(sep, 6);
+  gtk_widget_set_margin_bottom(sep, 6);
+  gtk_box_append(GTK_BOX(card), sep);
+
+  // Form chuyển trạng thái kế tiếp theo State Machine
+  std::vector<WarrantyStatus> nextStatuses;
+  std::vector<std::string> statusLabels;
+  std::vector<const char *> statusPtrs;
+
+  if (w.status == WarrantyStatus::RECEIVED) {
+    nextStatuses.push_back(WarrantyStatus::PROCESSING);
+    statusLabels.push_back("Đang xử lý kỹ thuật (PROCESSING)");
+
+    nextStatuses.push_back(WarrantyStatus::REJECTED);
+    statusLabels.push_back("Từ chối bảo hành (REJECTED)");
+  } else if (w.status == WarrantyStatus::PROCESSING) {
+    nextStatuses.push_back(WarrantyStatus::RESOLVED);
+    statusLabels.push_back("Hoàn tất bảo hành / Trả máy (RESOLVED)");
+
+    nextStatuses.push_back(WarrantyStatus::REJECTED);
+    statusLabels.push_back("Từ chối bảo hành (REJECTED)");
+  }
+
+  for (const auto &s : statusLabels) {
+    statusPtrs.push_back(s.c_str());
+  }
+  statusPtrs.push_back(nullptr);
+
+  GtkWidget *comboStatus = gtk_drop_down_new_from_strings(statusPtrs.data());
+  gtk_box_append(GTK_BOX(card), UIComponents::createFormField(
+                                    "Chuyển sang trạng thái *", comboStatus));
+
+  GtkWidget *entryNote = gtk_entry_new();
+  gtk_entry_set_max_length(GTK_ENTRY(entryNote), 500);
+  if (!w.technicianNote.empty()) {
+    gtk_editable_set_text(GTK_EDITABLE(entryNote), w.technicianNote.c_str());
+  }
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entryNote),
+                                 "Ghi nhận tình trạng kỹ thuật, nguyên nhân hư "
+                                 "hỏng, linh kiện cần thay...");
+  gtk_box_append(GTK_BOX(card), UIComponents::createFormField(
+                                    "Ghi chú kỹ thuật viên *", entryNote));
+
+  GtkWidget *entryRes = gtk_entry_new();
+  gtk_entry_set_max_length(GTK_ENTRY(entryRes), 500);
+  if (!w.resolution.empty()) {
+    gtk_editable_set_text(GTK_EDITABLE(entryRes), w.resolution.c_str());
+  }
+  gtk_entry_set_placeholder_text(
+      GTK_ENTRY(entryRes),
+      "Biện pháp giải quyết: Đã thay linh kiện / Đã cài đặt lại / Trả máy từ "
+      "chối...");
+  gtk_box_append(GTK_BOX(card), UIComponents::createFormField(
+                                    "Kết quả xử lý & Biện pháp *", entryRes));
+
+  GtkWidget *lblHint = gtk_label_new(
+      "💡 Lưu ý: Khi chuyển sang Hoàn tất (RESOLVED) hoặc Từ chối (REJECTED), "
+      "bắt buộc phải nhập ghi chú kỹ thuật hoặc kết quả giải quyết.");
+  gtk_widget_add_css_class(lblHint, "form-hint");
+  gtk_label_set_xalign(GTK_LABEL(lblHint), 0.0f);
+  gtk_label_set_wrap(GTK_LABEL(lblHint), TRUE);
+  gtk_box_append(GTK_BOX(card), lblHint);
+
+  GtkWidget *btnRow = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+  gtk_widget_set_halign(btnRow, GTK_ALIGN_END);
+  gtk_widget_set_margin_top(btnRow, 8);
+
+  std::string warIdCopy = w.id;
+  GtkWidget *btnExportWarTxt = UIComponents::createExportButton(
+      "📄 Xuất phiếu BH (.txt)", "Xuất phiếu bảo hành ra file .txt",
+      [this, warIdCopy]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName = "PhieuBaoHanh_" + warIdCopy + ".txt";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất phiếu bảo hành (.txt)", defName, "Tệp văn bản (*.txt)",
+            "*.txt", [this, win, warIdCopy](const std::string &path) {
+              OperationResult res =
+                  controller->exportWarrantyTxt(path, warIdCopy);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(
+                    win, "Xuất phiếu bảo hành thành công", res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất file",
+                                              res.message);
+              }
+            });
+      });
+  gtk_box_append(GTK_BOX(btnRow), btnExportWarTxt);
+
+  GtkWidget *btnCancel = gtk_button_new_with_label("Hủy");
+  gtk_widget_add_css_class(btnCancel, "btn-secondary");
+  UIComponents::setButtonCursor(btnCancel);
+  g_signal_connect_swapped(
+      btnCancel, "clicked",
+      G_CALLBACK(+[](MainShellWindow *s) { s->popPage(); }), shell);
+  gtk_box_append(GTK_BOX(btnRow), btnCancel);
+
+  GtkWidget *btnSubmit = gtk_button_new_with_label("💾 Lưu cập nhật");
+  gtk_widget_add_css_class(btnSubmit, "btn-primary");
+  UIComponents::setButtonCursor(btnSubmit);
+
+  struct ProcessAdminCtx {
+    AdminScreens *screens;
+    std::string wreqId;
+    GtkWidget *combo;
+    GtkWidget *entryNote;
+    GtkWidget *entryRes;
+    std::vector<WarrantyStatus> allowedStatuses;
+  };
+  ProcessAdminCtx *ctx = new ProcessAdminCtx{this,      w.id,     comboStatus,
+                                             entryNote, entryRes, nextStatuses};
+
+  g_signal_connect_data(
+      btnSubmit, "clicked", G_CALLBACK(+[](GtkButton *b, gpointer d) {
+        ProcessAdminCtx *c = static_cast<ProcessAdminCtx *>(d);
+        GtkWindow *win =
+            c->screens->shell ? c->screens->shell->getWindow() : nullptr;
+
+        guint sel = gtk_drop_down_get_selected(GTK_DROP_DOWN(c->combo));
+        if (sel >= c->allowedStatuses.size()) {
+          UIComponents::showWarningDialog(win, "Lỗi",
+                                          "Vui lòng chọn trạng thái hợp lệ!");
+          return;
+        }
+
+        WarrantyStatus targetStatus = c->allowedStatuses[sel];
+        const char *rawNote = gtk_editable_get_text(GTK_EDITABLE(c->entryNote));
+        const char *rawRes = gtk_editable_get_text(GTK_EDITABLE(c->entryRes));
+        std::string note = rawNote ? rawNote : "";
+        std::string resText = rawRes ? rawRes : "";
+
+        // Trim
+        auto trimStr = [](const std::string &s) {
+          size_t f = s.find_first_not_of(" \t\r\n");
+          if (f == std::string::npos)
+            return std::string("");
+          size_t l = s.find_last_not_of(" \t\r\n");
+          return s.substr(f, l - f + 1);
+        };
+        std::string cleanNote = trimStr(note);
+        std::string cleanRes = trimStr(resText);
+
+        if (targetStatus == WarrantyStatus::RESOLVED ||
+            targetStatus == WarrantyStatus::REJECTED) {
+          if (cleanNote.empty() && cleanRes.empty()) {
+            UIComponents::showWarningDialog(
+                win, "Thiếu thông tin bắt buộc",
+                "Khi hoàn tất hoặc từ chối bảo hành, bắt buộc phải nhập ghi "
+                "chú "
+                "kỹ thuật hoặc kết quả giải quyết!");
+            return;
+          }
+        }
+
+        // Khóa nút để tránh bấm đúp
+        gtk_widget_set_sensitive(GTK_WIDGET(b), FALSE);
+
+        OperationResult res = c->screens->controller->updateWarrantyStatus(
+            c->wreqId, targetStatus, cleanNote, cleanRes);
+        if (res.success) {
+          c->screens->refreshWarrantyMonitor();
+          if (c->screens->shell) {
+            c->screens->shell->popPage();
+          }
+          UIComponents::showSuccessDialog(
+              c->screens->shell ? c->screens->shell->getWindow() : nullptr,
+              "Cập nhật thành công", res.message);
+        } else {
+          gtk_widget_set_sensitive(GTK_WIDGET(b), TRUE);
+          UIComponents::showErrorDialog(win, "Cập nhật thất bại", res.message);
+        }
+      }),
+      ctx,
+      [](gpointer d, GClosure *) { delete static_cast<ProcessAdminCtx *>(d); },
+      (GConnectFlags)0);
+
+  gtk_box_append(GTK_BOX(btnRow), btnSubmit);
+  gtk_box_append(GTK_BOX(card), btnRow);
+
+  UIComponents::setupDialogShortcuts(card, btnSubmit, btnCancel);
+
+  gtk_box_append(GTK_BOX(pageContent), card);
+  gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), pageContent);
+  shell->pushPage("admin_process_warranty", scroll,
+                  "Xử lý phiếu bảo hành " + w.id);
+  gtk_widget_grab_focus(entryNote);
 }
 
 // ================= 11. BÁO CÁO THỐNG KÊ DOANH THU & LỢI NHUẬN
@@ -3575,29 +5193,79 @@ void AdminScreens::buildReportsView() {
       gtk_box_new(GTK_ORIENTATION_VERTICAL, DesignTokens::SPACE_XL);
   gtk_widget_add_css_class(content, "page-container");
 
+  GtkWidget *btnExportReport = UIComponents::createExportButton(
+      "📊 Xuất báo cáo (.csv)",
+      "Xuất báo cáo doanh thu, lợi nhuận & top sản phẩm bán chạy theo bộ lọc "
+      "hiện tại ra file .csv",
+      [this]() {
+        GtkWindow *win = shell ? shell->getWindow() : nullptr;
+        std::string defName =
+            "BaoCao_DoanhThu_" +
+            ExportHelper::makeSafeDateToken(controller->getSimulatedDate()) +
+            ".csv";
+        UIComponents::showSaveFileDialog(
+            win, "Xuất báo cáo doanh thu (.csv)", defName, "Tệp CSV (*.csv)",
+            "*.csv", [this, win](const std::string &path) {
+              OperationResult res = controller->exportRevenueReportCsv(
+                  path, reportFromDate, reportToDate, reportTimelineMode);
+              if (res.isSuccess()) {
+                UIComponents::showSuccessDialog(
+                    win, "Xuất báo cáo doanh thu thành công", res.message);
+              } else {
+                UIComponents::showErrorDialog(win, "Lỗi xuất báo cáo",
+                                              res.message);
+              }
+            });
+      });
+
   GtkWidget *header = UIComponents::createSectionHeader(
       "Báo cáo Thống kê & Phân tích Lợi nhuận",
-      "Báo cáo tài chính, doanh thu bán hàng và phân tích tồn kho.");
+      "Báo cáo tài chính, doanh thu bán hàng và phân tích tồn kho.",
+      btnExportReport);
   gtk_box_append(GTK_BOX(content), header);
 
-  // Thanh lọc báo cáo theo khoảng thời gian
+  // Thanh lọc báo cáo theo khoảng thời gian (căn thẳng hàng đồng bộ chiều cao)
   GtkWidget *filterBar =
       gtk_box_new(GTK_ORIENTATION_HORIZONTAL, DesignTokens::SPACE_MD);
   gtk_widget_add_css_class(filterBar, "card");
+  gtk_widget_add_css_class(filterBar, "report-filter-bar");
 
   GtkWidget *eFrom = gtk_entry_new();
   gtk_widget_set_name(eFrom, "report_from_date_entry");
-  gtk_entry_set_placeholder_text(GTK_ENTRY(eFrom), "DD/MM/YYYY");
   gtk_editable_set_text(GTK_EDITABLE(eFrom), reportFromDate.c_str());
+  gtk_widget_set_size_request(eFrom, 200, 46);
+  UIComponents::setupDatePicker(eFrom);
   GtkWidget *fromField = UIComponents::createFormField("Từ ngày", eFrom);
+  gtk_widget_set_valign(fromField, GTK_ALIGN_END);
   gtk_box_append(GTK_BOX(filterBar), fromField);
 
   GtkWidget *eTo = gtk_entry_new();
   gtk_widget_set_name(eTo, "report_to_date_entry");
-  gtk_entry_set_placeholder_text(GTK_ENTRY(eTo), "DD/MM/YYYY");
   gtk_editable_set_text(GTK_EDITABLE(eTo), reportToDate.c_str());
+  gtk_widget_set_size_request(eTo, 200, 46);
+  UIComponents::setupDatePicker(eTo);
   GtkWidget *toField = UIComponents::createFormField("Đến ngày", eTo);
+  gtk_widget_set_valign(toField, GTK_ALIGN_END);
   gtk_box_append(GTK_BOX(filterBar), toField);
+
+  // Chuyển đổi giữa 3 view: Theo Ngày - Tháng - Năm (ANTY.md dòng 38)
+  const char *periodOpts[] = {"Theo: Ngày", "Theo: Tháng", "Theo: Năm",
+                              nullptr};
+  GtkWidget *dropPeriod = gtk_drop_down_new_from_strings(periodOpts);
+  gtk_drop_down_set_selected(GTK_DROP_DOWN(dropPeriod), reportTimelineMode);
+  gtk_widget_set_size_request(dropPeriod, 180, 46);
+  g_signal_connect_swapped(
+      dropPeriod, "notify::selected",
+      G_CALLBACK(+[](AdminScreens *s, GParamSpec *, GtkDropDown *dd) {
+        s->reportTimelineMode =
+            static_cast<int>(gtk_drop_down_get_selected(dd));
+        s->refreshReports();
+      }),
+      this);
+  GtkWidget *periodField =
+      UIComponents::createFormField("Chu kỳ hiển thị", dropPeriod);
+  gtk_widget_set_valign(periodField, GTK_ALIGN_END);
+  gtk_box_append(GTK_BOX(filterBar), periodField);
 
   struct ReportFilterCtx {
     AdminScreens *s;
@@ -3608,6 +5276,7 @@ void AdminScreens::buildReportsView() {
 
   GtkWidget *btnFilter = gtk_button_new_with_label("🔍 Lọc báo cáo");
   gtk_widget_add_css_class(btnFilter, "btn-primary");
+  gtk_widget_set_size_request(btnFilter, 150, 46);
   gtk_widget_set_valign(btnFilter, GTK_ALIGN_END);
   UIComponents::setButtonCursor(btnFilter);
   g_signal_connect_data(
@@ -3648,6 +5317,7 @@ void AdminScreens::buildReportsView() {
 
   GtkWidget *btnResetFilter = gtk_button_new_with_label("↺ Đặt lại");
   gtk_widget_add_css_class(btnResetFilter, "btn-secondary");
+  gtk_widget_set_size_request(btnResetFilter, 125, 46);
   gtk_widget_set_valign(btnResetFilter, GTK_ALIGN_END);
   UIComponents::setButtonCursor(btnResetFilter);
   g_signal_connect_swapped(btnResetFilter, "clicked",
@@ -3675,8 +5345,8 @@ void AdminScreens::buildReportsView() {
   gtk_label_set_xalign(GTK_LABEL(lblRange), 0.0f);
   gtk_box_append(GTK_BOX(content), lblRange);
 
-  DashboardStatsViewModel stats =
-      controller->getDashboardStats(reportFromDate, reportToDate);
+  DashboardStatsViewModel stats = controller->getDashboardStats(
+      reportFromDate, reportToDate, reportTimelineMode);
 
   // Summary KPIs
   GtkWidget *grid = gtk_grid_new();
@@ -3704,22 +5374,21 @@ void AdminScreens::buildReportsView() {
   gtk_grid_attach(GTK_GRID(grid), c3, 2, 0, 1, 1);
   gtk_box_append(GTK_BOX(content), grid);
 
-  // Hàng biểu đồ phân tích kinh doanh (Grid 2 cột: Cột trái 65% - Cột phải 35%) (DESIGN.md T16)
-  GtkWidget *chartGrid = gtk_grid_new();
-  gtk_grid_set_row_spacing(GTK_GRID(chartGrid), DesignTokens::SPACE_LG);
-  gtk_grid_set_column_spacing(GTK_GRID(chartGrid), DesignTokens::SPACE_LG);
-  gtk_grid_set_column_homogeneous(GTK_GRID(chartGrid), FALSE);
-
-  GtkWidget *revChart = UIComponents::createRevenueBarChart(stats.timelineStats);
+  // 1. Biểu đồ & Bảng doanh thu chiếm TOÀN BỘ CHIỀU RỘNG (100% width)
+  GtkWidget *revChart = UIComponents::createRevenueBarChart(
+      stats.timelineStats, reportTimelineMode,
+      [this](int newMode) {
+        reportTimelineMode = newMode;
+        refreshReports();
+      });
   gtk_widget_set_hexpand(revChart, TRUE);
+  gtk_box_append(GTK_BOX(content), revChart);
 
-  GtkWidget *brandChart = UIComponents::createBrandDistributionCard(stats.brandStats);
-  gtk_widget_set_hexpand(brandChart, FALSE);
-  gtk_widget_set_size_request(brandChart, 380, -1);
-
-  gtk_grid_attach(GTK_GRID(chartGrid), revChart, 0, 0, 1, 1);
-  gtk_grid_attach(GTK_GRID(chartGrid), brandChart, 1, 0, 1, 1);
-  gtk_box_append(GTK_BOX(content), chartGrid);
+  // 2. Biểu đồ tròn cơ cấu doanh số đặt ngay bên dưới biểu đồ cột, với cột chú thích nằm bên cạnh
+  GtkWidget *brandChart =
+      UIComponents::createBrandDistributionCard(stats.brandStats);
+  gtk_widget_set_hexpand(brandChart, TRUE);
+  gtk_box_append(GTK_BOX(content), brandChart);
 
   // Top Selling Products Table Card
   GtkWidget *topCard =
@@ -3828,7 +5497,7 @@ void AdminScreens::buildRealTimeView() {
   gtk_editable_set_text(GTK_EDITABLE(eDate),
                         controller->getSimulatedDate().c_str());
   gtk_entry_set_placeholder_text(GTK_ENTRY(eDate),
-                                 "YYYY-MM-DD (vd: 2026-10-17)");
+                                 "DD/MM/YYYY (vd: 17/10/2026)");
 
   GtkWidget *eTime = gtk_entry_new();
   std::string timePart =
@@ -3838,7 +5507,7 @@ void AdminScreens::buildRealTimeView() {
 
   gtk_box_append(
       GTK_BOX(rowInputs),
-      UIComponents::createFormField("Ngày mô phỏng (YYYY-MM-DD) *", eDate));
+      UIComponents::createFormField("Ngày mô phỏng (DD/MM/YYYY) *", eDate));
   gtk_box_append(GTK_BOX(rowInputs), UIComponents::createFormField(
                                          "Giờ mô phỏng (HH:MM:SS) *", eTime));
 
@@ -3863,8 +5532,12 @@ void AdminScreens::buildRealTimeView() {
           std::string full = std::string(dStr) + " " +
                              (tStr && strlen(tStr) >= 5 ? tStr : "00:00:00");
           OperationResult res = c->s->controller->setSimulatedTime(full);
-          UIComponents::showSuccessDialog(nullptr, "Đã lưu", res.message);
-          c->s->refreshAll();
+          if (res.isSuccess()) {
+            UIComponents::showSuccessDialog(nullptr, "Đã lưu", res.message);
+            c->s->refreshAll();
+          } else {
+            UIComponents::showErrorDialog(nullptr, "Lỗi thời gian", res.message);
+          }
         }
       }),
       tsctx,

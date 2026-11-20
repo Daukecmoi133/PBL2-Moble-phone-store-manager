@@ -20,9 +20,11 @@ private:
     CustomerRepository& repo;
     HashTable<std::string, Customer> usernameTable; // Tra cứu O(1) theo username
     HashTable<std::string, Customer> phoneTable;    // Tra cứu O(1) theo số điện thoại
+    ReferenceChecker* refChecker;
 
 public:
-    CustomerService(CustomerRepository& repository);
+    CustomerService(CustomerRepository& repository, ReferenceChecker* checker = nullptr);
+    void setReferenceChecker(ReferenceChecker* checker) { refChecker = checker; }
 
     void rebuildIndices();
     void reload() { repo.loadFromFile(); rebuildIndices(); }
@@ -51,6 +53,7 @@ public:
     Customer* getCustomerByUsername(const std::string& username);
     Customer* getCustomerByPhone(const std::string& phone);
     Customer* getCustomerById(const std::string& id);
+    bool phoneExists(const std::string& phone) const;
 
     // Nghiệp vụ đăng ký khách hàng mới
     bool registerCustomer(const Customer& cust, std::string& errorMessage);
@@ -82,8 +85,8 @@ public:
 
 // ================= IMPLEMENTATION =================
 
-inline CustomerService::CustomerService(CustomerRepository& repository)
-    : repo(repository) {
+inline CustomerService::CustomerService(CustomerRepository& repository, ReferenceChecker* checker)
+    : repo(repository), refChecker(checker) {
     rebuildIndices();
 }
 
@@ -108,15 +111,17 @@ inline const Vector<Customer>& CustomerService::getAllCustomers() const {
 }
 
 inline Customer* CustomerService::authenticate(const std::string& username, const std::string& password) {
-    std::string trimmedUname = StringHelper::trim(username);
-    if (trimmedUname.empty() || password.empty()) {
+    std::string trimmedKey = StringHelper::trim(username);
+    if (trimmedKey.empty() || password.empty()) {
         return nullptr;
     }
 
-    // getCustomerByUsername trả về bản ghi gốc trong repository (không phải bản sao trong chỉ mục),
-    // nên mật khẩu vừa đổi/đặt lại có hiệu lực ngay.
-    Customer* cust = getCustomerByUsername(trimmedUname);
-    if (cust != nullptr && cust->getAccount().authenticate(trimmedUname, password)) {
+    // getCustomerByUsername / getCustomerByPhone trả về bản ghi gốc trong repository
+    Customer* cust = getCustomerByUsername(trimmedKey);
+    if (cust == nullptr) {
+        cust = getCustomerByPhone(trimmedKey); // Hỗ trợ đăng nhập bằng Số điện thoại làm khóa
+    }
+    if (cust != nullptr && cust->getAccount().isActive() && cust->getAccount().verifyPassword(password)) {
         return cust;
     }
     return nullptr;
@@ -205,7 +210,14 @@ inline Customer* CustomerService::getCustomerByPhone(const std::string& phone) {
     if (cust != nullptr) {
         return repo.findById(cust->getID());
     }
-    return nullptr;
+    return repo.findByPhone(trimmedPhone);
+}
+
+inline bool CustomerService::phoneExists(const std::string& phone) const {
+    std::string trimmedPhone = StringHelper::trim(phone);
+    if (trimmedPhone.empty()) return false;
+    return const_cast<HashTable<std::string, Customer>&>(phoneTable).contains(trimmedPhone) ||
+           repo.existsByPhone(trimmedPhone);
 }
 
 inline Customer* CustomerService::getCustomerById(const std::string& id) {
@@ -263,7 +275,14 @@ inline bool CustomerService::registerCustomer(const Customer& cust, std::string&
     }
 
     std::string phone = StringHelper::trim(registered.getPhoneNumber());
-    if (!phone.empty() && phoneTable.contains(phone)) {
+    if (phone.empty()) {
+        errorMessage = "Số điện thoại không được để trống!";
+        return false;
+    }
+    if (!validatePhone(phone, errorMessage)) {
+        return false;
+    }
+    if (phoneTable.contains(phone) || repo.existsByPhone(phone)) {
         errorMessage = "Số điện thoại [" + phone + "] đã được đăng ký bởi khách hàng khác!";
         return false;
     }
@@ -305,8 +324,16 @@ inline bool CustomerService::updateCustomer(const Customer& updatedCust, std::st
     }
 
     std::string newPhone = StringHelper::trim(updatedCust.getPhoneNumber());
-    if (!newPhone.empty() && newPhone != existing->getPhoneNumber()) {
-        if (phoneTable.contains(newPhone)) {
+    if (newPhone.empty()) {
+        errorMessage = "Số điện thoại không được để trống!";
+        return false;
+    }
+    if (!validatePhone(newPhone, errorMessage)) {
+        return false;
+    }
+    std::string oldPhone = StringHelper::trim(existing->getPhoneNumber());
+    if (newPhone != oldPhone) {
+        if (phoneTable.contains(newPhone) || repo.existsByPhone(newPhone)) {
             errorMessage = "Số điện thoại [" + newPhone + "] đã thuộc về tài khoản khác!";
             return false;
         }
@@ -341,6 +368,11 @@ inline bool CustomerService::updateCustomer(const Customer& updatedCust) {
 inline bool CustomerService::deleteCustomer(const std::string& id, std::string& errorMessage) {
     if (repo.findById(id) == nullptr) {
         errorMessage = "Không tìm thấy khách hàng có mã [" + id + "] để xóa!";
+        return false;
+    }
+
+    if (refChecker != nullptr && refChecker->isCustomerReferenced(id)) {
+        errorMessage = "Không thể xóa khách hàng [" + id + "] vì đang có đơn hàng, hóa đơn hoặc yêu cầu bảo hành liên quan!";
         return false;
     }
 

@@ -10,6 +10,7 @@
 #include "../utils/StringHelper.h"
 #include "../utils/PathHelper.h"
 #include "../utils/FileHelper.h"
+#include "../utils/SchemaHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu hóa đơn từ/vào tệp tin.
 // Lưu trữ danh sách Invoice trên RAM bằng Vector<Invoice>.
@@ -64,11 +65,11 @@ public:
 
 // ================= IMPLEMENTATION =================
 
-// Tạo file Invoices.txt mới với header chuẩn
+// Tạo file Invoices.txt mới với header chuẩn (9 cột bao gồm discountCode)
 inline bool InvoiceRepository::createEmptyFile() const {
     return FileHelper::createEmptyFileWithHeader(
         filePath,
-        "id|orderId|customerId|employeeId|paymentMethod|createTime|discountAmount|details"
+        SchemaHelper::INVOICES_HEADER
     );
 }
 
@@ -89,17 +90,28 @@ inline bool InvoiceRepository::loadFromFile() {
 
     invoices.clear();
     std::string line;
-    bool isHeader = true;
+    bool isFirstNonEmpty = true;
     int lineNum = 0;
 
     while (std::getline(file, line)) {
         ++lineNum;
-        line = StringHelper::trim(line);
-        if (line.empty()) continue;
+        if (lineNum == 1) StringHelper::stripUtf8Bom(line);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (StringHelper::trim(line).empty()) continue;
 
-        if (isHeader) {
-            isHeader = false;
-            continue;
+        if (isFirstNonEmpty) {
+            isFirstNonEmpty = false;
+            auto kind = SchemaHelper::inspectFirstLine(
+                line,
+                SchemaHelper::INVOICES_HEADER,
+                {SchemaHelper::INVOICES_V2_HEADER, SchemaHelper::INVOICES_V1_HEADER},
+                filePath,
+                [](const std::string& l) {
+                    return SchemaHelper::looksLikePrefixedRecord(l, "INV");
+                });
+            if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                continue;
+            }
         }
 
         try {
@@ -122,7 +134,7 @@ inline bool InvoiceRepository::loadFromFile() {
 // Ghi toàn bộ danh sách invoices xuống file (qua Atomic File Write)
 inline bool InvoiceRepository::saveToFile() const {
     return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
-        file << "id|orderId|customerId|employeeId|paymentMethod|createTime|discountAmount|details\n";
+        file << SchemaHelper::INVOICES_HEADER << "\n";
         for (int i = 0; i < invoices.getSize(); ++i) {
             file << invoices[i].toFileString() << "\n";
         }

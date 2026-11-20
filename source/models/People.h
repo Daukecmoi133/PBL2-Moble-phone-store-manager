@@ -17,6 +17,8 @@ public:
     People(); // Hàm dựng mặc định
     People(std::string id, Name name, std::string phone, std::string email, std::string address); // Hàm dựng đủ tham số
     virtual ~People() = default; // Hàm hủy ảo để hủy an toàn các lớp con kế thừa
+    People(const People&) = default;
+    People& operator=(const People&) = default;
 
     // Getters
     std::string getID() const; // Hàm trả về mã định danh

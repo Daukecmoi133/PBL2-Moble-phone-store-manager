@@ -4,9 +4,14 @@
 
 #include <string>
 #include <algorithm>
+#include <cmath>
 #include <sstream>
 #include "Common.h"
+#include "../utils/AppClock.h"
 #include "../utils/DateTime.h"
+#include "../utils/PricingCalculator.h"
+#include "../utils/StringHelper.h"
+#include "../utils/TextCodec.h"
 
 class DiscountCode {
 private:
@@ -39,10 +44,14 @@ public:
     void setCode(const std::string& c);
     void setUsedCount(int u);
 
-    bool isValid(const DateTime& currentTime = DateTime::now()) const;
-    bool isApplicable(double orderValue) const;
-    double calculateDiscount(double orderValue) const;
+    bool isValid(const DateTime& currentTime = AppClock::now()) const;
+    bool isApplicable(double orderValue, const DateTime& currentTime = AppClock::now()) const;
+    double calculateDiscount(double orderValue, const DateTime& currentTime = AppClock::now()) const;
     void increaseUsage();
+    void decreaseUsage();
+
+    // Ghi thành 1 dòng chuẩn Discount.txt
+    std::string toFileString() const;
 
     // Đọc và phân tích một dòng từ Discount.txt
     // Format: code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount
@@ -54,7 +63,7 @@ public:
 // Hàm dựng mặc định
 inline DiscountCode::DiscountCode() 
     : code(""), type(DiscountType::PERCENTAGE), value(0.0),
-      startDate(), endDate(), minOrderValue(0.0), maxDiscountValue(0.0),
+      startDate(AppClock::now()), endDate(AppClock::now()), minOrderValue(0.0), maxDiscountValue(0.0),
       maxUsage(100), usedCount(0) {}
 
 //Hàm dựng đủ tham số
@@ -82,40 +91,58 @@ inline void DiscountCode::setUsedCount(int u) { usedCount = u; }
                       // setter số lượng mã được phép sử dụng
 // Hàm xác minh mã còn hạn không
 inline bool DiscountCode::isValid(const DateTime& currentTime) const {
-    
+    if (!startDate.isValid() || !endDate.isValid() || !currentTime.isValid()) return false;
     if (usedCount >= maxUsage) return false;
     if (currentTime < startDate || currentTime > endDate) return false;
     return true;
 }
 // Hàm xác minh mã hợp lệ không
-inline bool DiscountCode::isApplicable(double orderValue) const {
-    if (!isValid()) return false;
+inline bool DiscountCode::isApplicable(double orderValue, const DateTime& currentTime) const {
+    if (!isValid(currentTime)) return false;
     return orderValue >= minOrderValue;
 }
-// Hàm tính giá trị mã có thể giảm
-inline double DiscountCode::calculateDiscount(double orderValue) const {
-     
-    if (!isApplicable(orderValue)) return 0.0;
-    double discount = 0.0;
-    if (type == DiscountType::PERCENTAGE) {
-        discount = orderValue * (value / 100.0);
-        if (maxDiscountValue > 0.0 && discount > maxDiscountValue) {
-            discount = maxDiscountValue;
-        }
-    } else {
-        discount = value;
-        if (discount > orderValue) {
-            discount = orderValue;
-        }
-    }
-    return discount;
+// Hàm tính giá trị mã có thể giảm (tính trên giá trị trước VAT qua PricingCalculator)
+inline double DiscountCode::calculateDiscount(double orderValue, const DateTime& currentTime) const {
+    if (!isApplicable(orderValue, currentTime)) return 0.0;
+    return PricingCalculator::computeRawDiscount(orderValue, type, value, maxDiscountValue);
 }
 // Hàm tăng số lượng sử dụng khi mã được dùng thành công
 inline void DiscountCode::increaseUsage() {
-    
     if (usedCount < maxUsage) {
         ++usedCount;
     }
+}
+// Hàm hoàn trả lượt sử dụng khi đơn hàng áp mã bị hủy (D4)
+inline void DiscountCode::decreaseUsage() {
+    if (usedCount > 0) {
+        --usedCount;
+    }
+}
+
+inline std::string DiscountCode::toFileString() const {
+    std::string valueStr;
+    if (type == DiscountType::PERCENTAGE) {
+        long long rounded = std::llround(value);
+        if (std::fabs(value - static_cast<double>(rounded)) < 1e-9) {
+            valueStr = std::to_string(rounded);
+        } else {
+            std::ostringstream oss;
+            oss << value;
+            valueStr = oss.str();
+        }
+    } else {
+        valueStr = StringHelper::formatMoneyDisk(value);
+    }
+
+    return TextCodec::escapeField(code) + "|" +
+           (type == DiscountType::PERCENTAGE ? "0" : "1") + "|" +
+           valueStr + "|" +
+           startDate.toDateString() + "|" +
+           endDate.toDateString() + "|" +
+           StringHelper::formatMoneyDisk(minOrderValue) + "|" +
+           StringHelper::formatMoneyDisk(maxDiscountValue) + "|" +
+           std::to_string(maxUsage) + "|" +
+           std::to_string(usedCount);
 }
 
 // Phân tích dòng dữ liệu từ Discount.txt thành đối tượng DiscountCode
@@ -123,19 +150,32 @@ inline void DiscountCode::increaseUsage() {
 // Hỗ trợ định dạng cũ: ID TYPE VALUE (ví dụ: DIS00001 1 30)
 inline DiscountCode DiscountCode::fromFileLine(const std::string& line) {
     if (line.find('|') != std::string::npos) {
-        Vector<std::string> parts = StringHelper::split(line, '|');
+        Vector<std::string> parts = TextCodec::splitFields(line, '|');
         if (parts.getSize() < 9) return DiscountCode(); // Dòng không hợp lệ
 
-        std::string code   = StringHelper::trim(parts[0]);
-        int typeInt        = std::stoi(StringHelper::trim(parts[1])); // 0=PERCENTAGE, 1=FIXED_AMOUNT
-        double value       = (typeInt == 0) ? std::stod(StringHelper::trim(parts[2]))
-                                            : StringHelper::parsePrice(parts[2]);
+        std::string code   = StringHelper::trim(TextCodec::unescape(parts[0]));
+        int typeInt        = 0;
+        double value       = 0.0;
+        int maxUsage       = 0;
+        int usedCount      = 0;
+        try {
+            typeInt   = std::stoi(StringHelper::trim(parts[1])); // 0=PERCENTAGE, 1=FIXED_AMOUNT
+            value     = (typeInt == 0) ? std::stod(StringHelper::trim(parts[2]))
+                                       : StringHelper::parsePrice(parts[2]);
+            maxUsage  = std::stoi(StringHelper::trim(parts[7]));
+            usedCount = std::stoi(StringHelper::trim(parts[8]));
+        } catch (...) {
+            return DiscountCode();
+        }
         DateTime startDate = DateTime::fromDateString(StringHelper::trim(parts[3]));
         DateTime endDate   = DateTime::fromDateString(StringHelper::trim(parts[4]));
+        if (endDate.isValid()) {
+            endDate.hour = 23;
+            endDate.minute = 59;
+            endDate.second = 59;
+        }
         double minOrder    = StringHelper::parsePrice(parts[5]);
         double maxDiscount = StringHelper::parsePrice(parts[6]);
-        int maxUsage       = std::stoi(StringHelper::trim(parts[7]));
-        int usedCount      = std::stoi(StringHelper::trim(parts[8]));
 
         return DiscountCode(code, static_cast<DiscountType>(typeInt), value,
                             startDate, endDate, minOrder, maxDiscount, maxUsage, usedCount);
@@ -148,8 +188,8 @@ inline DiscountCode DiscountCode::fromFileLine(const std::string& line) {
         if (ss >> code >> typeInt >> val) {
             DiscountType dt = (typeInt == 2) ? DiscountType::FIXED_AMOUNT : DiscountType::PERCENTAGE;
             return DiscountCode(code, dt, val,
-                                DateTime(1, 1, 2026, 0, 0, 0),
-                                DateTime(31, 12, 2026, 23, 59, 59),
+                                DateTime(2026, 1, 1, 0, 0, 0),
+                                DateTime(2026, 12, 31, 23, 59, 59),
                                 0.0, 5000000.0, 100, 0);
         }
         return DiscountCode();

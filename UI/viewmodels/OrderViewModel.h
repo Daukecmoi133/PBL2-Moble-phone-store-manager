@@ -57,6 +57,11 @@ struct OrderItemViewModel {
     std::string paymentStatusText;
     double subtotal;
     double discountAmount;
+    std::string discountCode;
+    double netRevenue;
+    double vatRate;
+    double vatAmount;
+    bool isLegacyNoVat;
     double total;
     std::string receiverName;
     std::string receiverPhone;
@@ -66,7 +71,8 @@ struct OrderItemViewModel {
     OrderItemViewModel()
         : status(OrderStatus::PENDING), deliveryMethod(DeliveryMethod::PICKUP),
           paymentMethod(PaymentMethod::CASH), paymentStatus(PaymentStatus::UNPAID),
-          subtotal(0.0), discountAmount(0.0), total(0.0) {}
+          subtotal(0.0), discountAmount(0.0), netRevenue(0.0),
+          vatRate(0.0), vatAmount(0.0), isLegacyNoVat(false), total(0.0) {}
 
     bool canCancel() const {
         return status == OrderStatus::PENDING;

@@ -10,6 +10,7 @@
 #include "../utils/StringHelper.h"
 #include "../utils/PathHelper.h"
 #include "../utils/FileHelper.h"
+#include "../utils/SchemaHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu nhà cung cấp từ/vào tệp tin.
 // Lưu trữ danh sách Supplier trên RAM bằng Vector<Supplier>.
@@ -58,7 +59,7 @@ public:
 inline bool SupplierRepository::createEmptyFile() const {
     return FileHelper::createEmptyFileWithHeader(
         filePath,
-        "id|companyName|taxCode|contactPerson|phoneNumber|email|address"
+        SchemaHelper::SUPPLIERS_HEADER
     );
 }
 
@@ -79,17 +80,28 @@ inline bool SupplierRepository::loadFromFile() {
 
     suppliers.clear();
     std::string line;
-    bool isHeader = true;
+    bool isFirstNonEmpty = true;
     int lineNum = 0;
 
     while (std::getline(file, line)) {
         ++lineNum;
-        line = StringHelper::trim(line);
-        if (line.empty()) continue;
+        if (lineNum == 1) StringHelper::stripUtf8Bom(line);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (StringHelper::trim(line).empty()) continue;
 
-        if (isHeader) {
-            isHeader = false;
-            continue;
+        if (isFirstNonEmpty) {
+            isFirstNonEmpty = false;
+            auto kind = SchemaHelper::inspectFirstLine(
+                line,
+                SchemaHelper::SUPPLIERS_HEADER,
+                {},
+                filePath,
+                [](const std::string& l) {
+                    return SchemaHelper::looksLikePrefixedRecord(l, "SUP");
+                });
+            if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                continue;
+            }
         }
 
         try {
@@ -112,7 +124,7 @@ inline bool SupplierRepository::loadFromFile() {
 // Ghi toàn bộ danh sách suppliers xuống file (qua Atomic File Write)
 inline bool SupplierRepository::saveToFile() const {
     return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
-        file << "id|companyName|taxCode|contactPerson|phoneNumber|email|address\n";
+        file << SchemaHelper::SUPPLIERS_HEADER << "\n";
         for (int i = 0; i < suppliers.getSize(); ++i) {
             file << suppliers[i].toFileString() << "\n";
         }

@@ -11,6 +11,7 @@
 #include "../utils/StringHelper.h"
 #include "../utils/PathHelper.h"
 #include "../utils/FileHelper.h"
+#include "../utils/SchemaHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu phiếu nhập kho từ/vào tệp tin.
 // Lưu trữ danh sách ImportReceipt trên RAM bằng Vector<ImportReceipt>.
@@ -65,7 +66,7 @@ public:
 inline bool StockReceiptRepository::createEmptyFile() const {
     return FileHelper::createEmptyFileWithHeader(
         filePath,
-        "id|supplierId|employeeId|importTime|details"
+        SchemaHelper::STOCK_RECEIPTS_HEADER
     );
 }
 
@@ -86,17 +87,28 @@ inline bool StockReceiptRepository::loadFromFile() {
 
     receipts.clear();
     std::string line;
-    bool isHeader = true;
+    bool isFirstNonEmpty = true;
     int lineNum = 0;
 
     while (std::getline(file, line)) {
         ++lineNum;
-        line = StringHelper::trim(line);
-        if (line.empty()) continue;
+        if (lineNum == 1) StringHelper::stripUtf8Bom(line);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (StringHelper::trim(line).empty()) continue;
 
-        if (isHeader) {
-            isHeader = false;
-            continue;
+        if (isFirstNonEmpty) {
+            isFirstNonEmpty = false;
+            auto kind = SchemaHelper::inspectFirstLine(
+                line,
+                SchemaHelper::STOCK_RECEIPTS_HEADER,
+                {},
+                filePath,
+                [](const std::string& l) {
+                    return SchemaHelper::looksLikePrefixedRecord(l, "IMP");
+                });
+            if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                continue;
+            }
         }
 
         try {
@@ -119,7 +131,7 @@ inline bool StockReceiptRepository::loadFromFile() {
 // Ghi toàn bộ danh sách receipts xuống file (qua Atomic File Write)
 inline bool StockReceiptRepository::saveToFile() const {
     return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
-        file << "id|supplierId|employeeId|importTime|details\n";
+        file << SchemaHelper::STOCK_RECEIPTS_HEADER << "\n";
         for (int i = 0; i < receipts.getSize(); ++i) {
             file << receipts[i].toFileString() << "\n";
         }

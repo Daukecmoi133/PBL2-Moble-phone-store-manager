@@ -92,8 +92,10 @@ void AppRunner::showLogin() {
                    G_CALLBACK(on_login_window_close_request), this);
   gtk_window_set_title(GTK_WINDOW(loginWindow),
                        "PBL2 — Đăng nhập hệ thống Phone Store");
-  gtk_window_set_default_size(GTK_WINDOW(loginWindow), 960, 760);
+  gtk_widget_add_css_class(loginWindow, "login-window");
+  gtk_window_set_default_size(GTK_WINDOW(loginWindow), 1280, 800);
   gtk_window_set_resizable(GTK_WINDOW(loginWindow), TRUE);
+  gtk_window_maximize(GTK_WINDOW(loginWindow));
 
   delete loginScreen;
   loginScreen = new LoginScreen(controller, on_login_success, this);

@@ -4,6 +4,7 @@
 
 #include "People.h"
 #include "Account.h"
+#include "../utils/TextCodec.h"
 
 class Customer : public People {
 private:
@@ -75,29 +76,42 @@ inline void Customer::setAccount(const Account& acc) { account = acc; }
 // Hàm trả về cấu trúc dữ liệu trong file .txt
 // Format: id|firstName|middleName|lastName|phoneNumber|email|username|passwordHash|points|address|accountId|active
 inline std::string Customer::toFileString() const {
-    return id + "|" + name.firstName + "|" + name.middleName + "|" + name.lastName + "|" +
-           phoneNumber + "|" + email + "|" + account.getUsername() + "|" + account.getPasswordHash() + "|" +
-           std::to_string(points) + "|" + address + "|" + account.getID() + "|" +
+    return TextCodec::escapeField(id) + "|" +
+           TextCodec::escapeField(name.firstName) + "|" +
+           TextCodec::escapeField(name.middleName) + "|" +
+           TextCodec::escapeField(name.lastName) + "|" +
+           TextCodec::escapeField(phoneNumber) + "|" +
+           TextCodec::escapeField(email) + "|" +
+           TextCodec::escapeField(account.getUsername()) + "|" +
+           TextCodec::escapeField(account.getPasswordHash()) + "|" +
+           std::to_string(points) + "|" +
+           TextCodec::escapeField(address) + "|" +
+           TextCodec::escapeField(account.getID()) + "|" +
            (account.isActive() ? "1" : "0");
 }
 
 // Phân tích dòng dữ liệu từ Customers.txt thành đối tượng Customer
 inline Customer Customer::fromFileLine(const std::string& line) {
-    Vector<std::string> parts = StringHelper::split(line, '|');
+    Vector<std::string> parts = TextCodec::splitFields(line, '|');
     if (parts.getSize() < 10) return Customer(); // Dòng không hợp lệ
 
-    std::string id       = StringHelper::trim(parts[0]);
-    Name name(StringHelper::trim(parts[1]), StringHelper::trim(parts[2]), StringHelper::trim(parts[3]));
-    std::string phone    = StringHelper::trim(parts[4]);
-    std::string email    = StringHelper::trim(parts[5]);
-    std::string username = StringHelper::trim(parts[6]);
-    std::string password = StringHelper::trim(parts[7]); // Giá trị đã lưu: hash PBKDF2 hoặc plaintext cũ
-    int points           = std::stoi(StringHelper::trim(parts[8]));
-    std::string address  = StringHelper::trim(parts[9]);
+    std::string id       = StringHelper::trim(TextCodec::unescape(parts[0]));
+    Name name(TextCodec::unescape(parts[1]), TextCodec::unescape(parts[2]), TextCodec::unescape(parts[3]));
+    std::string phone    = StringHelper::trim(TextCodec::unescape(parts[4]));
+    std::string email    = StringHelper::trim(TextCodec::unescape(parts[5]));
+    std::string username = TextCodec::unescape(parts[6]);
+    std::string password = TextCodec::unescape(parts[7]); // Giá trị đã lưu: hash PBKDF2 hoặc plaintext cũ
+    int points = 0;
+    try {
+        points = std::stoi(StringHelper::trim(parts[8]));
+    } catch (...) {
+        return Customer();
+    }
+    std::string address  = TextCodec::unescape(parts[9]);
 
     Customer customer(id, name, phone, email, address, username, password, points);
     if (parts.getSize() >= 11) {
-        customer.getAccount().setID(StringHelper::trim(parts[10]));
+        customer.getAccount().setID(StringHelper::trim(TextCodec::unescape(parts[10])));
     }
     if (parts.getSize() >= 12) {
         // Chỉ "0" mới là tài khoản bị vô hiệu hóa; thiếu/giá trị khác = đang hoạt động

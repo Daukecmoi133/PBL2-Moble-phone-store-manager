@@ -3,6 +3,7 @@
 #define PHONE_H
 
 #include "../utils/StringHelper.h"
+#include "../utils/TextCodec.h"
 #include "Common.h"
 #include <iostream>
 #include <string>
@@ -119,13 +120,13 @@ inline void Phone::setQuantity(int qty) { this->quantity = qty; }
 // Kiểm tra số lượng tồn kho còn lớn hơn 0 không
 inline bool Phone::isAvailable() const { return quantity > 0; }
 
-// Giảm số lượng tồn kho khi mua hàng (trả về false nếu không đủ hàng)
+// Giảm số lượng tồn kho khi mua hàng (trả về false nếu qty <= 0 hoặc không đủ hàng)
 inline bool Phone::reduceStock(int qty) {
-  if (qty <= quantity) {
-    quantity -= qty;
-    return true;
+  if (qty <= 0 || qty > quantity) {
+    return false;
   }
-  return false;
+  quantity -= qty;
+  return true;
 }
 
 // Tăng số lượng tồn kho khi nhập thêm hàng
@@ -135,32 +136,40 @@ inline void Phone::addStock(int qty) {
   }
 }
 
-// Định dạng lưu trữ dữ liệu dòng vào tệp tin Products.txt
-// Format: id|name|brand|os|importPrice|sellingPrice|quantity|manufacturer|specifications
+// Định dạng lưu trữ dữ liệu dòng vào tệp tin Products.txt (giá nguyên VND, có escape TextCodec)
+// Format: id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications
 inline std::string Phone::toFileString() const {
-  return id + "|" + name + "|" + brand + "|" + operatingSystem + "|" +
-         StringHelper::formatCurrency(importPrice) + "|" +
-         StringHelper::formatCurrency(sellingPrice) + "|" +
+  return TextCodec::escapeField(id) + "|" +
+         TextCodec::escapeField(name) + "|" +
+         TextCodec::escapeField(brand) + "|" +
+         TextCodec::escapeField(operatingSystem) + "|" +
+         StringHelper::formatMoneyDisk(importPrice) + "|" +
+         StringHelper::formatMoneyDisk(sellingPrice) + "|" +
          std::to_string(quantity) + "|" +
-         manufacturer + "|" + specifications;
+         TextCodec::escapeField(manufacturer) + "|" +
+         TextCodec::escapeField(specifications);
 }
 
 // Phân tích dòng dữ liệu từ Products.txt thành đối tượng Phone
 // Hỗ trợ cả định dạng 7 trường (cũ) và 9 trường (mới có manufacturer, specs)
 inline Phone Phone::fromFileLine(const std::string& line) {
-  Vector<std::string> parts = StringHelper::split(line, '|');
+  Vector<std::string> parts = TextCodec::splitFields(line, '|');
   if (parts.getSize() < 7) return Phone(); // Dòng không hợp lệ
 
   Phone p;
-  p.setID(StringHelper::trim(parts[0]));
-  p.setName(StringHelper::trim(parts[1]));
-  p.setBrand(StringHelper::trim(parts[2]));
-  p.setOperatingSystem(StringHelper::trim(parts[3]));
+  p.setID(StringHelper::trim(TextCodec::unescape(parts[0])));
+  p.setName(TextCodec::unescape(parts[1]));
+  p.setBrand(TextCodec::unescape(parts[2]));
+  p.setOperatingSystem(TextCodec::unescape(parts[3]));
   p.setImportPrice(StringHelper::parsePrice(parts[4]));
   p.setSellingPrice(StringHelper::parsePrice(parts[5]));
-  p.setQuantity(std::stoi(StringHelper::trim(parts[6])));
-  if (parts.getSize() >= 8) p.setManufacturer(StringHelper::trim(parts[7]));
-  if (parts.getSize() >= 9) p.setSpecifications(StringHelper::trim(parts[8]));
+  try {
+    p.setQuantity(std::stoi(StringHelper::trim(parts[6])));
+  } catch (...) {
+    return Phone();
+  }
+  if (parts.getSize() >= 8) p.setManufacturer(TextCodec::unescape(parts[7]));
+  if (parts.getSize() >= 9) p.setSpecifications(TextCodec::unescape(parts[8]));
   return p;
 }
 

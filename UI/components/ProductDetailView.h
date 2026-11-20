@@ -15,6 +15,7 @@ class MainShellWindow;
  */
 enum class ProductDetailMode {
   Customer,       // Khách xem thông tin, chọn mua, thêm giỏ, gửi đánh giá
+  SalesPos,       // Nhân viên Sale xem chi tiết, chọn tổ hợp & 1 nút duy nhất "🛒 Thêm vào giỏ"
   AdminEdit,      // Admin chỉnh sửa trực quan tại chỗ mọi trường thông tin
   AdminPreview    // Admin xem trước với giao diện khách (nút mua bị vô hiệu hóa)
 };
@@ -32,6 +33,8 @@ public:
     std::function<void(const std::string &brand)> onBrandSelected;
     std::function<void(const std::string &productId)> onProductSelected;
     std::function<void()> onNavigateHome;
+    std::function<void(const ProductItemViewModel &variant, int quantity)>
+        onAddToPosCart;
   };
 
   /**

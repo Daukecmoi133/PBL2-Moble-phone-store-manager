@@ -9,6 +9,9 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#else
+#include <unistd.h>
+#include <fcntl.h>
 #endif
 
 /**
@@ -53,6 +56,12 @@ public:
             FlushFileBuffers(hFile);
             CloseHandle(hFile);
         }
+#else
+        int fd = open(path.c_str(), O_RDWR);
+        if (fd >= 0) {
+            fsync(fd);
+            close(fd);
+        }
 #endif
     }
 
@@ -85,8 +94,8 @@ public:
 
         std::string tmpPath = targetPath + ".tmp";
 
-        // 1. Mở file tạm với cờ truncate
-        std::ofstream tmpFile(tmpPath, std::ios::out | std::ios::trunc);
+        // 1. Mở file tạm với cờ binary truncate (tránh chuyển đổi LF -> CRLF gây \r\r\n khi rollback nhị phân)
+        std::ofstream tmpFile(tmpPath, std::ios::out | std::ios::trunc | std::ios::binary);
         if (!tmpFile.is_open()) {
             std::cerr << "[FileHelper Lỗi] Không thể mở file tạm để ghi: " << tmpPath << std::endl;
             return false;
@@ -120,12 +129,21 @@ public:
 
         // 4. Thay thế nguyên tử file chính bằng file tạm
 #ifdef _WIN32
-        // MoveFileExA với MOVEFILE_REPLACE_EXISTING và MOVEFILE_WRITE_THROUGH đảm bảo ghi flush metadata xuống đĩa
-        if (!MoveFileExA(tmpPath.c_str(), targetPath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-            DWORD winErr = GetLastError();
+        bool replaced = false;
+        DWORD winErr = 0;
+        for (int retry = 0; retry < 12; ++retry) {
+            SetFileAttributesA(targetPath.c_str(), FILE_ATTRIBUTE_NORMAL);
+            if (MoveFileExA(tmpPath.c_str(), targetPath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+                replaced = true;
+                break;
+            }
+            winErr = GetLastError();
+            Sleep(25);
+        }
+        if (!replaced) {
             std::filesystem::remove(tmpPath, ec);
             std::cerr << "[FileHelper Lỗi] MoveFileExA thất bại với mã lỗi Windows: " << winErr
-                      << " cho file " << targetPath << std::endl;
+                      << " cho file " << targetPath << " (dữ liệu gốc được bảo toàn)." << std::endl;
             return false;
         }
 #else

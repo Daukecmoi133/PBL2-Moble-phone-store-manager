@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <chrono>
+#include <climits>
 #include <filesystem>
 #include <algorithm>
 #include "../models/Phone.h"
@@ -100,6 +101,10 @@ public:
     // Nghiệp vụ thay đổi số lượng tồn kho (nhập thêm hoặc bán ra)
     bool updateStock(const std::string& id, int quantityDelta, std::string& errorMessage);
     bool updateStock(const std::string& id, int quantityDelta);
+
+    // Nghiệp vụ nhập kho đồng bộ giá vốn mới nhất xuống Products.txt (AUD-03)
+    bool receiveStockWithCost(const std::string& id, int quantityDelta, double newImportPrice,
+                              std::string& errorMessage);
 };
 
 // ================= IMPLEMENTATION =================
@@ -397,15 +402,20 @@ inline bool PhoneService::updateStock(const std::string& id, int quantityDelta, 
         return false;
     }
 
-    int oldQty = p->getQuantity();
-    int newQty = oldQty + quantityDelta;
-    if (newQty < 0) {
-        errorMessage = "Số lượng tồn kho không đủ để xuất (hiện có: " 
+    long long oldQtyLong = static_cast<long long>(p->getQuantity());
+    long long newQtyLong = oldQtyLong + static_cast<long long>(quantityDelta);
+    if (newQtyLong < 0) {
+        errorMessage = "Số lượng tồn kho không đủ để xuất (hiện có: "
                        + std::to_string(p->getQuantity()) + ")!";
         return false;
     }
+    if (newQtyLong > static_cast<long long>(INT_MAX)) {
+        errorMessage = "Số lượng tồn kho vượt quá giới hạn cho phép (" + std::to_string(INT_MAX) + ")!";
+        return false;
+    }
 
-    p->setQuantity(newQty);
+    int oldQty = p->getQuantity();
+    p->setQuantity(static_cast<int>(newQtyLong));
     // FIX LỖI: Kiểm tra kết quả ghi đĩa của repository, rollback nếu lưu thất bại
     if (!repo.updatePhone(*p)) {
         p->setQuantity(oldQty); // Rollback RAM
@@ -420,6 +430,49 @@ inline bool PhoneService::updateStock(const std::string& id, int quantityDelta, 
 inline bool PhoneService::updateStock(const std::string& id, int quantityDelta) {
     std::string err;
     return updateStock(id, quantityDelta, err);
+}
+
+inline bool PhoneService::receiveStockWithCost(const std::string& id,
+                                               int quantityDelta,
+                                               double newImportPrice,
+                                               std::string& errorMessage) {
+    Phone* p = getPhoneById(id);
+    if (p == nullptr) {
+        errorMessage = "Không tìm thấy sản phẩm có mã: " + id;
+        return false;
+    }
+    if (quantityDelta <= 0) {
+        errorMessage = "Số lượng nhập kho phải lớn hơn 0!";
+        return false;
+    }
+    if (newImportPrice < 0.0) {
+        errorMessage = "Giá nhập mới không được âm!";
+        return false;
+    }
+
+    long long oldQtyLong = static_cast<long long>(p->getQuantity());
+    long long newQtyLong = oldQtyLong + static_cast<long long>(quantityDelta);
+    if (newQtyLong > static_cast<long long>(INT_MAX)) {
+        errorMessage = "Số lượng tồn kho vượt quá giới hạn cho phép (" + std::to_string(INT_MAX) + ")!";
+        return false;
+    }
+
+    int oldQty = p->getQuantity();
+    double oldImportPrice = p->getImportPrice();
+    p->setQuantity(static_cast<int>(newQtyLong));
+    if (newImportPrice > 0.0) {
+        p->setImportPrice(newImportPrice);
+    }
+
+    if (!repo.updatePhone(*p)) {
+        p->setQuantity(oldQty);
+        p->setImportPrice(oldImportPrice);
+        errorMessage = "Lỗi khi cập nhật tồn kho và giá nhập vào cơ sở dữ liệu!";
+        return false;
+    }
+
+    rebuildIndices();
+    return true;
 }
 
 #endif // PHONESERVICE_H

@@ -82,10 +82,12 @@ constexpr int SPACE_2XL =
 constexpr int SPACE_3XL = 32; // 4.0x (32px) - Khoảng cách phân vùng lớn
 
 // Kích thước khung điều hướng & bảng dữ liệu (bội số của 8px)
-constexpr int SIDEBAR_WIDTH = 272;     // 34 * 8px — vừa vặn menu, tối ưu diện tích bảng
-constexpr int TABLE_ROW_SPACING = 4;   // 1 * 4px
-constexpr int TABLE_CELL_SPACING = 8;  // 2 * 4px — gọn gàng, tối ưu không gian ngang
-constexpr int KPI_GRID_SPACING = 16;   // 2 * 8px
+constexpr int SIDEBAR_WIDTH =
+    272; // 34 * 8px — vừa vặn menu, tối ưu diện tích bảng
+constexpr int TABLE_ROW_SPACING = 4; // 1 * 4px
+constexpr int TABLE_CELL_SPACING =
+    8; // 2 * 4px — gọn gàng, tối ưu không gian ngang
+constexpr int KPI_GRID_SPACING = 16; // 2 * 8px
 } // namespace DesignTokens
 
 // Bộ CSS chuẩn giao diện hiện đại cho GTK4 Phone Store Manager
@@ -726,6 +728,16 @@ dropdown button:focus {
     outline-offset: 0px;
 }
 
+.report-filter-bar entry,
+.report-filter-bar dropdown button,
+.report-filter-bar button.btn-primary,
+.report-filter-bar button.btn-secondary {
+    min-height: 46px;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 16px;
+}
+
 /* Thanh công cụ lọc và đếm bản ghi chuẩn doanh nghiệp */
 .filter-toolbar {
     background-color: @pbl_surface;
@@ -916,6 +928,32 @@ dropdown.input-error:focus {
     padding: 6px 14px;
     font-size: 16px;
     font-weight: 800;
+}
+
+/* Badge màu ngữ nghĩa dùng bên trong các bộ lọc GtkDropDown */
+.dropdown-badge {
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.dropdown-badge.rank-bronze,
+.dropdown-badge.rank-silver,
+.dropdown-badge.rank-gold,
+.dropdown-badge.rank-diamond {
+    border-width: 1px;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.dropdown-item-plain {
+    font-size: 14px;
+    font-weight: 600;
+    color: @pbl_text;
+    padding: 2px 4px;
 }
 
 /* === PRODUCT CARDS === */
@@ -1298,72 +1336,215 @@ button.btn-action-delete:hover, .btn-action-delete:hover {
 }
 
 /* === LOGIN SCREEN === */
+.login-window,
+.login-overlay,
 .login-bg {
+    background-color: #0b1120;
     background-image: url("C:/DUY/PBL2/data/Device/productImages/D&N Store Phone Sales Screen.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
+/* Lớp phủ gradient tối bán trong suốt (Overlay Scrim) */
+.login-scrim {
+    background: linear-gradient(100deg,
+        rgba(15, 23, 42, 0.20) 0%,
+        rgba(15, 23, 42, 0.40) 35%,
+        rgba(15, 23, 42, 0.72) 65%,
+        rgba(15, 23, 42, 0.88) 100%);
+}
+
+scrolledwindow.login-scroll,
+.login-scroll,
+.login-scroll viewport,
+.login-scroll > viewport,
+.login-bg viewport {
+    background: transparent;
+    background-color: transparent;
+}
+
+/* Thẻ đăng nhập hiện đại (Glassmorphism & Soft Drop Shadow) */
 .login-card {
-    background-color: @pbl_surface;
-    border-radius: 16px;
-    padding: 32px 40px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 24px;
+    padding: 42px 46px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.login-logo-badge {
+    font-size: 26px;
+    background-color: #e0f2fe;
+    border-radius: 12px;
+    padding: 6px 10px;
 }
 
 .login-title {
-    font-size: 30px;
+    font-size: 28px;
     font-weight: 800;
-    color: @pbl_text;
+    color: @navy_900;
+    letter-spacing: 0.5px;
+}
+
+/* Vạch accent màu cyan theo chuẩn yêu cầu thiết kế */
+.hero-accent-bar {
+    min-height: 4px;
+    min-width: 56px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #38bdf8 0%, #2563eb 100%);
+    margin-top: 4px;
+    margin-bottom: 4px;
 }
 
 .login-subtitle {
-    font-size: 17px;
+    font-size: 15px;
     color: @pbl_text_muted;
-    margin-top: 4px;
-    margin-bottom: 16px;
+    margin-top: 2px;
+    margin-bottom: 8px;
 }
 
-.login-alert {
-    background-color: @pbl_danger_bg;
-    color: @pbl_danger;
-    border: 1px solid @pbl_danger_border;
-    border-radius: 8px;
-    padding: 12px 16px;
+.login-card .form-label {
     font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 6px;
+}
+
+/* Ô nhập liệu chuẩn Design System */
+.login-card entry {
+    background-color: #f8fafc;
+    color: #0f172a;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 13px 18px;
+    min-height: 50px;
+    font-size: 16px;
+    transition: all 0.22s ease-in-out;
+}
+
+.login-card entry:focus {
+    background-color: #ffffff;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+}
+
+.login-card entry placeholder {
+    color: #94a3b8;
+    font-size: 15px;
+}
+
+.login-card entry.input-error {
+    border-color: #ef4444;
+    background-color: #fff5f5;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+/* Thông báo cảnh báo / lỗi */
+.login-alert {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-left: 4px solid #ef4444;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 15px;
     font-weight: 600;
 }
 
-button.login-quick-pill, .login-quick-pill {
-    background-color: @pbl_surface_alt;
-    background-image: none;
-    color: @pbl_navy_2;
-    border: 1px solid @pbl_border;
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 16px;
+/* Nút chính Đăng nhập: Gradient xanh dương sang cyan */
+.login-card button.btn-primary,
+.login-card .btn-primary {
+    background-image: linear-gradient(135deg, #1d4ed8 0%, #0284c7 60%, #38bdf8 100%);
+    background-color: #0284c7;
+    color: #ffffff;
     font-weight: 700;
-    transition: all 120ms ease;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 28px;
+    min-height: 52px;
+    box-shadow: 0 4px 16px rgba(2, 132, 199, 0.45);
+    transition: all 0.22s ease-in-out;
+}
+
+.login-card button.btn-primary:hover,
+.login-card .btn-primary:hover {
+    background-image: linear-gradient(135deg, #1e40af 0%, #0369a1 60%, #0284c7 100%);
+    box-shadow: 0 6px 20px rgba(2, 132, 199, 0.55);
+}
+
+.login-card button.btn-primary:active,
+.login-card .btn-primary:active {
+    background-image: linear-gradient(135deg, #1e3a8a 0%, #075985 100%);
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+
+.login-card button.btn-primary.loading,
+.login-card button.btn-primary:disabled {
+    opacity: 0.65;
+    background-image: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    box-shadow: none;
+}
+
+.login-quick-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+
+/* Nút chọn nhanh tài khoản mẫu dạng thẻ nhỏ gọn */
+button.login-quick-pill, .login-quick-pill {
+    background-color: #f1f5f9;
+    background-image: none;
+    color: #1e293b;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    min-height: 48px;
+    font-size: 14.5px;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+    transition: all 0.2s ease-in-out;
 }
 
 button.login-quick-pill:hover, .login-quick-pill:hover {
-    background-color: #e2e8f0;
+    background-color: #e0f2fe;
     background-image: none;
-    color: @pbl_text;
+    border-color: #7dd3fc;
+    color: #0369a1;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
 }
 
+button.login-quick-pill:active, .login-quick-pill:active {
+    background-color: #bae6fd;
+    background-image: none;
+}
+
+/* Các link thao tác phụ (Quên mật khẩu, Đăng ký) */
 button.login-corner-btn, .login-corner-btn {
     background: transparent;
     background-image: none;
     border: none;
-    color: @pbl_primary;
-    font-size: 17px;
+    color: #0284c7;
+    font-size: 15px;
     font-weight: 700;
-    padding: 4px 8px;
+    padding: 6px 10px;
+    transition: color 0.18s ease-in-out;
 }
 
 button.login-corner-btn:hover, .login-corner-btn:hover {
-    color: @pbl_primary_hover;
+    color: #0369a1;
     background-image: none;
     text-decoration: underline;
+}
+
+.login-card .page-subtitle {
+    font-size: 15px;
+    color: #64748b;
 }
 
 /* === REAL-TIME SIMULATION SCREEN === */
@@ -2082,6 +2263,141 @@ button.pdp-buy-btn:disabled, .pdp-buy-btn:disabled {
     background-color: @red_100;
     color: @red_600;
 }
+
+/* Dual Range Slider Component (DESIGN.md T18) */
+.dual-range-card {
+    background-color: @white;
+    border: 1px solid @slate_200;
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.dual-range-container {
+    padding: 4px 0 2px 0;
+}
+
+.dual-range-inputs-row {
+    margin-bottom: 8px;
+}
+
+.dual-range-input {
+    background-color: @white;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1E293B;
+    min-height: 38px;
+    min-width: 140px;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.dual-range-input:focus {
+    border-color: #2563EB;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.dual-range-tilde {
+    font-size: 18px;
+    font-weight: 500;
+    color: #334155;
+    margin: 0 6px;
+}
+
+.dual-range-slider-area {
+    min-height: 26px;
+}
+
+/* Date Picker Popover & GtkCalendar Styling */
+.date-picker-entry {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.date-picker-popover {
+    background-color: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+    padding: 10px;
+}
+
+.date-picker-popover calendar {
+    border: none;
+    background-color: transparent;
+    font-size: 15px;
+}
+
+.date-picker-popover calendar > header {
+    border-bottom: 1px solid #E2E8F0;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.date-picker-popover calendar > header > button {
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    background-color: #F8FAFC;
+    padding: 4px 8px;
+    color: #334155;
+}
+
+.date-picker-popover calendar > header > button:hover {
+    background-color: #EEF2F6;
+    border-color: #CBD5E1;
+    color: #0F172A;
+}
+
+.date-picker-popover calendar > grid {
+    padding: 4px;
+}
+
+.date-picker-popover calendar > grid > label {
+    border-radius: 6px;
+    padding: 6px;
+    font-weight: 500;
+    color: #1E293B;
+}
+
+.date-picker-popover calendar > grid > label.day-name {
+    font-weight: 700;
+    color: #64748B;
+    font-size: 13px;
+}
+
+.date-picker-popover calendar > grid > label.other-month {
+    color: #94A3B8;
+    opacity: 0.6;
+}
+
+.date-picker-popover calendar > grid > label:selected {
+    background-color: #2563EB;
+    color: #FFFFFF;
+    font-weight: 700;
+    border-radius: 6px;
+}
+
+.date-picker-popover calendar > grid > label:hover:not(:selected) {
+    background-color: #F1F5F9;
+}
+
+.date-picker-action-bar {
+    border-top: 1px solid #E2E8F0;
+    padding-top: 8px;
+    margin-top: 6px;
+}
+
+.date-picker-btn {
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 10px;
+}
 )CSS";
 
 inline void applyAppStyles() {
@@ -2092,13 +2408,15 @@ inline void applyAppStyles() {
   if (g_file_get_contents("UI/styles/theme.css", &contents, &length, &err)) {
     const char *css = contents;
     if (length >= 3 && (unsigned char)contents[0] == 0xEF &&
-        (unsigned char)contents[1] == 0xBB && (unsigned char)contents[2] == 0xBF) {
+        (unsigned char)contents[1] == 0xBB &&
+        (unsigned char)contents[2] == 0xBF) {
       css += 3;
     }
     gtk_css_provider_load_from_string(provider, css);
     g_free(contents);
   } else {
-    if (err) g_error_free(err);
+    if (err)
+      g_error_free(err);
     gtk_css_provider_load_from_string(provider, APP_CSS_STYLES);
   }
 

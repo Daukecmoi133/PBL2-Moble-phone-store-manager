@@ -24,6 +24,7 @@ struct UserSessionViewModel {
     bool isSales() const { return role == RoleType::SALE_EMPLOYEE; }
     bool isWarehouse() const { return role == RoleType::WAREHOUSE_EMPLOYEE; }
     bool isCustomer() const { return role == RoleType::CUSTOMER; }
+    bool isEmployee() const { return role != RoleType::CUSTOMER; }
 };
 
 // Yêu cầu đăng nhập

@@ -3,6 +3,7 @@
 #define SUPPLIER_H
 
 #include "People.h"
+#include "../utils/TextCodec.h"
 
 class Supplier : public People {
 private:
@@ -49,25 +50,30 @@ inline void Supplier::setTaxCode(const std::string& code) { taxCode = code; }
 // Format: id|companyName|taxCode|contactPerson|phoneNumber|email|address
 // Note: contactPerson được lưu dưới dạng chuỗi đầy đủ (Fullname), không tách 3 trường
 inline std::string Supplier::toFileString() const {
-    return id + "|" + companyName + "|" + taxCode + "|" + name.getFullName() + "|" +
-           phoneNumber + "|" + email + "|" + address;
+    return TextCodec::escapeField(id) + "|" +
+           TextCodec::escapeField(companyName) + "|" +
+           TextCodec::escapeField(taxCode) + "|" +
+           TextCodec::escapeField(name.getFullName()) + "|" +
+           TextCodec::escapeField(phoneNumber) + "|" +
+           TextCodec::escapeField(email) + "|" +
+           TextCodec::escapeField(address);
 }
 
 // Phân tích dòng dữ liệu từ Suppliers.txt thành đối tượng Supplier
 inline Supplier Supplier::fromFileLine(const std::string& line) {
-    Vector<std::string> parts = StringHelper::split(line, '|');
+    Vector<std::string> parts = TextCodec::splitFields(line, '|');
     if (parts.getSize() < 7) return Supplier(); // Dòng không hợp lệ
 
-    std::string id          = StringHelper::trim(parts[0]);
-    std::string companyName = StringHelper::trim(parts[1]);
-    std::string taxCode     = StringHelper::trim(parts[2]);
+    std::string id          = StringHelper::trim(TextCodec::unescape(parts[0]));
+    std::string companyName = TextCodec::unescape(parts[1]);
+    std::string taxCode     = StringHelper::trim(TextCodec::unescape(parts[2]));
     // contactPerson lưu dưới dạng fullname: "Nguyen Van Dai"
     // → đưa toàn bộ vào lastName, giữ rỗng first/middle (to maintain compatibility)
-    std::string fullContact = StringHelper::trim(parts[3]);
+    std::string fullContact = TextCodec::unescape(parts[3]);
     Name contactName("", "", fullContact); // lưu như lastName để getFullName() trả đúng
-    std::string phone       = StringHelper::trim(parts[4]);
-    std::string email       = StringHelper::trim(parts[5]);
-    std::string address     = StringHelper::trim(parts[6]);
+    std::string phone       = StringHelper::trim(TextCodec::unescape(parts[4]));
+    std::string email       = StringHelper::trim(TextCodec::unescape(parts[5]));
+    std::string address     = TextCodec::unescape(parts[6]);
 
     return Supplier(id, companyName, taxCode, contactName, phone, email, address);
 }

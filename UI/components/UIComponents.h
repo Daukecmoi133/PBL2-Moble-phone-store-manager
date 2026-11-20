@@ -3,6 +3,7 @@
 
 #include <gtk/gtk.h>
 #include <string>
+#include <functional>
 #include "../../source/models/Common.h"
 #include "../viewmodels/OrderViewModel.h"
 #include "../viewmodels/ProductViewModel.h"
@@ -48,6 +49,19 @@ void showServiceNotConnectedDialog(GtkWindow* parent, const std::string& feature
 
 /// @brief Hộp thoại đổi mật khẩu cho người dùng đang đăng nhập (mật khẩu hiện tại, mới, xác nhận)
 void showChangePasswordDialog(GtkWindow* parent, AppController* controller);
+
+/// @brief Mở hộp thoại lưu file bản địa (CSV hoặc TXT) kèm thư mục mặc định exports/ và tên file gợi ý
+void showSaveFileDialog(GtkWindow* parent,
+                        const std::string& title,
+                        const std::string& defaultFileName,
+                        const std::string& filterName,
+                        const std::string& filterPattern,
+                        std::function<void(const std::string& chosenPath)> onPathSelected);
+
+/// @brief Tạo nút xuất file chuẩn hóa (btn-outline) gắn callback C++ trực tiếp
+GtkWidget* createExportButton(const std::string& label,
+                              const std::string& tooltip,
+                              std::function<void()> onClicked);
 
 void registerShellWindow(MainShellWindow* shell);
 MainShellWindow* getActiveShell();
@@ -106,6 +120,11 @@ GtkWidget* createStockStatusBadge(StockDisplayStatus status);
 GtkWidget* createWarrantyStatusBadge(WarrantyStatus status);
 
 GtkWidget* createRankBadge(const std::string& membershipTier);
+
+/// @brief Gắn hiển thị badge màu ngữ nghĩa đồng bộ cho từng mục trong GtkDropDown lọc
+/// @param badgeClasses CSS class badge tương ứng từng index (vd: "badge-paid", "rank-gold"); chuỗi rỗng "" hiển thị chữ thường trung tính
+void applyFilterDropdownBadges(GtkWidget* dropDown,
+                               const std::vector<std::string>& badgeClasses);
 
 // === TIỆN ÍCH BẢNG DỮ LIỆU CHUẨN DOANH NGHIỆP ===
 struct TableColumnSpec {
@@ -178,6 +197,9 @@ double parseCurrencyInput(GtkWidget* entryWidget);
 /// @brief Thiết lập ô nhập số điện thoại: chỉ nhận chữ số, giới hạn 10 ký tự
 void setupPhoneInput(GtkWidget* entryWidget);
 
+/// @brief Thiết lập ô nhập ngày tháng kèm popup chọn ngày GtkCalendar chuẩn GTK4 (click icon hoặc ô nhập để mở lịch)
+void setupDatePicker(GtkWidget* entryWidget, std::function<void(const std::string&)> onDateChanged = nullptr);
+
 /// @brief Kiểm tra số điện thoại hợp lệ (10 chữ số, bắt đầu bằng 0)
 bool validatePhoneNumber(const std::string& phone, std::string& outErrorMsg);
 
@@ -193,18 +215,33 @@ GtkWidget* createBackHeader(const std::string& title, const std::string& subtitl
 /// @brief Thiết lập con trỏ chuột dạng bàn tay (pointer cursor) cho các nút bấm GTK4
 void setButtonCursor(GtkWidget* btn);
 
+/// @brief Tạo ảnh thumbnail đã được cache và thu nhỏ trong bộ nhớ giúp chống giật lag khi cuộn danh sách dài
+GtkWidget* createCachedThumbnail(const std::string& imageUrl, int pixelSize = 48);
+
 // === TIỆN ÍCH BIỂU ĐỒ & THỐNG KÊ (DESIGN.MD SECTION 8) ===
 /// @brief Định dạng số tiền rút gọn cho biểu đồ & nhãn gọn (vd: "15.2 tr", "500 k", "2.5 tỷ")
 std::string formatCompactVND(double amount);
 
-/// @brief Tạo widget Biểu đồ Cột đôi Doanh thu & Lợi nhuận (Cairo DrawingArea) chuẩn DESIGN.md T14
-GtkWidget* createRevenueBarChart(const std::vector<TimelineStatPoint>& points);
+/// @brief Tạo widget Biểu đồ Cột đôi Doanh thu & Bảng số liệu chi tiết (kèm nút Trái/Phải đổi chu kỳ Ngày-Tháng-Năm)
+GtkWidget* createRevenueBarChart(const std::vector<TimelineStatPoint>& points,
+                                 int timelineMode = 0,
+                                 std::function<void(int)> onModeChanged = nullptr);
 
-/// @brief Tạo widget Thẻ Cơ cấu Doanh thu theo Thương hiệu (Segmented Bar + Brand Rows) chuẩn DESIGN.md T15
+/// @brief Tạo widget Thẻ Cơ cấu Doanh thu theo Thương hiệu / Nguyên liệu dạng Biểu đồ Tròn (Pie/Donut Chart)
 GtkWidget* createBrandDistributionCard(const std::vector<BrandShareStatItem>& brands);
 
 /// @brief Tạo thanh tỷ lệ trạng thái đơn hàng (Order Pipeline Segmented Bar) cho Admin Dashboard chuẩn DESIGN.md T17
 GtkWidget* createOrderStatusPipelineBar(int completed, int shipping, int pending, int cancelled);
+
+/// @brief Tạo thanh trượt 2 đầu (Dual-Handle Range Slider) lọc khoảng giá chuẩn UI hiện đại kèm 2 ô nhập tiền tệ
+GtkWidget* createDualRangeSlider(
+    double minLimit,
+    double maxLimit,
+    double initialMin,
+    double initialMax,
+    double step,
+    std::function<void(double minVal, double maxVal)> onRangeChanged,
+    std::function<void(double minVal, double maxVal)>* outSetRangeFn = nullptr);
 
 } // namespace UIComponents
 

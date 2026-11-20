@@ -1,6 +1,7 @@
 #ifndef DATETIME_H
 #define DATETIME_H
 
+#include <cctype>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
@@ -21,16 +22,20 @@ struct DateTime {
 
   // Static helper methods
   static DateTime now();
+  static bool tryParseDate(const std::string &str, DateTime &out);
+  static bool tryParse(const std::string &str, DateTime &out);
   static DateTime fromDateString(const std::string &str);
   static DateTime fromString(const std::string &str);
   static bool isValidDate(int y, int m, int d);
   static bool isValidDateString(const std::string &str);
 
   // Member methods
+  bool isValid() const;
   void setTime(int y, int m, int d, int h = 0, int min = 0, int s = 0);
   std::string toString() const;
   std::string toDateString() const;
   DateTime addDays(int days) const;
+  DateTime addMonths(int months) const;
 
   // Comparison operators
   bool operator<(const DateTime &other) const;
@@ -42,6 +47,48 @@ struct DateTime {
 };
 
 // ================= IMPLEMENTATION =================
+
+inline bool isLeapYear(int y) {
+  return (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0);
+}
+
+inline bool isValidDate(int y, int m, int d) {
+  if (y < 1 || m < 1 || m > 12 || d < 1)
+    return false;
+  static const int daysInMonth[] = {0,  31, 28, 31, 30, 31, 30,
+                                    31, 31, 30, 31, 30, 31};
+  int maxDays = daysInMonth[m];
+  if (m == 2 && isLeapYear(y))
+    maxDays = 29;
+  return d <= maxDays;
+}
+
+inline bool isValidTime(int h, int min, int s) {
+  return (h >= 0 && h <= 23) && (min >= 0 && min <= 59) && (s >= 0 && s <= 59);
+}
+
+namespace dt_detail {
+inline std::string trimWs(const std::string &s) {
+  size_t first = s.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos)
+    return "";
+  size_t last = s.find_last_not_of(" \t\r\n");
+  return s.substr(first, last - first + 1);
+}
+
+inline bool parseUnsignedIntStrict(const std::string &tok, int &out) {
+  if (tok.empty() || tok.size() > 6)
+    return false;
+  long long v = 0;
+  for (char c : tok) {
+    if (!std::isdigit(static_cast<unsigned char>(c)))
+      return false;
+    v = v * 10 + (c - '0');
+  }
+  out = static_cast<int>(v);
+  return true;
+}
+} // namespace dt_detail
 
 inline DateTime::DateTime() {
   std::time_t t = std::time(nullptr);
@@ -68,6 +115,10 @@ inline DateTime::DateTime(int y, int m, int d, int h, int min, int s)
 
 inline DateTime DateTime::now() { return DateTime(); }
 
+inline bool DateTime::isValid() const {
+  return ::isValidDate(year, month, day) && ::isValidTime(hour, minute, second);
+}
+
 inline void DateTime::setTime(int y, int m, int d, int h, int min, int s) {
   year = y;
   month = m;
@@ -80,69 +131,138 @@ inline void DateTime::setTime(int y, int m, int d, int h, int min, int s) {
 inline std::string DateTime::toString() const {
   std::ostringstream oss;
   oss << std::setfill('0') << std::setw(2) << day << "/" << std::setw(2)
-      << month << "/" << year << " " << std::setw(2) << hour << ":"
-      << std::setw(2) << minute << ":" << std::setw(2) << second;
+      << month << "/" << std::setw(4) << year << " " << std::setw(2) << hour
+      << ":" << std::setw(2) << minute << ":" << std::setw(2) << second;
   return oss.str();
 }
 
 inline std::string DateTime::toDateString() const {
   std::ostringstream oss;
   oss << std::setfill('0') << std::setw(2) << day << "/" << std::setw(2)
-      << month << "/" << year;
+      << month << "/" << std::setw(4) << year;
   return oss.str();
-}
-
-// FIX LỖI: Hàm phụ trợ kiểm tra năm nhuận và ngày hợp lệ
-inline bool isLeapYear(int y) {
-  return (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0);
-}
-
-inline bool isValidDate(int y, int m, int d) {
-  if (y < 1 || m < 1 || m > 12 || d < 1)
-    return false;
-  static const int daysInMonth[] = {0,  31, 28, 31, 30, 31, 30,
-                                    31, 31, 30, 31, 30, 31};
-  int maxDays = daysInMonth[m];
-  if (m == 2 && isLeapYear(y))
-    maxDays = 29;
-  return d <= maxDays;
-}
-
-inline bool isValidTime(int h, int min, int s) {
-  return (h >= 0 && h <= 23) && (min >= 0 && min <= 59) && (s >= 0 && s <= 59);
 }
 
 inline bool DateTime::isValidDate(int y, int m, int d) {
   return ::isValidDate(y, m, d);
 }
 
-inline bool DateTime::isValidDateString(const std::string &str) {
-  if (str.empty()) return false;
+inline bool DateTime::tryParseDate(const std::string &str, DateTime &out) {
+  const std::string trimmed = dt_detail::trimWs(str);
+  if (trimmed.empty())
+    return false;
+
   int d = 0, m = 0, y = 0;
-  if (str.find('/') != std::string::npos) {
-    char sep1 = 0, sep2 = 0;
-    std::istringstream iss(str);
-    if ((iss >> d >> sep1 >> m >> sep2 >> y) && sep1 == '/' && sep2 == '/') {
-      return ::isValidDate(y, m, d);
+  if (trimmed.find('/') != std::string::npos) {
+    if (trimmed.find('-') != std::string::npos)
+      return false;
+    const size_t p1 = trimmed.find('/');
+    const size_t p2 = trimmed.find('/', p1 + 1);
+    if (p1 == std::string::npos || p2 == std::string::npos ||
+        trimmed.find('/', p2 + 1) != std::string::npos) {
+      return false;
     }
-  } else if (str.find('-') != std::string::npos) {
-    char sep1 = 0, sep2 = 0;
-    std::istringstream iss(str);
-    if ((iss >> y >> sep1 >> m >> sep2 >> d) && sep1 == '-' && sep2 == '-') {
-      return ::isValidDate(y, m, d);
+    if (!dt_detail::parseUnsignedIntStrict(trimmed.substr(0, p1), d) ||
+        !dt_detail::parseUnsignedIntStrict(trimmed.substr(p1 + 1, p2 - p1 - 1), m) ||
+        !dt_detail::parseUnsignedIntStrict(trimmed.substr(p2 + 1), y)) {
+      return false;
     }
+    if (y < 100 || y > 9999 || !::isValidDate(y, m, d))
+      return false;
+    out = DateTime(y, m, d, 0, 0, 0);
+    return true;
   }
+
+  if (trimmed.find('-') != std::string::npos) {
+    const size_t p1 = trimmed.find('-');
+    const size_t p2 = trimmed.find('-', p1 + 1);
+    if (p1 == std::string::npos || p2 == std::string::npos ||
+        trimmed.find('-', p2 + 1) != std::string::npos) {
+      return false;
+    }
+    const std::string yStr = trimmed.substr(0, p1);
+    if (yStr.size() != 4)
+      return false;
+    if (!dt_detail::parseUnsignedIntStrict(yStr, y) ||
+        !dt_detail::parseUnsignedIntStrict(trimmed.substr(p1 + 1, p2 - p1 - 1), m) ||
+        !dt_detail::parseUnsignedIntStrict(trimmed.substr(p2 + 1), d)) {
+      return false;
+    }
+    if (y < 100 || y > 9999 || !::isValidDate(y, m, d))
+      return false;
+    out = DateTime(y, m, d, 0, 0, 0);
+    return true;
+  }
+
   return false;
+}
+
+inline bool DateTime::tryParse(const std::string &str, DateTime &out) {
+  const std::string trimmed = dt_detail::trimWs(str);
+  if (trimmed.empty())
+    return false;
+
+  std::istringstream iss(trimmed);
+  std::string datePart, timePart, extraPart;
+  if (!(iss >> datePart))
+    return false;
+  if (iss >> timePart) {
+    if (iss >> extraPart)
+      return false; // Dữ liệu thừa sau giờ
+  }
+
+  DateTime dt(0, 0, 0, 0, 0, 0);
+  if (!tryParseDate(datePart, dt))
+    return false;
+
+  if (!timePart.empty()) {
+    const size_t c1 = timePart.find(':');
+    if (c1 == std::string::npos)
+      return false;
+    const size_t c2 = timePart.find(':', c1 + 1);
+    int h = 0, min = 0, s = 0;
+    if (c2 == std::string::npos) {
+      // Định dạng cũ HH:MM (ví dụ ProductReviews.txt v1)
+      if (!dt_detail::parseUnsignedIntStrict(timePart.substr(0, c1), h) ||
+          !dt_detail::parseUnsignedIntStrict(timePart.substr(c1 + 1), min)) {
+        return false;
+      }
+    } else {
+      if (timePart.find(':', c2 + 1) != std::string::npos)
+        return false;
+      if (!dt_detail::parseUnsignedIntStrict(timePart.substr(0, c1), h) ||
+          !dt_detail::parseUnsignedIntStrict(timePart.substr(c1 + 1, c2 - c1 - 1), min) ||
+          !dt_detail::parseUnsignedIntStrict(timePart.substr(c2 + 1), s)) {
+        return false;
+      }
+    }
+    if (!::isValidTime(h, min, s))
+      return false;
+    dt.hour = h;
+    dt.minute = min;
+    dt.second = s;
+  }
+
+  out = dt;
+  return true;
+}
+
+inline bool DateTime::isValidDateString(const std::string &str) {
+  DateTime tmp(0, 0, 0, 0, 0, 0);
+  return tryParseDate(str, tmp);
 }
 
 inline DateTime DateTime::addDays(int days) const {
   DateTime result = *this;
-  if (days == 0) return result;
+  if (days == 0)
+    return result;
 
-  static const int daysInMonth[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  static const int daysInMonth[] = {0,  31, 28, 31, 30, 31, 30,
+                                    31, 31, 30, 31, 30, 31};
 
   auto getMonthDays = [](int y, int m) -> int {
-    if (m == 2 && isLeapYear(y)) return 29;
+    if (m == 2 && isLeapYear(y))
+      return 29;
     return daysInMonth[m];
   };
 
@@ -180,58 +300,54 @@ inline DateTime DateTime::addDays(int days) const {
   return result;
 }
 
-inline DateTime DateTime::fromDateString(const std::string &str) {
-  // Hỗ trợ định dạng DD/MM/YYYY hoặc YYYY-MM-DD
-  DateTime dt(2026, 1, 1);
-  if (str.empty())
-    return dt;
+inline DateTime DateTime::addMonths(int months) const {
+  DateTime result = *this;
+  if (months == 0)
+    return result;
 
-  int d = 1, m = 1, y = 2026;
-  if (str.find('/') != std::string::npos) {
-    char sep1, sep2;
-    std::istringstream iss(str);
-    if (iss >> d >> sep1 >> m >> sep2 >> y) {
-      if (isValidDate(y, m, d)) {
-        dt.day = d;
-        dt.month = m;
-        dt.year = y;
-      }
-    }
-  } else if (str.find('-') != std::string::npos) {
-    char sep1, sep2;
-    std::istringstream iss(str);
-    if (iss >> y >> sep1 >> m >> sep2 >> d) {
-      if (isValidDate(y, m, d)) {
-        dt.year = y;
-        dt.month = m;
-        dt.day = d;
-      }
-    }
+  static const int daysInMonth[] = {0,  31, 28, 31, 30, 31, 30,
+                                    31, 31, 30, 31, 30, 31};
+
+  auto getMonthDays = [](int y, int m) -> int {
+    if (m == 2 && isLeapYear(y))
+      return 29;
+    return daysInMonth[m];
+  };
+
+  int totalMonths = (result.year * 12 + (result.month - 1)) + months;
+  int newYear = totalMonths / 12;
+  int newMonth = (totalMonths % 12) + 1;
+  if (newMonth <= 0) {
+    newYear -= 1;
+    newMonth += 12;
   }
-  return dt;
+
+  result.year = newYear;
+  result.month = newMonth;
+
+  // Kẹp ngày về cuối tháng đích nếu ngày vượt quá số ngày của tháng đó
+  int maxDays = getMonthDays(result.year, result.month);
+  if (result.day > maxDays) {
+    result.day = maxDays;
+  }
+
+  return result;
+}
+
+inline DateTime DateTime::fromDateString(const std::string &str) {
+  DateTime dt(0, 0, 0, 0, 0, 0);
+  if (tryParseDate(str, dt)) {
+    return dt;
+  }
+  return DateTime(0, 0, 0, 0, 0, 0);
 }
 
 inline DateTime DateTime::fromString(const std::string &str) {
-  DateTime dt(2026, 1, 1);
-  if (str.empty())
+  DateTime dt(0, 0, 0, 0, 0, 0);
+  if (tryParse(str, dt)) {
     return dt;
-  std::istringstream iss(str);
-  std::string datePart, timePart;
-  iss >> datePart >> timePart;
-  dt = fromDateString(datePart);
-  if (!timePart.empty()) {
-    char sep1, sep2;
-    int h = 0, min = 0, s = 0;
-    std::istringstream timeIss(timePart);
-    if (timeIss >> h >> sep1 >> min >> sep2 >> s) {
-      if (isValidTime(h, min, s)) {
-        dt.hour = h;
-        dt.minute = min;
-        dt.second = s;
-      }
-    }
   }
-  return dt;
+  return DateTime(0, 0, 0, 0, 0, 0);
 }
 
 inline bool DateTime::operator<(const DateTime &other) const {
@@ -269,7 +385,6 @@ inline bool DateTime::operator!=(const DateTime &other) const {
   return !(*this == other);
 }
 
-// Giữ lại alias Calender để tương thích ngược với code cũ nếu cần
 using Calender = DateTime;
 
 #endif // DATETIME_H

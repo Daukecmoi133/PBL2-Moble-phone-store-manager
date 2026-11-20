@@ -40,7 +40,9 @@ struct BrandShareStatItem {
 
 // Dữ liệu thống kê tổng hợp cho Dashboard và trang Báo cáo
 struct DashboardStatsViewModel {
-    double totalRevenue;        // Tổng doanh thu thực tế (chỉ tính đơn COMPLETED / PAID)
+    double totalRevenue;        // Tổng doanh thu thuần thực tế (trước VAT, từ Invoices)
+    double totalVat;            // Tổng thuế VAT thu hộ (từ các hóa đơn áp VAT)
+    double totalGrossRevenue;   // Tổng tiền khách hàng thanh toán (= totalRevenue + totalVat)
     int totalOrders;           // Tổng số đơn
     int completedOrders;       // Đơn thành công
     int pendingOrders;         // Đơn đang chờ xử lý
@@ -52,13 +54,14 @@ struct DashboardStatsViewModel {
     int totalCustomers;        // Tổng số khách hàng
     int totalEmployees;        // Tổng số nhân viên
     double totalInventoryValue;// Giá trị tồn kho ước tính (nhập)
-    double estimatedProfit;    // Lợi nhuận ước tính (doanh thu - giá vốn các đơn hoàn tất)
+    double estimatedProfit;    // Lợi nhuận ước tính (doanh thu thuần - giá vốn snapshot)
     std::vector<TopProductStatItem> topProducts;
     std::vector<TimelineStatPoint> timelineStats;   // Thống kê theo dòng thời gian (biểu đồ cột)
     std::vector<BrandShareStatItem> brandStats;     // Thống kê theo thương hiệu (cơ cấu hãng)
 
     DashboardStatsViewModel()
-        : totalRevenue(0.0), totalOrders(0), completedOrders(0),
+        : totalRevenue(0.0), totalVat(0.0), totalGrossRevenue(0.0),
+          totalOrders(0), completedOrders(0),
           pendingOrders(0), shippingOrders(0), cancelledOrders(0),
           totalProducts(0), totalStockQuantity(0), lowStockCount(0),
           totalCustomers(0), totalEmployees(0), totalInventoryValue(0.0),

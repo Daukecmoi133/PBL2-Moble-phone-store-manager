@@ -3,8 +3,10 @@
 
 #include <string>
 #include "Order.h"
+#include "../utils/AppClock.h"
 #include "../utils/DateTime.h"
 #include "../utils/StringHelper.h"
+#include "../utils/TextCodec.h"
 #include "../core/Vector.h"
 
 class ImportReceipt {
@@ -41,10 +43,10 @@ public:
 // ================= IMPLEMENTATION =================
 
 inline ImportReceipt::ImportReceipt() 
-    : id(""), supplierId(""), employeeId(""), importTime(DateTime::now()) {}
+    : id(""), supplierId(""), employeeId(""), importTime(AppClock::now()) {}
 
 inline ImportReceipt::ImportReceipt(std::string id, std::string supId, std::string empId)
-    : id(id), supplierId(supId), employeeId(empId), importTime(DateTime::now()) {}
+    : id(id), supplierId(supId), employeeId(empId), importTime(AppClock::now()) {}
 
 inline std::string ImportReceipt::getID() const { return id; }
 inline std::string ImportReceipt::getSupplierId() const { return supplierId; }
@@ -70,11 +72,15 @@ inline double ImportReceipt::calculateTotal() const {
 }
 
 inline std::string ImportReceipt::toFileString() const {
-    std::string line = id + "|" + supplierId + "|" + employeeId + "|" + importTime.toString() + "|";
+    std::string line = TextCodec::escapeField(id) + "|" +
+                       TextCodec::escapeField(supplierId) + "|" +
+                       TextCodec::escapeField(employeeId) + "|" +
+                       importTime.toString() + "|";
     for (int i = 0; i < details.getSize(); ++i) {
-        line += details[i].getPhoneId() + "," + details[i].getPhoneName() + "," +
+        line += TextCodec::escapeSubField(details[i].getPhoneId()) + "," +
+                TextCodec::escapeSubField(details[i].getPhoneName()) + "," +
                 std::to_string(details[i].getQuantity()) + "," +
-                std::to_string(details[i].getUnitPrice());
+                StringHelper::formatMoneyDisk(details[i].getUnitPrice());
         if (i < details.getSize() - 1) line += ";";
     }
     return line;
@@ -83,29 +89,34 @@ inline std::string ImportReceipt::toFileString() const {
 // Phân tích dòng dữ liệu từ StockReceipts.txt thành đối tượng ImportReceipt
 // Format: id|supplierId|employeeId|importTime|details
 inline ImportReceipt ImportReceipt::fromFileLine(const std::string& line) {
-    Vector<std::string> parts = StringHelper::split(line, '|');
+    Vector<std::string> parts = TextCodec::splitFields(line, '|');
     if (parts.getSize() < 5) return ImportReceipt(); // Dòng không hợp lệ
 
     ImportReceipt rec;
-    rec.setID(StringHelper::trim(parts[0]));
-    rec.setSupplierId(StringHelper::trim(parts[1]));
-    rec.setEmployeeId(StringHelper::trim(parts[2]));
+    rec.setID(StringHelper::trim(TextCodec::unescape(parts[0])));
+    rec.setSupplierId(StringHelper::trim(TextCodec::unescape(parts[1])));
+    rec.setEmployeeId(StringHelper::trim(TextCodec::unescape(parts[2])));
     rec.setImportTime(DateTime::fromString(StringHelper::trim(parts[3])));
 
     // Parse details: phoneId,phoneName,quantity,importPrice;...
-    std::string detailStr = StringHelper::trim(parts[4]);
-    if (!detailStr.empty()) {
-        Vector<std::string> detailTokens = StringHelper::split(detailStr, ';');
+    std::string detailStr = parts[4];
+    if (!StringHelper::trim(detailStr).empty()) {
+        Vector<std::string> detailTokens = TextCodec::splitFields(detailStr, ';');
         for (int i = 0; i < detailTokens.getSize(); ++i) {
-            Vector<std::string> d = StringHelper::split(detailTokens[i], ',');
+            if (StringHelper::trim(detailTokens[i]).empty()) continue;
+            Vector<std::string> d = TextCodec::splitFields(detailTokens[i], ',');
             if (d.getSize() >= 4) {
-                OrderDetail od(
-                    StringHelper::trim(d[0]),
-                    StringHelper::trim(d[1]),
-                    std::stoi(StringHelper::trim(d[2])),
-                    std::stod(StringHelper::trim(d[3]))
-                );
-                rec.addDetail(od);
+                try {
+                    OrderDetail od(
+                        StringHelper::trim(TextCodec::unescape(d[0])),
+                        TextCodec::unescape(d[1]),
+                        std::stoi(StringHelper::trim(d[2])),
+                        std::stod(StringHelper::trim(d[3]))
+                    );
+                    rec.addDetail(od);
+                } catch (...) {
+                    // Bỏ qua chi tiết lỗi
+                }
             }
         }
     }

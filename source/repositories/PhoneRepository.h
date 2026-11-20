@@ -10,6 +10,7 @@
 #include "../utils/StringHelper.h"
 #include "../utils/PathHelper.h"
 #include "../utils/FileHelper.h"
+#include "../utils/SchemaHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu sản phẩm từ/vào tệp tin.
 // Lưu trữ danh sách Phone trên RAM bằng Vector<Phone>.
@@ -35,6 +36,7 @@ public:
     // Ghi toàn bộ danh sách RAM xuống file (ghi đè).
     bool saveToFile() const;
     const std::string& getFilePath() const { return filePath; }
+    const std::string& getSpecificationsFilePath() const { return specificationsFilePath; }
 
     // Trả về toàn bộ danh sách (chỉ đọc / cho phép sửa)
     const Vector<Phone>& getAll() const;
@@ -68,7 +70,7 @@ public:
 inline bool PhoneRepository::createEmptyFile() const {
     return FileHelper::createEmptyFileWithHeader(
         filePath,
-        "id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications"
+        SchemaHelper::PRODUCTS_HEADER
     );
 }
 
@@ -89,17 +91,28 @@ inline bool PhoneRepository::loadFromFile() {
 
     phones.clear();
     std::string line;
-    bool isHeader = true;
+    bool isFirstNonEmpty = true;
     int lineNum = 0;
 
     while (std::getline(file, line)) {
         ++lineNum;
-        line = StringHelper::trim(line);
-        if (line.empty()) continue;
+        if (lineNum == 1) StringHelper::stripUtf8Bom(line);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (StringHelper::trim(line).empty()) continue;
 
-        if (isHeader) {
-            isHeader = false; // Bỏ qua dòng tiêu đề
-            continue;
+        if (isFirstNonEmpty) {
+            isFirstNonEmpty = false;
+            auto kind = SchemaHelper::inspectFirstLine(
+                line,
+                SchemaHelper::PRODUCTS_HEADER,
+                {},
+                filePath,
+                [](const std::string& l) {
+                    return SchemaHelper::looksLikePrefixedRecord(l, "PHN");
+                });
+            if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                continue;
+            }
         }
 
         try {
@@ -149,6 +162,7 @@ inline void PhoneRepository::loadDetailedSpecifications() {
 
     while (std::getline(file, line)) {
         ++lineNum;
+        if (lineNum == 1) StringHelper::stripUtf8Bom(line);
         if (!line.empty() && line.back() == '\r') {
             line.pop_back();
         }
@@ -203,7 +217,7 @@ inline void PhoneRepository::loadDetailedSpecifications() {
 inline bool PhoneRepository::saveToFile() const {
     return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
         // Ghi header đúng với định dạng 9 cột
-        file << "id|phoneName|brand|operatingSystem|importPrice|sellingPrice|quantity|manufacturer|specifications\n";
+        file << SchemaHelper::PRODUCTS_HEADER << "\n";
         for (int i = 0; i < phones.getSize(); ++i) {
             file << phones[i].toFileString() << "\n";
         }
@@ -264,6 +278,11 @@ inline bool PhoneRepository::addPhone(const Phone& phone) {
         phones = backup; // Rollback
         return false;
     }
+    if (!phone.getDetailedSpecifications().empty() && !saveDetailedSpecifications()) {
+        phones = backup;
+        saveToFile();
+        return false;
+    }
     return true;
 }
 
@@ -283,7 +302,11 @@ inline bool PhoneRepository::updatePhone(const Phone& updatedPhone) {
                 phones = backup; // Rollback
                 return false;
             }
-            saveDetailedSpecifications();
+            if (!saveDetailedSpecifications()) {
+                phones = backup;
+                saveToFile();
+                return false;
+            }
             return true;
         }
     }
@@ -315,9 +338,15 @@ inline bool PhoneRepository::deletePhone(const std::string& id) {
         if (phones[i].getID() == id) {
             // FIX LỖI: Luu snapshot RAM de rollback neu ghi file that bai
             Vector<Phone> backup = phones;
+            bool hadDetails = !phones[i].getDetailedSpecifications().empty();
             phones.removeAt(i);
             if (!saveToFile()) {
                 phones = backup; // Rollback
+                return false;
+            }
+            if (hadDetails && !saveDetailedSpecifications()) {
+                phones = backup;
+                saveToFile();
                 return false;
             }
             return true;

@@ -4,9 +4,12 @@
 #include "../utils/FileHelper.h"
 #include "../utils/PathHelper.h"
 #include "../utils/StringHelper.h"
+#include "../utils/TextCodec.h"
+#include "../utils/SchemaHelper.h"
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 struct ProductDescriptionRecord {
@@ -38,19 +41,21 @@ struct ProductDescriptionRecord {
     }
 
     std::string toFileLine() const {
-        return productId + "|" + encodeNewlines(shortHighlights) + "|" + encodeNewlines(description);
+        return TextCodec::escapeField(productId) + "|" +
+               TextCodec::escapeField(shortHighlights) + "|" +
+               TextCodec::escapeField(description);
     }
 
     static bool fromFileLine(const std::string& line, ProductDescriptionRecord& out) {
         if (line.empty() || line[0] == '#') return false;
-        auto tokens = StringHelper::split(line, '|');
+        auto tokens = TextCodec::splitFields(line, '|');
         if (tokens.getSize() < 3) return false;
 
-        out.productId = StringHelper::trim(tokens[0]);
+        out.productId = StringHelper::trim(TextCodec::unescape(tokens[0]));
         if (out.productId == "productId" || out.productId.empty()) return false;
 
-        out.shortHighlights = decodeNewlines(tokens[1]);
-        out.description = decodeNewlines(tokens[2]);
+        out.shortHighlights = TextCodec::unescape(tokens[1]);
+        out.description = TextCodec::unescape(tokens[2]);
         return true;
     }
 };
@@ -59,33 +64,61 @@ class ProductDescriptionRepository {
 private:
     std::string filePath;
     std::vector<ProductDescriptionRecord> records;
+    std::unordered_map<std::string, size_t> indexByProductId;
+
+    void rebuildIndex() {
+        indexByProductId.clear();
+        for (size_t i = 0; i < records.size(); ++i) {
+            indexByProductId[records[i].productId] = i;
+        }
+    }
 
 public:
     ProductDescriptionRepository(std::string path = "data/Device/ProductDescriptions.txt")
         : filePath(path) {}
 
     const std::string& getFilePath() const { return filePath; }
+    std::string getResolvedFilePath() const { return PathHelper::resolveDataPath(filePath); }
+    const std::vector<ProductDescriptionRecord>& getAll() const { return records; }
 
     bool loadFromFile() {
         records.clear();
+        indexByProductId.clear();
         std::string resolved = PathHelper::resolveDataPath(filePath);
         std::ifstream file(resolved);
         if (!file.is_open()) return false;
 
         std::string line;
+        bool isFirstNonEmpty = true;
+        int lineNum = 0;
         while (std::getline(file, line)) {
+            ++lineNum;
+            if (lineNum == 1) StringHelper::stripUtf8Bom(line);
             if (!line.empty() && line.back() == '\r') line.pop_back();
+            if (StringHelper::trim(line).empty()) continue;
+
+            if (isFirstNonEmpty) {
+                isFirstNonEmpty = false;
+                auto kind = SchemaHelper::inspectFirstLine(
+                    line,
+                    SchemaHelper::PRODUCT_DESCRIPTIONS_HEADER,
+                    {},
+                    resolved,
+                    [](const std::string& l) {
+                        return SchemaHelper::looksLikePrefixedRecord(l, "PHN");
+                    });
+                if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                    continue;
+                }
+            }
+
             ProductDescriptionRecord rec;
             if (ProductDescriptionRecord::fromFileLine(line, rec)) {
-                bool exists = false;
-                for (auto& r : records) {
-                    if (r.productId == rec.productId) {
-                        r = rec;
-                        exists = true;
-                        break;
-                    }
-                }
-                if (!exists) {
+                auto it = indexByProductId.find(rec.productId);
+                if (it != indexByProductId.end()) {
+                    records[it->second] = rec;
+                } else {
+                    indexByProductId[rec.productId] = records.size();
                     records.push_back(rec);
                 }
             }
@@ -96,17 +129,26 @@ public:
     bool saveToFile() const {
         std::string resolved = PathHelper::resolveDataPath(filePath);
         return FileHelper::atomicWrite(resolved, [&](std::ofstream& out) {
-            out << "productId|shortHighlights|description\n";
+            out << SchemaHelper::PRODUCT_DESCRIPTIONS_HEADER << "\n";
             for (const auto& r : records) {
                 out << r.toFileLine() << "\n";
             }
-            return true;
+            return out.good();
         });
     }
 
+    const ProductDescriptionRecord* findByProductId(const std::string& productId) const {
+        auto it = indexByProductId.find(productId);
+        if (it != indexByProductId.end() && it->second < records.size()) {
+            return &records[it->second];
+        }
+        return nullptr;
+    }
+
     ProductDescriptionRecord getByProductId(const std::string& productId) const {
-        for (const auto& r : records) {
-            if (r.productId == productId) return r;
+        auto it = indexByProductId.find(productId);
+        if (it != indexByProductId.end() && it->second < records.size()) {
+            return records[it->second];
         }
         ProductDescriptionRecord def;
         def.productId = productId;
@@ -114,22 +156,22 @@ public:
     }
 
     void setByProductId(const ProductDescriptionRecord& record) {
-        for (auto& r : records) {
-            if (r.productId == record.productId) {
-                r = record;
-                return;
-            }
+        auto it = indexByProductId.find(record.productId);
+        if (it != indexByProductId.end() && it->second < records.size()) {
+            records[it->second] = record;
+            return;
         }
+        indexByProductId[record.productId] = records.size();
         records.push_back(record);
     }
 
     void removeByProductId(const std::string& productId) {
-        for (auto it = records.begin(); it != records.end(); ++it) {
-            if (it->productId == productId) {
-                records.erase(it);
-                return;
-            }
+        auto it = indexByProductId.find(productId);
+        if (it == indexByProductId.end() || it->second >= records.size()) {
+            return;
         }
+        records.erase(records.begin() + static_cast<std::ptrdiff_t>(it->second));
+        rebuildIndex();
     }
 };
 

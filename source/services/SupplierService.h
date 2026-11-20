@@ -14,6 +14,8 @@
 #include "../repositories/StockReceiptRepository.h"
 #include "../utils/StringHelper.h"
 #include "../utils/PathHelper.h"
+#include "../utils/SchemaHelper.h"
+#include "../utils/TextCodec.h"
 #include "Check.h"
 #include "PhoneService.h"
 #include "../utils/TransactionCoordinator.h"
@@ -218,12 +220,34 @@ inline bool SupplierService::isProductSuppliedBy(const std::string& supplierId, 
     std::ifstream mf(mappingPath);
     if (mf.is_open()) {
         std::string line;
+        bool isFirstNonEmpty = true;
+        int lineNum = 0;
         while (std::getline(mf, line)) {
+            ++lineNum;
+            if (lineNum == 1) StringHelper::stripUtf8Bom(line);
+            if (!line.empty() && line.back() == '\r') line.pop_back();
             line = StringHelper::trim(line);
             if (line.empty() || line[0] == '#') continue;
-            Vector<std::string> parts = StringHelper::split(line, '|');
+
+            if (isFirstNonEmpty) {
+                isFirstNonEmpty = false;
+                auto kind = SchemaHelper::inspectFirstLine(
+                    line,
+                    SchemaHelper::SUPPLIER_PRODUCTS_HEADER,
+                    {},
+                    mappingPath,
+                    [](const std::string& l) {
+                        return SchemaHelper::looksLikePrefixedRecord(l, "SUP");
+                    });
+                if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                    continue;
+                }
+            }
+
+            Vector<std::string> parts = TextCodec::splitFields(line, '|');
             if (parts.getSize() >= 2) {
-                if (StringHelper::trim(parts[0]) == supplierId && StringHelper::trim(parts[1]) == phoneId) {
+                if (StringHelper::trim(TextCodec::unescape(parts[0])) == supplierId &&
+                    StringHelper::trim(TextCodec::unescape(parts[1])) == phoneId) {
                     return true;
                 }
             }
@@ -359,9 +383,10 @@ inline bool SupplierService::receiveStock(ImportReceipt& receipt, std::string& e
         std::string stockErr;
 
         for (int i = 0; i < details.getSize(); ++i) {
-            if (!phoneService->updateStock(details[i].getPhoneId(),
-                                            details[i].getQuantity(),
-                                            stockErr)) {
+            if (!phoneService->receiveStockWithCost(details[i].getPhoneId(),
+                                                    details[i].getQuantity(),
+                                                    details[i].getUnitPrice(),
+                                                    stockErr)) {
                 allSuccess = false;
                 errorMessage = "Lỗi khi tăng tồn kho sản phẩm [" + details[i].getPhoneName() + "]: " + stockErr;
                 break;

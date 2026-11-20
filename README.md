@@ -86,24 +86,24 @@ Schema, định dạng ngày giờ, quy tắc nhập dữ liệu và các giới
 mô tả trong [data/DATA_FORMAT_GUIDE.md](data/DATA_FORMAT_GUIDE.md). Không sửa
 định dạng hoặc xóa các tệp dữ liệu nếu chưa sao lưu.
 
-## Kiểm thử
+## Kiểm tra mã nguồn
 
-Makefile hiện không định nghĩa target `test` và repository không có
-`tests/unit_tests.cpp`. Vì vậy, `mingw32-make test` không phải lệnh kiểm thử hợp
-lệ của phiên bản hiện tại. Các tệp trong `tests/` là mã kiểm thử/diagnostic
-riêng lẻ, không được Makefile tích hợp thành một bộ test chung.
+Để kiểm tra cú pháp và các cảnh báo C++ trên toàn bộ mã nguồn:
+
+```bash
+mingw32-make warn
+```
 
 ## Cấu trúc dự án
 
 | Đường dẫn | Nội dung |
 |---|---|
 | `main.cpp` | Khởi tạo repository, service, controller và giao diện ứng dụng |
-| `Makefile` | Các target build, run, clean và info |
-| `source/core/` | Các cấu trúc dữ liệu dùng trong dự án |
-| `source/models/` | Các mô hình sản phẩm, nhân viên, khách hàng, đơn hàng và hóa đơn |
-| `source/repositories/` | Đọc và ghi dữ liệu |
-| `source/services/` | Nghiệp vụ ứng dụng |
-| `source/controllers/` | Điều phối giữa service và giao diện; phần triển khai được chia theo nghiệp vụ (sản phẩm, giỏ hàng, đơn hàng, hóa đơn, khách hàng, nhân viên, kho, giảm giá, tài khoản và báo cáo) |
-| `UI/` | Ứng dụng GTK4, màn hình, widget và view model |
-| `data/` | Dữ liệu demo và ảnh sản phẩm |
-| `tests/` | Mã kiểm thử và chẩn đoán riêng lẻ |
+| `Makefile` | Các target build, run, clean, info và warn (`-Wall -Wextra`) |
+| `source/core/` | Cấu trúc dữ liệu tự cài đặt (`Vector`, `HashTable`, `BST`, `LinkedList`) |
+| `source/models/` | Mô hình thực thể: sản phẩm, nhân viên, khách hàng, đơn hàng, hóa đơn |
+| `source/repositories/` | Tầng lưu trữ dữ liệu dạng tệp văn bản UTF-8 kèm bảo vệ ghi an toàn (atomic write) |
+| `source/services/` | Nghiệp vụ ứng dụng, mã hóa mật khẩu OpenSSL SHA-256, kiểm soát quyền |
+| `source/controllers/` | Điều phối giữa service và giao diện; module hóa theo từng phân hệ nghiệp vụ |
+| `UI/` | Giao diện đồ họa GTK4, responsive layout, CSS styling, ViewModel |
+| `data/` | Dữ liệu khởi tạo và ảnh sản phẩm |

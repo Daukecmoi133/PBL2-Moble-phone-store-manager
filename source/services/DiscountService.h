@@ -8,6 +8,8 @@
 #include "../core/Vector.h"
 #include "../core/HashTable.h"
 #include "../repositories/DiscountRepository.h"
+#include "../utils/AppClock.h"
+#include "../utils/PricingCalculator.h"
 #include "../utils/StringHelper.h"
 #include "Check.h"
 
@@ -19,6 +21,7 @@ class DiscountService {
 private:
     DiscountRepository& repo;
     HashTable<std::string, DiscountCode> codeTable; // Tra cứu O(1) theo code
+    ReferenceChecker* refChecker;
 
     // Tái cấu trúc bảng băm từ repository
     void rebuildIndices();
@@ -27,7 +30,8 @@ private:
     bool validateDiscount(const DiscountCode& dc, std::string& errorMessage) const;
 
 public:
-    DiscountService(DiscountRepository& repository);
+    DiscountService(DiscountRepository& repository, ReferenceChecker* checker = nullptr);
+    void setReferenceChecker(ReferenceChecker* checker) { refChecker = checker; }
 
     void reload() { repo.loadFromFile(); rebuildIndices(); }
     DiscountRepository& getRepository() { return repo; }
@@ -39,24 +43,29 @@ public:
     DiscountCode* getByCode(const std::string& code);
     const DiscountCode* getByCode(const std::string& code) const;
 
-    // Lọc danh sách chỉ gồm mã còn hiệu lực
-    Vector<DiscountCode> getValidCodes() const;
+    // Lọc danh sách chỉ gồm mã còn hiệu lực tại thời điểm now
+    Vector<DiscountCode> getValidCodes(const DateTime& now = AppClock::now()) const;
 
     // ==== NGHIỆP VỤ KIỂM TRA VOUCHER TRƯỚC KHI ÁP DỤNG ====
 
     // Kiểm tra voucher có thể áp dụng cho đơn hàng với giá trị orderTotal không
     // errorMessage ghi rõ lý do từ chối nếu false
-    bool validateCode(const std::string& code, double orderTotal, std::string& errorMessage) const;
+    bool validateCode(const std::string& code, double orderTotal, std::string& errorMessage,
+                      const DateTime& now = AppClock::now()) const;
 
     // Tính số tiền được giảm (không làm thay đổi usedCount)
-    double calculateDiscountAmount(const std::string& code, double orderTotal) const;
+    double calculateDiscountAmount(const std::string& code, double orderTotal,
+                                   const DateTime& now = AppClock::now()) const;
 
-    // ==== NGHIỆP VỤ ÁP DỤNG VOUCHER (commit giao dịch) ====
+    // ==== NGHIỆP VỤ ÁP DỤNG / HOÀN LẠI VOUCHER ====
 
     // Tăng usedCount khi giao dịch có áp dụng voucher được commit thành công
-    // Chỉ gọi sau khi Order/Invoice đã lưu thành công
     bool consumeUsage(const std::string& code, std::string& errorMessage);
     bool consumeUsage(const std::string& code);
+
+    // Hoàn trả 1 lượt sử dụng khi đơn hàng áp voucher bị hủy trước khi hoàn tất (D4)
+    bool releaseUsage(const std::string& code, std::string& errorMessage);
+    bool releaseUsage(const std::string& code);
 
     // ==== CRUD QUẢN LÝ MÃ GIẢM GIÁ ====
 
@@ -116,15 +125,17 @@ inline bool DiscountService::validateDiscount(const DiscountCode& dc, std::strin
         errorMessage = "Ngay het han khong hop le theo lich!";
         return false;
     }
-    if (dc.getEndDate() < dc.getStartDate()) {
+    DateTime startDay(dc.getStartDate().year, dc.getStartDate().month, dc.getStartDate().day);
+    DateTime endDay(dc.getEndDate().year, dc.getEndDate().month, dc.getEndDate().day);
+    if (endDay < startDay) {
         errorMessage = "Ngay het han phai sau ngay bat dau hieu luc!";
         return false;
     }
     return true;
 }
 
-inline DiscountService::DiscountService(DiscountRepository& repository)
-    : repo(repository) {
+inline DiscountService::DiscountService(DiscountRepository& repository, ReferenceChecker* checker)
+    : repo(repository), refChecker(checker) {
     rebuildIndices();
 }
 
@@ -146,9 +157,8 @@ inline const DiscountCode* DiscountService::getByCode(const std::string& code) c
     return repo.findByCode(cached->getCode());
 }
 
-// Lọc chỉ các mã còn hiệu lực tại thời điểm hiện tại
-inline Vector<DiscountCode> DiscountService::getValidCodes() const {
-    DateTime now = DateTime::now();
+// Lọc chỉ các mã còn hiệu lực tại thời điểm now
+inline Vector<DiscountCode> DiscountService::getValidCodes(const DateTime& now) const {
     Vector<DiscountCode> result;
     const Vector<DiscountCode>& list = repo.getAll();
     for (int i = 0; i < list.getSize(); ++i) {
@@ -162,32 +172,33 @@ inline Vector<DiscountCode> DiscountService::getValidCodes() const {
 // Kiểm tra voucher có thể áp dụng cho đơn hàng giá trị orderTotal không
 // Trả về false kèm lý do nếu không hợp lệ
 inline bool DiscountService::validateCode(const std::string& code, double orderTotal,
-                                          std::string& errorMessage) const {
+                                          std::string& errorMessage,
+                                          const DateTime& now) const {
+    const std::string trimmed = StringHelper::trim(code);
     if (orderTotal < 0) {
         errorMessage = "Gia tri don hang khong hop le!";
         return false;
     }
 
-    const DiscountCode* dc = getByCode(code);
+    const DiscountCode* dc = getByCode(trimmed);
     if (dc == nullptr) {
-        errorMessage = "Ma voucher [" + code + "] khong ton tai!";
+        errorMessage = "Ma voucher [" + trimmed + "] khong ton tai!";
         return false;
     }
 
-    DateTime now = DateTime::now();
     if (!dc->isValid(now)) {
         if (now < dc->getStartDate()) {
-            errorMessage = "Voucher [" + code + "] chua den ngay hieu luc!";
+            errorMessage = "Voucher [" + trimmed + "] chua den ngay hieu luc!";
         } else if (now > dc->getEndDate()) {
-            errorMessage = "Voucher [" + code + "] da het han!";
+            errorMessage = "Voucher [" + trimmed + "] da het han!";
         } else {
-            errorMessage = "Voucher [" + code + "] da het luot su dung!";
+            errorMessage = "Voucher [" + trimmed + "] da het luot su dung!";
         }
         return false;
     }
 
-    if (!dc->isApplicable(orderTotal)) {
-        errorMessage = "Don hang chua dat gia tri toi thieu de ap dung voucher [" + code + "]!";
+    if (!dc->isApplicable(orderTotal, now)) {
+        errorMessage = "Don hang chua dat gia tri toi thieu de ap dung voucher [" + trimmed + "]!";
         return false;
     }
 
@@ -195,36 +206,30 @@ inline bool DiscountService::validateCode(const std::string& code, double orderT
 }
 
 // Tính số tiền được giảm - KHÔNG thay đổi usedCount
-inline double DiscountService::calculateDiscountAmount(const std::string& code, double orderTotal) const {
+inline double DiscountService::calculateDiscountAmount(const std::string& code, double orderTotal,
+                                                       const DateTime& now) const {
     const DiscountCode* dc = getByCode(code);
     if (dc == nullptr) return 0.0;
-    return dc->calculateDiscount(orderTotal);
+    return dc->calculateDiscount(orderTotal, now);
 }
 
 // Tăng usedCount sau khi giao dịch commit thành công
 // Chỉ gọi sau khi Order/Invoice đã lưu thành công (không gọi nếu giao dịch fail)
 inline bool DiscountService::consumeUsage(const std::string& code, std::string& errorMessage) {
-    DiscountCode* dc = repo.findByCode(StringHelper::trim(code));
+    const std::string trimmed = StringHelper::trim(code);
+    DiscountCode* dc = repo.findByCode(trimmed);
     if (dc == nullptr) {
-        errorMessage = "Khong tim thay voucher [" + code + "] de cap nhat luot dung!";
+        errorMessage = "Khong tim thay voucher [" + trimmed + "] de cap nhat luot dung!";
         return false;
     }
 
     if (dc->getUsedCount() >= dc->getMaxUsage()) {
-        errorMessage = "Voucher [" + code + "] da het luot su dung!";
+        errorMessage = "Voucher [" + trimmed + "] da het luot su dung!";
         return false;
     }
 
     dc->increaseUsage();
     if (!repo.saveToFile()) {
-        // Rollback trong RAM (giảm lại usedCount)
-        // increaseUsage đã tăng, ta cần rollback
-        // Tạo bản sao đã rollback
-        DiscountCode rolled = *dc;
-        // Không có decreaseUsage() → trực tiếp cập nhật object qua constructor
-        std::string err;
-        dc->increaseUsage(); // cố ý tăng thêm để ghi chú cần có method rollback
-        // Thực tế: load lại từ file để rollback
         repo.loadFromFile();
         rebuildIndices();
         errorMessage = "Loi khi luu trang thai voucher! Da hoan nguyen.";
@@ -232,13 +237,41 @@ inline bool DiscountService::consumeUsage(const std::string& code, std::string& 
     }
 
     rebuildIndices();
-    errorMessage = "Da ghi nhan luot su dung voucher [" + code + "].";
+    errorMessage = "Da ghi nhan luot su dung voucher [" + trimmed + "].";
     return true;
 }
 
 inline bool DiscountService::consumeUsage(const std::string& code) {
     std::string err;
     return consumeUsage(code, err);
+}
+
+inline bool DiscountService::releaseUsage(const std::string& code, std::string& errorMessage) {
+    const std::string trimmed = StringHelper::trim(code);
+    if (trimmed.empty()) {
+        return true;
+    }
+    DiscountCode* dc = repo.findByCode(trimmed);
+    if (dc == nullptr || dc->getUsedCount() <= 0) {
+        return true;
+    }
+
+    dc->decreaseUsage();
+    if (!repo.saveToFile()) {
+        repo.loadFromFile();
+        rebuildIndices();
+        errorMessage = "Loi khi hoan tra luot su dung voucher [" + trimmed + "]!";
+        return false;
+    }
+
+    rebuildIndices();
+    errorMessage = "Da hoan tra 1 luot su dung voucher [" + trimmed + "].";
+    return true;
+}
+
+inline bool DiscountService::releaseUsage(const std::string& code) {
+    std::string err;
+    return releaseUsage(code, err);
 }
 
 // Thêm mã giảm giá mới
@@ -297,8 +330,14 @@ inline bool DiscountService::updateDiscount(const DiscountCode& updated) {
 
 // Xóa mã giảm giá
 inline bool DiscountService::deleteDiscount(const std::string& code, std::string& errorMessage) {
-    if (!codeTable.contains(code)) {
+    const DiscountCode* existing = getByCode(code);
+    if (existing == nullptr) {
         errorMessage = "Khong tim thay ma voucher [" + code + "] de xoa!";
+        return false;
+    }
+
+    if (existing->getUsedCount() > 0 || (refChecker != nullptr && refChecker->isDiscountReferenced(code))) {
+        errorMessage = "Khong the xoa ma giam gia [" + code + "] vi da co luot su dung hoac don hang/hoa don tham chieu!";
         return false;
     }
 

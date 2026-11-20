@@ -1,7 +1,9 @@
 #ifndef PRODUCT_IMAGE_REPOSITORY_H
 #define PRODUCT_IMAGE_REPOSITORY_H
 
+#include <algorithm>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <fstream>
 #include <sstream>
@@ -10,6 +12,8 @@
 #include "../utils/StringHelper.h"
 #include "../utils/PathHelper.h"
 #include "../utils/FileHelper.h"
+#include "../utils/TextCodec.h"
+#include "../utils/SchemaHelper.h"
 
 /**
  * @file ProductImageRepository.h
@@ -26,7 +30,10 @@ struct ProductImageRecord {
     int displayOrder = 1;
 
     std::string toFileLine() const {
-        return productId + "|" + imagePath + "|" + std::to_string(isPrimary) + "|" + std::to_string(displayOrder);
+        return TextCodec::escapeField(productId) + "|" +
+               TextCodec::escapeField(imagePath) + "|" +
+               std::to_string(isPrimary) + "|" +
+               std::to_string(displayOrder);
     }
 
     static bool fromFileLine(const std::string& line, ProductImageRecord& out) {
@@ -34,19 +41,27 @@ struct ProductImageRecord {
         if (trimmed.empty()) return false;
 
         // Bỏ qua dòng tiêu đề
-        if (trimmed.rfind("productId", 0) == 0 || trimmed.rfind("id link", 0) == 0) {
+        if (trimmed.rfind("productId|", 0) == 0 || trimmed == "productId" || trimmed == "id link") {
             return false;
         }
 
         // Định dạng chuẩn dấu pipe: productId|imagePath|isPrimary|displayOrder
-        if (trimmed.find('|') != std::string::npos) {
-            Vector<std::string> parts = StringHelper::split(trimmed, '|');
+        if (line.find('|') != std::string::npos) {
+            Vector<std::string> parts = TextCodec::splitFields(line, '|');
             if (parts.getSize() >= 2) {
-                out.productId = StringHelper::trim(parts[0]);
-                out.imagePath = StringHelper::trim(parts[1]);
-                out.isPrimary = (parts.getSize() >= 3) ? std::stoi(StringHelper::trim(parts[2])) : 1;
-                out.displayOrder = (parts.getSize() >= 4) ? std::stoi(StringHelper::trim(parts[3])) : 1;
-                return true;
+                try {
+                    out.productId = StringHelper::trim(TextCodec::unescape(parts[0]));
+                    out.imagePath = TextCodec::unescape(parts[1]);
+                    out.isPrimary = (parts.getSize() >= 3 && !StringHelper::trim(parts[2]).empty())
+                                        ? std::stoi(StringHelper::trim(parts[2]))
+                                        : 1;
+                    out.displayOrder = (parts.getSize() >= 4 && !StringHelper::trim(parts[3]).empty())
+                                           ? std::stoi(StringHelper::trim(parts[3]))
+                                           : 1;
+                    return !out.productId.empty();
+                } catch (...) {
+                    return false;
+                }
             }
         }
 
@@ -90,15 +105,25 @@ class ProductImageRepository {
 private:
     std::string filePath;
     std::vector<ProductImageRecord> records;
+    std::unordered_map<std::string, std::vector<size_t>> indexByProductId;
+
+    void rebuildIndex() {
+        indexByProductId.clear();
+        for (size_t i = 0; i < records.size(); ++i) {
+            indexByProductId[records[i].productId].push_back(i);
+        }
+    }
 
 public:
     ProductImageRepository(std::string path = "data/Device/ProductImage.txt")
         : filePath(path) {}
 
     const std::string& getFilePath() const { return filePath; }
+    std::string getResolvedFilePath() const { return PathHelper::resolveDataPath(filePath); }
 
     bool loadFromFile() {
         records.clear();
+        indexByProductId.clear();
         std::string resolvedPath = PathHelper::resolveDataPath(filePath);
         std::ifstream file(resolvedPath);
         if (!file.is_open()) {
@@ -106,18 +131,43 @@ public:
         }
 
         std::string line;
+        bool isFirstNonEmpty = true;
+        int lineNum = 0;
         while (std::getline(file, line)) {
+            ++lineNum;
+            if (lineNum == 1) StringHelper::stripUtf8Bom(line);
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            if (StringHelper::trim(line).empty()) continue;
+
+            if (isFirstNonEmpty) {
+                isFirstNonEmpty = false;
+                auto kind = SchemaHelper::inspectFirstLine(
+                    line,
+                    SchemaHelper::PRODUCT_IMAGES_HEADER,
+                    {SchemaHelper::PRODUCT_IMAGES_V1_HEADER},
+                    resolvedPath,
+                    [](const std::string& l) {
+                        return SchemaHelper::looksLikePrefixedRecord(l, "PHN") ||
+                               (!l.empty() && std::isdigit(static_cast<unsigned char>(l[0])));
+                    });
+                if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                    continue;
+                }
+            }
+
             ProductImageRecord rec;
             if (ProductImageRecord::fromFileLine(line, rec)) {
+                auto& bucket = indexByProductId[rec.productId];
                 bool exists = false;
-                for (auto& r : records) {
-                    if (r.productId == rec.productId && r.imagePath == rec.imagePath) {
-                        r = rec;
+                for (size_t idx : bucket) {
+                    if (records[idx].imagePath == rec.imagePath) {
+                        records[idx] = rec;
                         exists = true;
                         break;
                     }
                 }
                 if (!exists) {
+                    bucket.push_back(records.size());
                     records.push_back(rec);
                 }
             }
@@ -128,19 +178,23 @@ public:
     bool saveToFile() const {
         std::string resolvedPath = PathHelper::resolveDataPath(filePath);
         return FileHelper::atomicWrite(resolvedPath, [&](std::ofstream& out) {
-            out << "productId|imagePath|isPrimary|displayOrder\n";
+            out << SchemaHelper::PRODUCT_IMAGES_HEADER << "\n";
             for (const auto& r : records) {
                 out << r.toFileLine() << "\n";
             }
-            return true;
+            return out.good();
         });
     }
 
     std::vector<ProductImageRecord> getImagesForProduct(const std::string& productId) const {
         std::vector<ProductImageRecord> result;
-        for (const auto& r : records) {
-            if (r.productId == productId) {
-                result.push_back(r);
+        auto it = indexByProductId.find(productId);
+        if (it != indexByProductId.end()) {
+            result.reserve(it->second.size());
+            for (size_t idx : it->second) {
+                if (idx < records.size()) {
+                    result.push_back(records[idx]);
+                }
             }
         }
         std::sort(result.begin(), result.end(), [](const ProductImageRecord& a, const ProductImageRecord& b) {
@@ -162,31 +216,45 @@ public:
         for (const auto& img : imgs) {
             records.push_back(img);
         }
+        rebuildIndex();
     }
 
     std::string getImagePath(const std::string& productId) const {
-        // Ưu tiên ảnh chính (isPrimary = 1)
-        for (const auto& r : records) {
-            if (r.productId == productId && r.isPrimary == 1) return r.imagePath;
-        }
-        // Fallback ảnh đầu tiên
-        for (const auto& r : records) {
-            if (r.productId == productId) return r.imagePath;
-            // Hỗ trợ tra cứu tương đương giữa "PHN-000101" và "101"
-            if (productId.rfind("PHN-", 0) == 0) {
-                try {
-                    int num = std::stoi(productId.substr(4));
-                    if (r.productId == std::to_string(num)) return r.imagePath;
-                } catch (...) {}
+        auto lookupBucket = [&](const std::string& key) -> std::string {
+            auto it = indexByProductId.find(key);
+            if (it == indexByProductId.end() || it->second.empty()) return "";
+            for (size_t idx : it->second) {
+                if (idx < records.size() && records[idx].isPrimary == 1) {
+                    return records[idx].imagePath;
+                }
             }
+            for (size_t idx : it->second) {
+                if (idx < records.size()) {
+                    return records[idx].imagePath;
+                }
+            }
+            return "";
+        };
+
+        std::string found = lookupBucket(productId);
+        if (!found.empty()) return found;
+
+        // Hỗ trợ tra cứu tương đương giữa "PHN-000101" và "101"
+        if (productId.rfind("PHN-", 0) == 0) {
+            try {
+                int num = std::stoi(productId.substr(4));
+                return lookupBucket(std::to_string(num));
+            } catch (...) {}
         }
         return "";
     }
 
     bool setImagePath(const std::string& productId, const std::string& relativePath) {
-        for (auto& r : records) {
-            if (r.productId == productId) {
-                r.imagePath = relativePath;
+        auto it = indexByProductId.find(productId);
+        if (it != indexByProductId.end() && !it->second.empty()) {
+            size_t idx = it->second.front();
+            if (idx < records.size()) {
+                records[idx].imagePath = relativePath;
                 return true;
             }
         }
@@ -195,18 +263,29 @@ public:
         rec.imagePath = relativePath;
         rec.isPrimary = 1;
         rec.displayOrder = 1;
+        indexByProductId[productId].push_back(records.size());
         records.push_back(rec);
         return true;
     }
 
     bool removeImagePath(const std::string& productId) {
-        for (auto it = records.begin(); it != records.end(); ++it) {
-            if (it->productId == productId) {
-                records.erase(it);
-                return true;
+        auto it = indexByProductId.find(productId);
+        if (it == indexByProductId.end() || it->second.empty()) {
+            return false;
+        }
+        bool removed = false;
+        for (auto recIt = records.begin(); recIt != records.end();) {
+            if (recIt->productId == productId) {
+                recIt = records.erase(recIt);
+                removed = true;
+            } else {
+                ++recIt;
             }
         }
-        return false;
+        if (removed) {
+            rebuildIndex();
+        }
+        return removed;
     }
 
     const std::vector<ProductImageRecord>& getAll() const { return records; }

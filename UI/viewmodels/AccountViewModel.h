@@ -9,6 +9,7 @@
 struct AccountItemViewModel {
     std::string id;
     std::string username;
+    std::string phone; // Số điện thoại (khóa định danh tài khoản)
     RoleType role;
     std::string roleName;
     bool isActive;

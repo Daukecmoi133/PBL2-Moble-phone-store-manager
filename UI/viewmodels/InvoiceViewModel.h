@@ -19,12 +19,18 @@ struct InvoiceItemViewModel {
     std::string createTime;
     double subtotal;
     double discountAmount;
+    std::string discountCode;
+    double netRevenue;
+    double vatRate;
+    double vatAmount;
+    bool isLegacyNoVat;
     double total;
     std::vector<OrderDetailItemViewModel> details;
 
     InvoiceItemViewModel()
         : paymentMethod(PaymentMethod::CASH), subtotal(0.0),
-          discountAmount(0.0), total(0.0) {}
+          discountAmount(0.0), netRevenue(0.0),
+          vatRate(0.0), vatAmount(0.0), isLegacyNoVat(false), total(0.0) {}
 };
 
 #endif // INVOICE_VIEWMODEL_H

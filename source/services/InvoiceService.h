@@ -10,9 +10,12 @@
 #include "../models/Order.h"
 #include "../repositories/InvoiceRepository.h"
 #include "../repositories/OrderRepository.h"
+#include "../utils/AppClock.h"
 #include "../utils/IdGenerator.h"
+#include "../utils/PricingCalculator.h"
 #include "../utils/StringHelper.h"
 #include "Check.h"
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -155,19 +158,34 @@ inline bool InvoiceService::createInvoiceFromOrder(
     return false;
   }
 
-  double subtotal = order->calculateTotal();
+  double subtotal = order->calculateSubtotal();
   if (discountAmount > subtotal) {
     errorMessage = "So tien chiet khau khong the vuot gia tri don hang!";
     return false;
   }
 
-  // Tạo hóa đơn từ đơn hàng
+  // Tạo hóa đơn từ đơn hàng (kế thừa details kèm unitCost snapshot và VAT từ Order;
+  // chứng từ cũ pre-VAT giữ nguyên vatApplied = false, KHÔNG tính lại VAT)
   std::string invId;
   if (!generateInvoiceId(invId, errorMessage))
     return false;
   Invoice inv(invId, orderId, order->getCustomerId(), employeeId, payMethod,
-              order->getDetails(), discountAmount);
-  inv.setCreateTime(DateTime::now());
+              order->getDetails(), discountAmount, order->getDiscountCode());
+  inv.setCreateTime(AppClock::now());
+
+  if (order->isVatApplied()) {
+    if (std::fabs(discountAmount - order->getDiscountAmount()) < 0.5) {
+      inv.setDiscountAmount(order->getDiscountAmount());
+      inv.setVat(order->getVatRate(), order->getVatAmount(), true);
+    } else {
+      PricingBreakdown pb = PricingCalculator::computeFromDiscountAmount(
+          subtotal, discountAmount, order->getVatRate());
+      inv.setDiscountAmount(pb.discountAmount);
+      inv.setVat(pb.vatRate, pb.vatAmount, true);
+    }
+  } else {
+    inv.setVat(0.0, 0.0, false);
+  }
 
   if (!invoiceRepo.addInvoice(inv)) {
     errorMessage = "Loi khi luu hoa don vao co so du lieu!";

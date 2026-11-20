@@ -142,4 +142,44 @@ enum class DiscountType {
     FIXED_AMOUNT    // Giảm số tiền cố định
 };
 
+// TRẠNG THÁI HỒ SƠ BẢO HÀNH (WARRANTY POLICY)
+enum class WarrantyPolicyStatus {
+    ACTIVE,         // Đang hiệu lực
+    EXPIRED,        // Hết hạn bảo hành
+    VOIDED          // Bị từ chối / vô hiệu hóa
+};
+
+inline std::string warrantyPolicyStatusToString(WarrantyPolicyStatus status) {
+    switch (status) {
+        case WarrantyPolicyStatus::ACTIVE: return "Đang hiệu lực";
+        case WarrantyPolicyStatus::EXPIRED: return "Hết hạn";
+        case WarrantyPolicyStatus::VOIDED: return "Vô hiệu hóa";
+        default: return "Không rõ";
+    }
+}
+
+// TRẠNG THÁI YÊU CẦU BẢO HÀNH (WARRANTY STATUS) - thứ tự mã file 0..3
+enum class WarrantyStatus {
+    RECEIVED,       // 0: Mới tiếp nhận
+    PROCESSING,     // 1: Đang xử lý
+    RESOLVED,       // 2: Đã hoàn tất
+    REJECTED        // 3: Từ chối bảo hành
+};
+
+inline std::string warrantyStatusToString(WarrantyStatus status) {
+    switch (status) {
+        case WarrantyStatus::RECEIVED: return "Mới tiếp nhận";
+        case WarrantyStatus::PROCESSING: return "Đang xử lý";
+        case WarrantyStatus::RESOLVED: return "Đã hoàn tất";
+        case WarrantyStatus::REJECTED: return "Từ chối bảo hành";
+        default: return "Chưa rõ";
+    }
+}
+
+// Alias tương thích ngược
+using WarrantyRequestStatus = WarrantyStatus;
+inline std::string warrantyRequestStatusToString(WarrantyRequestStatus status) {
+    return warrantyStatusToString(status);
+}
+
 #endif // COMMON_H

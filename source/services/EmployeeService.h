@@ -10,6 +10,7 @@
 #include "../repositories/EmployeeRepository.h"
 #include "../utils/IdGenerator.h"
 #include "../utils/StringHelper.h"
+#include "Check.h"
 
 // Tầng Service: Chịu trách nhiệm toàn bộ nghiệp vụ nhân sự và xác thực tài khoản
 class EmployeeService {
@@ -17,9 +18,12 @@ private:
     EmployeeRepository& repo;
     HashTable<std::string, Employee*> usernameTable; // Tra cứu O(1) theo tên đăng nhập
     HashTable<std::string, Employee*> idTable;       // Tra cứu O(1) theo mã nhân viên
+    HashTable<std::string, Employee*> phoneTable;    // Tra cứu O(1) theo số điện thoại (khóa tài khoản)
+    ReferenceChecker* refChecker;
 
 public:
-    EmployeeService(EmployeeRepository& repository);
+    EmployeeService(EmployeeRepository& repository, ReferenceChecker* checker = nullptr);
+    void setReferenceChecker(ReferenceChecker* checker) { refChecker = checker; }
 
     void rebuildIndices();
     void reload() { repo.loadFromFile(); rebuildIndices(); }
@@ -27,8 +31,8 @@ public:
     const EmployeeRepository& getRepository() const { return repo; }
     const Vector<Employee*>& getAllEmployees() const;
 
-    // Xác thực đăng nhập nhân viên với độ phức tạp O(1) (tài khoản phải đang hoạt động)
-    Employee* authenticate(const std::string& username, const std::string& password);
+    // Xác thực đăng nhập nhân viên theo Username hoặc Số điện thoại (khóa) với độ phức tạp O(1) (tài khoản phải đang hoạt động)
+    Employee* authenticate(const std::string& usernameOrPhone, const std::string& password);
 
     // ==== QUẢN LÝ THÔNG TIN XÁC THỰC (ghi xuống Employee.txt, hoàn nguyên RAM nếu ghi thất bại) ====
 
@@ -47,6 +51,9 @@ public:
 
     Employee* getEmployeeByUsername(const std::string& username);
     Employee* getEmployeeById(const std::string& id);
+    Employee* getEmployeeByPhone(const std::string& phone);
+    bool phoneExists(const std::string& phone) const;
+    static bool validatePhone(const std::string& phone, std::string& errorMessage);
 
     // Nghiệp vụ thêm nhân viên mới: kiểm tra tính duy nhất của username & id
     bool addEmployee(Employee* emp, std::string& errorMessage);
@@ -61,18 +68,30 @@ public:
 
 // ================= IMPLEMENTATION =================
 
-inline EmployeeService::EmployeeService(EmployeeRepository& repository) : repo(repository) {
+inline EmployeeService::EmployeeService(EmployeeRepository& repository, ReferenceChecker* checker)
+    : repo(repository), refChecker(checker) {
     rebuildIndices();
 }
 
 inline void EmployeeService::rebuildIndices() {
     usernameTable.clear();
     idTable.clear();
+    phoneTable.clear();
     const Vector<Employee*>& list = repo.getAll();
     for (int i = 0; i < list.getSize(); ++i) {
         if (list[i] != nullptr) {
-            usernameTable.insert(list[i]->getAccount().getUsername(), list[i]);
-            idTable.insert(list[i]->getID(), list[i]);
+            std::string uname = StringHelper::trim(list[i]->getAccount().getUsername());
+            std::string id = StringHelper::trim(list[i]->getID());
+            std::string phone = StringHelper::trim(list[i]->getPhoneNumber());
+            if (!uname.empty() && usernameTable.find(uname) == nullptr) {
+                usernameTable.insert(uname, list[i]);
+            }
+            if (!id.empty() && idTable.find(id) == nullptr) {
+                idTable.insert(id, list[i]);
+            }
+            if (!phone.empty() && phoneTable.find(phone) == nullptr) {
+                phoneTable.insert(phone, list[i]);
+            }
         }
     }
 }
@@ -81,13 +100,16 @@ inline const Vector<Employee*>& EmployeeService::getAllEmployees() const {
     return repo.getAll();
 }
 
-inline Employee* EmployeeService::authenticate(const std::string& username, const std::string& password) {
-    const std::string trimmedUname = StringHelper::trim(username);
-    if (trimmedUname.empty() || password.empty()) return nullptr;
+inline Employee* EmployeeService::authenticate(const std::string& usernameOrPhone, const std::string& password) {
+    const std::string trimmedKey = StringHelper::trim(usernameOrPhone);
+    if (trimmedKey.empty() || password.empty()) return nullptr;
 
-    Employee** ptr = usernameTable.find(trimmedUname);
+    Employee** ptr = usernameTable.find(trimmedKey);
+    if (ptr == nullptr || *ptr == nullptr) {
+        ptr = phoneTable.find(trimmedKey); // Hỗ trợ đăng nhập bằng Số điện thoại làm khóa
+    }
     if (ptr != nullptr && *ptr != nullptr) {
-        if ((*ptr)->getAccount().authenticate(trimmedUname, password)) {
+        if ((*ptr)->getAccount().isActive() && (*ptr)->getAccount().verifyPassword(password)) {
             return *ptr;
         }
     }
@@ -164,13 +186,50 @@ inline bool EmployeeService::migrateLegacyCredentials(int& migratedCount, std::s
 }
 
 inline Employee* EmployeeService::getEmployeeByUsername(const std::string& username) {
-    Employee** ptr = usernameTable.find(username);
+    Employee** ptr = usernameTable.find(StringHelper::trim(username));
     return ptr ? *ptr : nullptr;
 }
 
 inline Employee* EmployeeService::getEmployeeById(const std::string& id) {
-    Employee** ptr = idTable.find(id);
+    Employee** ptr = idTable.find(StringHelper::trim(id));
     return ptr ? *ptr : nullptr;
+}
+
+inline Employee* EmployeeService::getEmployeeByPhone(const std::string& phone) {
+    std::string trimmedPhone = StringHelper::trim(phone);
+    if (trimmedPhone.empty()) return nullptr;
+    Employee** ptr = phoneTable.find(trimmedPhone);
+    return (ptr != nullptr && *ptr != nullptr) ? *ptr : repo.findByPhone(trimmedPhone);
+}
+
+inline bool EmployeeService::phoneExists(const std::string& phone) const {
+    std::string trimmedPhone = StringHelper::trim(phone);
+    if (trimmedPhone.empty()) return false;
+    return const_cast<HashTable<std::string, Employee*>&>(phoneTable).contains(trimmedPhone) ||
+           repo.existsByPhone(trimmedPhone);
+}
+
+inline bool EmployeeService::validatePhone(const std::string& phone, std::string& errorMessage) {
+    std::string p = StringHelper::trim(phone);
+    if (p.empty()) {
+        errorMessage = "Số điện thoại không được để trống!";
+        return false;
+    }
+    if (p.length() < 10 || p.length() > 11) {
+        errorMessage = "Số điện thoại phải có 10-11 chữ số!";
+        return false;
+    }
+    if (p[0] != '0') {
+        errorMessage = "Số điện thoại phải bắt đầu bằng 0!";
+        return false;
+    }
+    for (char c : p) {
+        if (c < '0' || c > '9') {
+            errorMessage = "Số điện thoại chỉ được chứa chữ số!";
+            return false;
+        }
+    }
+    return true;
 }
 
 inline bool EmployeeService::addEmployee(Employee* emp, std::string& errorMessage) {
@@ -179,9 +238,18 @@ inline bool EmployeeService::addEmployee(Employee* emp, std::string& errorMessag
         return false;
     }
 
-    std::string uname = emp->getAccount().getUsername();
+    std::string uname = StringHelper::trim(emp->getAccount().getUsername());
     if (uname.empty()) {
         errorMessage = "Tên đăng nhập không được để trống!";
+        return false;
+    }
+
+    std::string phone = StringHelper::trim(emp->getPhoneNumber());
+    if (phone.empty()) {
+        errorMessage = "Số điện thoại của nhân viên không được để trống!";
+        return false;
+    }
+    if (!validatePhone(phone, errorMessage)) {
         return false;
     }
 
@@ -225,6 +293,11 @@ inline bool EmployeeService::addEmployee(Employee* emp, std::string& errorMessag
         return false;
     }
 
+    if (phoneTable.contains(phone)) {
+        errorMessage = "Số điện thoại [" + phone + "] đã được sử dụng bởi nhân viên khác!";
+        return false;
+    }
+
     if (idTable.contains(emp->getID())) {
         errorMessage = "Mã nhân viên [" + emp->getID() + "] đã tồn tại!";
         return false;
@@ -242,6 +315,7 @@ inline bool EmployeeService::addEmployee(Employee* emp, std::string& errorMessag
     }
 
     usernameTable.insert(uname, emp);
+    phoneTable.insert(phone, emp);
     idTable.insert(emp->getID(), emp);
     return true;
 }
@@ -260,6 +334,27 @@ inline bool EmployeeService::updateEmployee(Employee* emp, std::string& errorMes
         errorMessage = "Không tìm thấy nhân viên có mã [" + emp->getID() + "] để cập nhật!";
         return false;
     }
+
+    Employee* existing = repo.findById(emp->getID());
+    if (existing == nullptr) {
+        errorMessage = "Không tìm thấy nhân viên có mã [" + emp->getID() + "] để cập nhật!";
+        return false;
+    }
+
+    std::string newPhone = StringHelper::trim(emp->getPhoneNumber());
+    if (newPhone.empty()) {
+        errorMessage = "Số điện thoại của nhân viên không được để trống!";
+        return false;
+    }
+    if (!validatePhone(newPhone, errorMessage)) {
+        return false;
+    }
+    std::string oldPhone = StringHelper::trim(existing->getPhoneNumber());
+    if (newPhone != oldPhone && phoneTable.contains(newPhone)) {
+        errorMessage = "Số điện thoại [" + newPhone + "] đã được sử dụng bởi nhân viên khác!";
+        return false;
+    }
+
     if (!repo.updateEmployee(emp)) {
         errorMessage = "Lỗi khi cập nhật nhân viên vào cơ sở dữ liệu!";
         return false;
@@ -276,6 +371,11 @@ inline bool EmployeeService::updateEmployee(Employee* emp) {
 inline bool EmployeeService::deleteEmployee(const std::string& id, std::string& errorMessage) {
     if (!idTable.contains(id)) {
         errorMessage = "Không tìm thấy nhân viên có mã [" + id + "]!";
+        return false;
+    }
+
+    if (refChecker != nullptr && refChecker->isEmployeeReferenced(id)) {
+        errorMessage = "Không thể xóa nhân viên [" + id + "] vì đang được tham chiếu trong hóa đơn hoặc phiếu nhập!";
         return false;
     }
 

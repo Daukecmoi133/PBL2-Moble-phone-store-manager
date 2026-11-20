@@ -10,6 +10,7 @@
 #include "../utils/StringHelper.h"
 #include "../utils/PathHelper.h"
 #include "../utils/FileHelper.h"
+#include "../utils/SchemaHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu nhân viên từ/vào tệp tin.
 // Do Employee là class trừu tượng có đa hình, lưu trữ bằng Vector<Employee*> (con trỏ).
@@ -61,6 +62,10 @@ public:
     Employee* findByUsername(const std::string& username);
     const Employee* findByUsername(const std::string& username) const;
 
+    // Tìm theo số điện thoại (khóa định danh tài khoản)
+    Employee* findByPhone(const std::string& phone);
+    const Employee* findByPhone(const std::string& phone) const;
+
     // Lọc nhân viên theo chức vụ
     Vector<Employee*> findByRole(RoleType role) const;
 
@@ -71,8 +76,9 @@ public:
     bool updateEmployee(Employee* updatedEmp);
     bool deleteEmployee(const std::string& id);
 
-    // Kiểm tra ID có tồn tại không
+    // Kiểm tra ID / số điện thoại có tồn tại không
     bool existsById(const std::string& id) const;
+    bool existsByPhone(const std::string& phone) const;
 };
 
 // ================= IMPLEMENTATION =================
@@ -86,11 +92,11 @@ inline void EmployeeRepository::clearMemory() {
     employees.clear();
 }
 
-// Tạo file Employee.txt mới với header chuẩn (11 cột bao gồm salary)
+// Tạo file Employee.txt mới với header chuẩn (13 cột bao gồm salary, accountId, active)
 inline bool EmployeeRepository::createEmptyFile() const {
     return FileHelper::createEmptyFileWithHeader(
         filePath,
-        "id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary"
+        SchemaHelper::EMPLOYEES_HEADER
     );
 }
 
@@ -118,23 +124,41 @@ inline bool EmployeeRepository::loadFromFile() {
 
     clearMemory();
     std::string line;
-    bool isHeader = true;
+    bool isFirstNonEmpty = true;
     int lineNum = 0;
 
     while (std::getline(file, line)) {
         ++lineNum;
-        line = StringHelper::trim(line);
-        if (line.empty()) continue;
+        if (lineNum == 1) StringHelper::stripUtf8Bom(line);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (StringHelper::trim(line).empty()) continue;
 
-        if (isHeader) {
-            isHeader = false; // Bỏ qua dòng tiêu đề
-            continue;
+        if (isFirstNonEmpty) {
+            isFirstNonEmpty = false;
+            auto kind = SchemaHelper::inspectFirstLine(
+                line,
+                SchemaHelper::EMPLOYEES_HEADER,
+                {SchemaHelper::EMPLOYEES_V1_HEADER,
+                 SchemaHelper::EMPLOYEES_V1_HEADER_LOWER,
+                 SchemaHelper::EMPLOYEES_V0_HEADER},
+                filePath,
+                [](const std::string& l) {
+                    return SchemaHelper::looksLikePrefixedRecord(l, "EMP");
+                });
+            if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                continue;
+            }
         }
 
         try {
             // Employee::fromFileLine() trả về Employee* đúng subclass (Admin/Sales/Warehouse)
             Employee* emp = Employee::fromFileLine(line);
             if (emp != nullptr) {
+                if (!emp->getAccount().isPasswordHashed()) {
+                    std::cerr << "[CANH BAO AN NINH STARTUP] Nhan vien '" << emp->getAccount().getUsername()
+                              << "' (ID: " << emp->getID() << ") trong " << filePath
+                              << " dang luu mat khau chua bam! Yeu cau cap nhat mat khau ngay lap tuc.\n";
+                }
                 employees.push_back(emp);
             } else {
                 std::cerr << "[Canh bao] Role khong hop le tai dong " << lineNum
@@ -156,8 +180,8 @@ inline bool EmployeeRepository::loadFromFile() {
 // Ghi toàn bộ danh sách employees xuống file (ghi đè qua Atomic File Write)
 inline bool EmployeeRepository::saveToFile() const {
     return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
-        // Header khớp với định dạng Employee::toFileString() (11 cột, có salary)
-        file << "id|firstName|middleName|lastName|phoneNumber|Email|username|password|role|address|salary\n";
+        // Header khớp với định dạng Employee::toFileString() (13 cột)
+        file << SchemaHelper::EMPLOYEES_HEADER << "\n";
         for (int i = 0; i < employees.getSize(); ++i) {
             if (employees[i] != nullptr) {
                 file << employees[i]->toFileString() << "\n";
@@ -202,6 +226,27 @@ inline const Employee* EmployeeRepository::findByUsername(const std::string& use
     return nullptr;
 }
 
+// Tìm Employee theo số điện thoại (khóa định danh tài khoản)
+inline Employee* EmployeeRepository::findByPhone(const std::string& phone) {
+    for (int i = 0; i < employees.getSize(); ++i) {
+        if (employees[i] && employees[i]->getPhoneNumber() == phone)
+            return employees[i];
+    }
+    return nullptr;
+}
+
+inline const Employee* EmployeeRepository::findByPhone(const std::string& phone) const {
+    for (int i = 0; i < employees.getSize(); ++i) {
+        if (employees[i] && employees[i]->getPhoneNumber() == phone)
+            return employees[i];
+    }
+    return nullptr;
+}
+
+inline bool EmployeeRepository::existsByPhone(const std::string& phone) const {
+    return findByPhone(phone) != nullptr;
+}
+
 // Lọc nhân viên theo chức vụ (Admin / Sale / Warehouse)
 inline Vector<Employee*> EmployeeRepository::findByRole(RoleType role) const {
     Vector<Employee*> result;
@@ -239,7 +284,9 @@ inline bool EmployeeRepository::updateEmployee(Employee* updatedEmp) {
                 employees[i] = oldEmp; // Rollback RAM
                 return false;
             }
-            delete oldEmp; // Giải phóng con trỏ cũ sau khi lưu file thành công
+            if (oldEmp != updatedEmp) {
+                delete oldEmp; // Giải phóng con trỏ cũ sau khi lưu file thành công (tránh self-delete/double-free)
+            }
             return true;
         }
     }

@@ -205,9 +205,12 @@ inline void Account :: setActive(bool a) {
 }
 
 inline bool Account :: verifyPassword(const std::string& pass) const {
-    // Hash hợp lệ -> kiểm tra bằng PBKDF2; plaintext cũ (chưa chuyển đổi) -> so sánh thời gian hằng số
-    return PasswordHasher::verify(pass, password) ||
-           PasswordHasher::matchesLegacyPlaintext(pass, password);
+    if (!PasswordHasher::isHashed(password)) {
+        std::cerr << "[CANH BAO AN NINH] Tu choi xac thuc: Mat khau cua tai khoan '"
+                  << username << "' chua duoc bam bang PBKDF2 (dang o dang ro).\n";
+        return false;
+    }
+    return PasswordHasher::verify(pass, password);
 }
 
 inline bool Account :: authenticate(const std::string& user, const std::string& pass) const {

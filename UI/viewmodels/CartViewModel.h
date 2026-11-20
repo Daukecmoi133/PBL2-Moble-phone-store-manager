@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include "../../source/utils/PricingCalculator.h"
 
 // Chi tiết một mặt hàng trong giỏ hàng
 struct CartItemViewModel {
@@ -29,12 +30,20 @@ struct CartSummaryViewModel {
     double subtotal;
     std::string appliedDiscountCode;
     double discountAmount;
+    double taxableAmount;
+    double vatRate;
+    double vatAmount;
     double grandTotal;
 
     CartSummaryViewModel()
-        : totalQuantity(0), subtotal(0.0), discountAmount(0.0), grandTotal(0.0) {}
+        : totalQuantity(0), subtotal(0.0), discountAmount(0.0),
+          taxableAmount(0.0), vatRate(PricingCalculator::DEFAULT_VAT_RATE),
+          vatAmount(0.0), grandTotal(0.0) {}
 
-    void recalculate() {
+    void recalculate(double overrideVatRate = -1.0) {
+        if (overrideVatRate >= 0.0) {
+            vatRate = PricingCalculator::sanitizeVatRate(overrideVatRate);
+        }
         totalQuantity = 0;
         subtotal = 0.0;
         for (auto& item : items) {
@@ -42,9 +51,13 @@ struct CartSummaryViewModel {
             totalQuantity += item.quantity;
             subtotal += item.subtotal;
         }
-        if (discountAmount > subtotal) discountAmount = subtotal;
-        grandTotal = subtotal - discountAmount;
-        if (grandTotal < 0.0) grandTotal = 0.0;
+        const PricingBreakdown pb = PricingCalculator::computeFromDiscountAmount(
+            subtotal, discountAmount, vatRate);
+        subtotal = pb.subtotal;
+        discountAmount = pb.discountAmount;
+        taxableAmount = pb.taxableAmount;
+        vatAmount = pb.vatAmount;
+        grandTotal = pb.grandTotal;
     }
 };
 

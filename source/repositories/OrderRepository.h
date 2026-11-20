@@ -10,6 +10,7 @@
 #include "../utils/StringHelper.h"
 #include "../utils/PathHelper.h"
 #include "../utils/FileHelper.h"
+#include "../utils/SchemaHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu đơn hàng từ/vào tệp tin.
 // Lưu trữ danh sách Order trên RAM bằng Vector<Order>.
@@ -60,11 +61,11 @@ public:
 
 // ================= IMPLEMENTATION =================
 
-// Tạo file Orders.txt mới với header chuẩn
+// Tạo file Orders.txt mới với header chuẩn (12 cột bao gồm discountCode)
 inline bool OrderRepository::createEmptyFile() const {
     return FileHelper::createEmptyFileWithHeader(
         filePath,
-        "id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details"
+        SchemaHelper::ORDERS_HEADER
     );
 }
 
@@ -85,17 +86,28 @@ inline bool OrderRepository::loadFromFile() {
 
     orders.clear();
     std::string line;
-    bool isHeader = true;
+    bool isFirstNonEmpty = true;
     int lineNum = 0;
 
     while (std::getline(file, line)) {
         ++lineNum;
-        line = StringHelper::trim(line);
-        if (line.empty()) continue;
+        if (lineNum == 1) StringHelper::stripUtf8Bom(line);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (StringHelper::trim(line).empty()) continue;
 
-        if (isHeader) {
-            isHeader = false;
-            continue;
+        if (isFirstNonEmpty) {
+            isFirstNonEmpty = false;
+            auto kind = SchemaHelper::inspectFirstLine(
+                line,
+                SchemaHelper::ORDERS_HEADER,
+                {SchemaHelper::ORDERS_V2_HEADER, SchemaHelper::ORDERS_V1_HEADER},
+                filePath,
+                [](const std::string& l) {
+                    return SchemaHelper::looksLikePrefixedRecord(l, "ORD");
+                });
+            if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                continue;
+            }
         }
 
         try {
@@ -118,7 +130,7 @@ inline bool OrderRepository::loadFromFile() {
 // Ghi toàn bộ danh sách orders xuống file (qua Atomic File Write)
 inline bool OrderRepository::saveToFile() const {
     return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
-        file << "id|customerId|deliveryMethod|paymentMethod|status|orderTime|discountAmount|receiverName|phone|address|details\n";
+        file << SchemaHelper::ORDERS_HEADER << "\n";
         for (int i = 0; i < orders.getSize(); ++i) {
             file << orders[i].toFileString() << "\n";
         }

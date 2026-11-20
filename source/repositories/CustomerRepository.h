@@ -10,6 +10,7 @@
 #include "../utils/StringHelper.h"
 #include "../utils/PathHelper.h"
 #include "../utils/FileHelper.h"
+#include "../utils/SchemaHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu khách hàng từ/vào tệp tin.
 // Lưu trữ danh sách Customer trên RAM bằng Vector<Customer>.
@@ -50,6 +51,10 @@ public:
     Customer* findByUsername(const std::string& username);
     const Customer* findByUsername(const std::string& username) const;
 
+    // Tìm theo số điện thoại (khóa định danh tài khoản)
+    Customer* findByPhone(const std::string& phone);
+    const Customer* findByPhone(const std::string& phone) const;
+
     // Tìm kiếm theo tên (không phân biệt hoa thường)
     Vector<Customer> searchByName(const std::string& keyword) const;
 
@@ -58,18 +63,19 @@ public:
     bool updateCustomer(const Customer& updatedCust);
     bool deleteCustomer(const std::string& id);
 
-    // Kiểm tra ID / username có tồn tại không
+    // Kiểm tra ID / username / số điện thoại có tồn tại không
     bool existsById(const std::string& id) const;
     bool existsByUsername(const std::string& username) const;
+    bool existsByPhone(const std::string& phone) const;
 };
 
 // ================= IMPLEMENTATION =================
 
-// Tạo file Customers.txt mới với header chuẩn
+// Tạo file Customers.txt mới với header chuẩn (12 cột)
 inline bool CustomerRepository::createEmptyFile() const {
     return FileHelper::createEmptyFileWithHeader(
         filePath,
-        "id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address"
+        SchemaHelper::CUSTOMERS_HEADER
     );
 }
 
@@ -92,22 +98,38 @@ inline bool CustomerRepository::loadFromFile() {
 
     customers.clear();
     std::string line;
-    bool isHeader = true;
+    bool isFirstNonEmpty = true;
     int lineNum = 0;
 
     while (std::getline(file, line)) {
         ++lineNum;
-        line = StringHelper::trim(line);
-        if (line.empty()) continue;
+        if (lineNum == 1) StringHelper::stripUtf8Bom(line);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (StringHelper::trim(line).empty()) continue;
 
-        if (isHeader) {
-            isHeader = false; // Bỏ qua dòng tiêu đề
-            continue;
+        if (isFirstNonEmpty) {
+            isFirstNonEmpty = false;
+            auto kind = SchemaHelper::inspectFirstLine(
+                line,
+                SchemaHelper::CUSTOMERS_HEADER,
+                {SchemaHelper::CUSTOMERS_V1_HEADER, SchemaHelper::CUSTOMERS_V1_HEADER_LOWER},
+                filePath,
+                [](const std::string& l) {
+                    return SchemaHelper::looksLikePrefixedRecord(l, "CUS");
+                });
+            if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                continue;
+            }
         }
 
         try {
             Customer c = Customer::fromFileLine(line);
             if (!c.getID().empty()) {
+                if (!c.getAccount().isPasswordHashed()) {
+                    std::cerr << "[CANH BAO AN NINH STARTUP] Khach hang '" << c.getAccount().getUsername()
+                              << "' (ID: " << c.getID() << ") trong " << filePath
+                              << " dang luu mat khau chua bam! Yeu cau cap nhat mat khau ngay lap tuc.\n";
+                }
                 customers.push_back(c);
             }
         } catch (const std::exception& e) {
@@ -126,8 +148,8 @@ inline bool CustomerRepository::loadFromFile() {
 // Ghi toàn bộ danh sách customers xuống file (ghi đè)
 inline bool CustomerRepository::saveToFile() const {
     return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
-        // Header khớp với định dạng Customer::toFileString() (cột 9 là points)
-        file << "id|firstName|middleName|lastName|phoneNumber|Email|username|password|points|address\n";
+        // Header khớp với định dạng Customer::toFileString() (12 cột)
+        file << SchemaHelper::CUSTOMERS_HEADER << "\n";
         for (int i = 0; i < customers.getSize(); ++i) {
             file << customers[i].toFileString() << "\n";
         }
@@ -166,6 +188,25 @@ inline const Customer* CustomerRepository::findByUsername(const std::string& use
         if (customers[i].getAccount().getUsername() == username) return &customers[i];
     }
     return nullptr;
+}
+
+// Tìm Customer theo số điện thoại (khóa định danh tài khoản)
+inline Customer* CustomerRepository::findByPhone(const std::string& phone) {
+    for (int i = 0; i < customers.getSize(); ++i) {
+        if (customers[i].getPhoneNumber() == phone) return &customers[i];
+    }
+    return nullptr;
+}
+
+inline const Customer* CustomerRepository::findByPhone(const std::string& phone) const {
+    for (int i = 0; i < customers.getSize(); ++i) {
+        if (customers[i].getPhoneNumber() == phone) return &customers[i];
+    }
+    return nullptr;
+}
+
+inline bool CustomerRepository::existsByPhone(const std::string& phone) const {
+    return findByPhone(phone) != nullptr;
 }
 
 // Tìm kiếm theo tên khách hàng (không phân biệt hoa thường)

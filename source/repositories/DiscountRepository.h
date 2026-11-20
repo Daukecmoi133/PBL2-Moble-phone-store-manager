@@ -7,9 +7,11 @@
 #include <string>
 #include "../models/DiscountCode.h"
 #include "../core/Vector.h"
+#include "../utils/AppClock.h"
 #include "../utils/StringHelper.h"
 #include "../utils/PathHelper.h"
 #include "../utils/FileHelper.h"
+#include "../utils/SchemaHelper.h"
 
 // Tầng Repository: CHỈ chịu trách nhiệm nạp và lưu dữ liệu mã giảm giá từ/vào tệp tin.
 // Lưu trữ danh sách DiscountCode trên RAM bằng Vector<DiscountCode>.
@@ -58,7 +60,7 @@ public:
 inline bool DiscountRepository::createEmptyFile() const {
     return FileHelper::createEmptyFileWithHeader(
         filePath,
-        "code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount"
+        SchemaHelper::DISCOUNTS_HEADER
     );
 }
 
@@ -76,16 +78,16 @@ inline bool DiscountRepository::loadFromFile() {
         // File chưa từng tồn tại: Tạo file và nạp seed data chuẩn ban đầu
         discounts.clear();
         discounts.push_back(DiscountCode("SALE10", DiscountType::PERCENTAGE, 10.0,
-            DateTime(1, 1, 2026, 0, 0, 0), DateTime(31, 12, 2026, 23, 59, 59),
+            DateTime(2026, 1, 1, 0, 0, 0), DateTime(2026, 12, 31, 23, 59, 59),
             5000000.0, 500000.0, 100, 12));
         discounts.push_back(DiscountCode("GIAM500K", DiscountType::FIXED_AMOUNT, 500000.0,
-            DateTime(1, 1, 2026, 0, 0, 0), DateTime(30, 11, 2026, 23, 59, 59),
+            DateTime(2026, 1, 1, 0, 0, 0), DateTime(2026, 11, 30, 23, 59, 59),
             10000000.0, 500000.0, 200, 35));
         discounts.push_back(DiscountCode("VIP2026", DiscountType::PERCENTAGE, 15.0,
-            DateTime(1, 1, 2026, 0, 0, 0), DateTime(31, 12, 2026, 23, 59, 59),
+            DateTime(2026, 1, 1, 0, 0, 0), DateTime(2026, 12, 31, 23, 59, 59),
             20000000.0, 1500000.0, 50, 5));
         discounts.push_back(DiscountCode("EXPIRED2025", DiscountType::FIXED_AMOUNT, 200000.0,
-            DateTime(1, 1, 2024, 0, 0, 0), DateTime(1, 1, 2025, 23, 59, 59),
+            DateTime(2024, 1, 1, 0, 0, 0), DateTime(2025, 1, 1, 23, 59, 59),
             2000000.0, 200000.0, 50, 50));
         return saveToFile();
     }
@@ -98,17 +100,40 @@ inline bool DiscountRepository::loadFromFile() {
 
     discounts.clear();
     std::string line;
-    bool isHeader = true;
+    bool isFirstNonEmpty = true;
     int lineNum = 0;
 
     while (std::getline(file, line)) {
         ++lineNum;
-        line = StringHelper::trim(line);
-        if (line.empty()) continue;
+        if (lineNum == 1) StringHelper::stripUtf8Bom(line);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (StringHelper::trim(line).empty()) continue;
 
-        if (isHeader) {
-            isHeader = false;
-            continue;
+        if (isFirstNonEmpty) {
+            isFirstNonEmpty = false;
+            auto kind = SchemaHelper::inspectFirstLine(
+                line,
+                SchemaHelper::DISCOUNTS_HEADER,
+                {},
+                filePath,
+                [](const std::string& l) {
+                    if (l.find('|') != std::string::npos) {
+                        Vector<std::string> p = TextCodec::splitFields(l, '|');
+                        if (p.getSize() >= 9) {
+                            std::string t = StringHelper::trim(p[1]);
+                            return (t == "0" || t == "1");
+                        }
+                        return false;
+                    }
+                    std::istringstream ss(l);
+                    std::string c;
+                    int tp = -1;
+                    double v = 0;
+                    return static_cast<bool>(ss >> c >> tp >> v);
+                });
+            if (kind != SchemaHelper::FirstLineKind::DATA_ROW) {
+                continue;
+            }
         }
 
         try {
@@ -138,18 +163,9 @@ inline bool DiscountRepository::loadFromFile() {
 // Ghi toàn bộ danh sách discounts xuống file (qua Atomic File Write)
 inline bool DiscountRepository::saveToFile() const {
     return FileHelper::atomicWrite(filePath, [&](std::ofstream& file) {
-        file << "code|type|value|startDate|endDate|minOrder|maxDiscount|maxUsage|usedCount\n";
+        file << SchemaHelper::DISCOUNTS_HEADER << "\n";
         for (int i = 0; i < discounts.getSize(); ++i) {
-            const DiscountCode& dc = discounts[i];
-            file << dc.getCode() << "|"
-                 << (dc.getType() == DiscountType::PERCENTAGE ? "0" : "1") << "|"
-                 << static_cast<long long>(dc.getValue()) << "|"
-                 << dc.getStartDate().toDateString() << "|"
-                 << dc.getEndDate().toDateString() << "|"
-                 << static_cast<long long>(dc.getMinOrderValue()) << "|"
-                 << static_cast<long long>(dc.getMaxDiscountValue()) << "|"
-                 << dc.getMaxUsage() << "|"
-                 << dc.getUsedCount() << "\n";
+            file << discounts[i].toFileString() << "\n";
         }
         return file.good();
     });
@@ -176,7 +192,7 @@ inline const DiscountCode* DiscountRepository::findByCode(const std::string& cod
 // Lọc chỉ các mã còn hiệu lực tại thời điểm hiện tại
 inline Vector<DiscountCode> DiscountRepository::findValidCodes() const {
     Vector<DiscountCode> result;
-    DateTime now = DateTime::now();
+    DateTime now = AppClock::now();
     for (int i = 0; i < discounts.getSize(); ++i) {
         if (discounts[i].isValid(now)) {
             result.push_back(discounts[i]);

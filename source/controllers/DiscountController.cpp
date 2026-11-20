@@ -4,11 +4,14 @@ using namespace AppControllerHelpers;
 // === MÃ GIẢM GIÁ ===
 
 std::vector<DiscountItemViewModel> AppController::getDiscounts() {
-    auto& store = MockDataStore::getInstance();
-    for (auto& d : store.discounts) {
-        d.isValid = !RealTimeManager::getInstance().isDateExpired(d.expiryDate);
+    std::vector<DiscountItemViewModel> result;
+    if (discountService == nullptr) return result;
+    const Vector<DiscountCode>& list = discountService->getAll();
+    result.reserve(static_cast<size_t>(list.getSize()));
+    for (int i = 0; i < list.getSize(); ++i) {
+        result.push_back(discountToViewModel(list[i]));
     }
-    return store.discounts;
+    return result;
 }
 
 OperationResult AppController::updateDiscount(const DiscountFormRequest& req) {
@@ -31,45 +34,50 @@ OperationResult AppController::updateDiscount(const DiscountFormRequest& req) {
     if (maxDisc < 0) {
         return OperationResult::Fail("Mức giảm tối đa không được âm!");
     }
+    if (discountService == nullptr) {
+        return OperationResult::Fail("Dịch vụ mã giảm giá chưa sẵn sàng!");
+    }
 
     std::string oldCode = StringHelper::trim(req.id);
     if (oldCode.empty()) oldCode = codeTrim;
 
-    // Cập nhật xuống file qua DiscountService
-    if (discountService != nullptr) {
-        DiscountCode* existing = discountService->getByCode(oldCode);
+    DiscountCode* existing = discountService->getByCode(oldCode);
+    if (existing == nullptr) {
+        existing = discountService->getByCode(codeTrim);
         if (existing == nullptr) {
-            existing = discountService->getByCode(codeTrim);
+            return OperationResult::Fail("Không tìm thấy mã giảm giá cần cập nhật!");
         }
-        DiscountType dtype = (req.type == 0) ? DiscountType::PERCENTAGE : DiscountType::FIXED_AMOUNT;
-        DateTime startDate = existing ? existing->getStartDate() : DateTime::now();
-        DateTime endDate = DateTime::fromDateString(expTrim);
-        if (endDate < startDate) {
-            startDate = endDate;
+        oldCode = existing->getCode();
+    }
+
+    DiscountType dtype = (req.type == 0) ? DiscountType::PERCENTAGE : DiscountType::FIXED_AMOUNT;
+    DateTime startDate = existing->getStartDate();
+    DateTime endDate = DateTime::fromDateString(expTrim);
+    endDate.hour = 23;
+    endDate.minute = 59;
+    endDate.second = 59;
+    if (endDate < startDate) {
+        startDate = endDate;
+    }
+    int used = existing->getUsedCount();
+    DiscountCode updated(codeTrim, dtype, req.value, startDate, endDate, req.minOrderValue, maxDisc, req.maxUsage, used);
+    std::string serviceErr;
+    if (codeTrim != oldCode) {
+        if (discountService->getByCode(codeTrim) != nullptr) {
+            return OperationResult::Fail("Mã voucher mới '" + codeTrim + "' đã tồn tại!");
         }
-        int used = existing ? existing->getUsedCount() : 0;
-        DiscountCode updated(codeTrim, dtype, req.value, startDate, endDate, req.minOrderValue, maxDisc, req.maxUsage, used);
-        std::string serviceErr;
-        if (codeTrim != oldCode && discountService->getByCode(oldCode) != nullptr) {
-            if (discountService->getByCode(codeTrim) != nullptr) {
-                return OperationResult::Fail("Mã voucher mới '" + codeTrim + "' đã tồn tại!");
-            }
-            discountService->deleteDiscount(oldCode);
-            if (!discountService->addDiscount(updated, serviceErr)) {
-                return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật mã giảm giá vào file dữ liệu!");
-            }
-        } else {
-            if (!discountService->updateDiscount(updated, serviceErr)) {
-                return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật mã giảm giá vào file dữ liệu!");
-            }
+        if (!discountService->deleteDiscount(oldCode, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Không thể đổi mã giảm giá đã có lịch sử tham chiếu!");
+        }
+        if (!discountService->addDiscount(updated, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật mã giảm giá vào file dữ liệu!");
+        }
+    } else {
+        if (!discountService->updateDiscount(updated, serviceErr)) {
+            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật mã giảm giá vào file dữ liệu!");
         }
     }
 
-    auto& store = MockDataStore::getInstance();
-    bool ok = store.updateDiscount(req);
-    if (!ok) {
-        return OperationResult::Fail("Không tìm thấy mã giảm giá cần cập nhật!");
-    }
     return OperationResult::Ok("Cập nhật thời hạn hiệu lực và thông tin mã giảm giá thành công!");
 }
 
@@ -92,99 +100,106 @@ OperationResult AppController::addDiscount(const DiscountFormRequest& req) {
     if (req.maxDiscountAmount < 0) {
         return OperationResult::Fail("Mức giảm tối đa không được âm!");
     }
-
-    auto& store = MockDataStore::getInstance();
-    for (const auto& d : store.discounts) {
-        if (d.code == codeTrim) {
-            return OperationResult::Fail("Mã giảm giá '" + codeTrim + "' đã tồn tại!");
-        }
+    if (discountService == nullptr) {
+        return OperationResult::Fail("Dịch vụ mã giảm giá chưa sẵn sàng!");
+    }
+    if (discountService->getByCode(codeTrim) != nullptr) {
+        return OperationResult::Fail("Mã giảm giá '" + codeTrim + "' đã tồn tại!");
     }
 
-    // Lưu xuống file qua DiscountService
-    if (discountService != nullptr) {
-        DiscountType dtype = (req.type == 0) ? DiscountType::PERCENTAGE : DiscountType::FIXED_AMOUNT;
-        DateTime startDate = DateTime::now();
-        DateTime endDate = DateTime::fromDateString(expTrim);
-        DiscountCode dc(codeTrim, dtype, req.value, startDate, endDate, req.minOrderValue, req.maxDiscountAmount, req.maxUsage, 0);
-        std::string serviceErr;
-        if (!discountService->addDiscount(dc, serviceErr)) {
-            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu mã giảm giá vào file dữ liệu!");
-        }
+    DiscountType dtype = (req.type == 0) ? DiscountType::PERCENTAGE : DiscountType::FIXED_AMOUNT;
+    DateTime startDate = AppClock::now();
+    startDate.hour = 0;
+    startDate.minute = 0;
+    startDate.second = 0;
+    DateTime endDate = DateTime::fromDateString(expTrim);
+    endDate.hour = 23;
+    endDate.minute = 59;
+    endDate.second = 59;
+    DiscountCode dc(codeTrim, dtype, req.value, startDate, endDate, req.minOrderValue, req.maxDiscountAmount, req.maxUsage, 0);
+    std::string serviceErr;
+    if (!discountService->addDiscount(dc, serviceErr)) {
+        return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu mã giảm giá vào file dữ liệu!");
     }
 
-    DiscountItemViewModel d;
-    d.id = codeTrim;
-    d.code = codeTrim;
-    d.typeName = (req.type == 0) ? "Giảm phần trăm (%)" : "Số tiền cố định";
-    d.value = req.value;
-    d.formattedValue = (req.type == 0) ? (std::to_string(static_cast<int>(req.value)) + "%")
-                                        : StringHelper::formatCurrency(req.value);
-    d.minOrderValue = req.minOrderValue;
-    d.maxDiscountAmount = req.maxDiscountAmount;
-    d.expiryDate = expTrim;
-    d.usedCount = 0;
-    d.maxUsage = req.maxUsage;
-    d.isValid = true;
-    d.description = req.description;
-
-    store.discounts.push_back(d);
     return OperationResult::Ok("Thêm mã giảm giá '" + codeTrim + "' thành công!");
 }
 
 OperationResult AppController::deleteDiscount(const std::string& id) {
     REQUIRE_ADMIN_ROLE();
-    auto& store = MockDataStore::getInstance();
-    for (auto it = store.discounts.begin(); it != store.discounts.end(); ++it) {
-        if (it->id == id) {
-            if (it->usedCount > 0) {
-                return OperationResult::Fail("Không thể xóa mã giảm giá đã có lịch sử sử dụng!");
-            }
-
-            // Xóa khỏi file qua DiscountService
-            if (discountService != nullptr) {
-                std::string serviceErr;
-                if (!discountService->deleteDiscount(id, serviceErr)) {
-                    return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi xóa mã giảm giá khỏi file dữ liệu!");
-                }
-            }
-
-            std::string code = it->code;
-            store.discounts.erase(it);
-            return OperationResult::Ok("Đã xóa mã giảm giá '" + code + "'!");
-        }
+    if (discountService == nullptr) {
+        return OperationResult::Fail("Dịch vụ mã giảm giá chưa sẵn sàng!");
     }
-    return OperationResult::Fail("Không tìm thấy mã giảm giá!");
+    const DiscountCode* existing = discountService->getByCode(id);
+    if (existing == nullptr) {
+        return OperationResult::Fail("Không tìm thấy mã giảm giá!");
+    }
+    if (existing->getUsedCount() > 0) {
+        return OperationResult::Fail("Không thể xóa mã giảm giá đã có lịch sử sử dụng!");
+    }
+
+    std::string code = existing->getCode();
+    std::string serviceErr;
+    if (!discountService->deleteDiscount(code, serviceErr)) {
+        return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi xóa mã giảm giá khỏi file dữ liệu!");
+    }
+
+    return OperationResult::Ok("Đã xóa mã giảm giá '" + code + "'!");
+}
+
+double AppController::getVatRate() const {
+    return storeSettingsRepo.getVatRate();
+}
+
+OperationResult AppController::setVatRate(double newRate) {
+    REQUIRE_ADMIN_ROLE();
+    if (std::isnan(newRate) || std::isinf(newRate) || newRate < 0.0 || newRate > 1.0) {
+        return OperationResult::Fail("Thuế suất VAT phải nằm trong khoảng 0% đến 100% (0.0 - 1.0)!");
+    }
+    const double prevRate = storeSettingsRepo.getVatRate();
+    if (!storeSettingsRepo.setVatRate(newRate)) {
+        return OperationResult::Fail("Giá trị thuế suất VAT không hợp lệ!");
+    }
+    if (!storeSettingsRepo.saveToFile()) {
+        storeSettingsRepo.setVatRate(prevRate);
+        return OperationResult::Fail("Không thể lưu cấu hình thuế VAT xuống file StoreSettings.txt!");
+    }
+    return OperationResult::Ok("Đã cập nhật thuế suất VAT thành " + PricingCalculator::formatVatPercent(newRate) + "!");
 }
 
 OperationResult AppController::validateDiscount(const std::string& code, double orderTotal, double& outDiscount) {
+    const std::string customerId = currentSession.isCustomer() ? currentSession.userId : "";
+    return validateDiscountForCustomer(code, orderTotal, customerId, outDiscount);
+}
+
+OperationResult AppController::validateDiscountForCustomer(const std::string& code,
+                                                           double orderTotal,
+                                                           const std::string& customerId,
+                                                           double& outDiscount) {
     outDiscount = 0.0;
-    auto& store = MockDataStore::getInstance();
-
-    for (const auto& d : store.discounts) {
-        if (d.code == code) {
-            if (!d.isValid) {
-                return OperationResult::Fail("Mã giảm giá '" + code + "' đã hết hạn sử dụng!");
-            }
-            if (d.usedCount >= d.maxUsage) {
-                return OperationResult::Fail("Mã giảm giá '" + code + "' đã hết lượt sử dụng!");
-            }
-            if (orderTotal < d.minOrderValue) {
-                return OperationResult::Fail("Đơn hàng chưa đạt giá trị tối thiểu " +
-                                             std::to_string(static_cast<long long>(d.minOrderValue)) + " đ để áp dụng mã này!");
-            }
-
-            if (d.typeName.find("%") != std::string::npos) {
-                outDiscount = (orderTotal * d.value) / 100.0;
-                if (d.maxDiscountAmount > 0 && outDiscount > d.maxDiscountAmount) {
-                    outDiscount = d.maxDiscountAmount;
-                }
-            } else {
-                outDiscount = d.value;
-                if (outDiscount > orderTotal) outDiscount = orderTotal;
-            }
-            return OperationResult::Ok("Mã giảm giá hợp lệ!");
-        }
+    const std::string codeTrim = StringHelper::trim(code);
+    if (discountService == nullptr) {
+        return OperationResult::Fail("Dịch vụ mã giảm giá chưa sẵn sàng!");
     }
 
-    return OperationResult::Fail("Mã giảm giá '" + code + "' không tồn tại!");
+    std::string svcErr;
+    const DateTime simNow = AppClock::now();
+    if (!discountService->validateCode(codeTrim, orderTotal, svcErr, simNow)) {
+        return OperationResult::Fail(!svcErr.empty() ? svcErr : ("Mã giảm giá '" + codeTrim + "' không hợp lệ!"));
+    }
+
+    if (orderService != nullptr &&
+        orderService->hasCustomerUsedDiscountCode(customerId, codeTrim)) {
+        return OperationResult::Fail("Khách hàng đã sử dụng mã giảm giá '" + codeTrim + "' trước đó (mỗi khách chỉ dùng tối đa 1 lần cho mỗi mã)!");
+    }
+
+    const DiscountCode* dc = discountService->getByCode(codeTrim);
+    if (dc == nullptr) {
+        return OperationResult::Fail("Mã giảm giá '" + codeTrim + "' không tồn tại!");
+    }
+
+    const PricingBreakdown pb = PricingCalculator::computeWithVoucher(
+        orderTotal, dc->getType(), dc->getValue(), dc->getMaxDiscountValue(), getVatRate());
+    outDiscount = pb.discountAmount;
+    return OperationResult::Ok("Mã giảm giá hợp lệ!");
 }

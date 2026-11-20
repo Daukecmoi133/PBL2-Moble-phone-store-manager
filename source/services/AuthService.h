@@ -31,18 +31,23 @@ private:
 public:
     AuthService(EmployeeService& es, CustomerService& cs);
 
-    // Đăng nhập: tìm trong Employee trước, rồi Customer
+    // Đăng nhập: tìm theo Username hoặc Số điện thoại (khóa) trong Employee trước, rồi Customer
     // Trả về LoginResult với đầy đủ thông tin về tài khoản
-    LoginResult login(const std::string& username, const std::string& password);
+    LoginResult login(const std::string& usernameOrPhone, const std::string& password);
 
     // Kiểm tra username đã tồn tại trong hệ thống chưa (cả 2 nhóm)
     bool usernameExists(const std::string& username) const;
 
+    // Kiểm tra số điện thoại đã tồn tại trong hệ thống chưa (cả 2 nhóm: Employee và Customer)
+    bool phoneExists(const std::string& phone) const;
+
     // Lấy Employee đang đăng nhập (nullptr nếu không phải nhân viên)
     Employee* getEmployee(const std::string& username);
+    Employee* getEmployeeByPhone(const std::string& phone);
 
     // Lấy Customer đang đăng nhập (nullptr nếu không phải khách hàng)
     Customer* getCustomer(const std::string& username);
+    Customer* getCustomerByPhone(const std::string& phone);
 };
 
 // ================= IMPLEMENTATION =================
@@ -50,19 +55,19 @@ public:
 inline AuthService::AuthService(EmployeeService& es, CustomerService& cs)
     : empService(es), custService(cs) {}
 
-// Đăng nhập: kiểm tra nhân viên trước, sau đó khách hàng
+// Đăng nhập: kiểm tra nhân viên trước, sau đó khách hàng theo Username hoặc Số điện thoại (khóa)
 // Phân biệt rõ lý do thất bại (tài khoản không tồn tại, bị vô hiệu hóa, sai mật khẩu, lỗi I/O)
-inline LoginResult AuthService::login(const std::string& username, const std::string& password) {
+inline LoginResult AuthService::login(const std::string& usernameOrPhone, const std::string& password) {
     LoginResult result;
 
     // Validate input cơ bản
-    std::string uname = username;
+    std::string uname = usernameOrPhone;
     // trim đơn giản (tránh phụ thuộc StringHelper ở đây)
     while (!uname.empty() && (uname.front() == ' ' || uname.front() == '\t')) uname.erase(uname.begin());
     while (!uname.empty() && (uname.back() == ' ' || uname.back() == '\t')) uname.pop_back();
 
     if (uname.empty() || password.empty()) {
-        result.errorMessage = "Tên đăng nhập và mật khẩu không được để trống!";
+        result.errorMessage = "Tên đăng nhập / Số điện thoại và mật khẩu không được để trống!";
         return result;
     }
 
@@ -71,8 +76,11 @@ inline LoginResult AuthService::login(const std::string& username, const std::st
         return result;
     }
 
-    // 1. Tìm trong nhân viên trước
+    // 1. Tìm trong nhân viên trước (theo username hoặc số điện thoại)
     Employee* emp = empService.getEmployeeByUsername(uname);
+    if (emp == nullptr) {
+        emp = empService.getEmployeeByPhone(uname);
+    }
     if (emp != nullptr) {
         if (!emp->getAccount().isActive()) {
             result.errorMessage = "Tài khoản đã bị vô hiệu hóa!";
@@ -90,8 +98,11 @@ inline LoginResult AuthService::login(const std::string& username, const std::st
         return result;
     }
 
-    // 2. Tìm trong khách hàng
+    // 2. Tìm trong khách hàng (theo username hoặc số điện thoại)
     Customer* cust = custService.getCustomerByUsername(uname);
+    if (cust == nullptr) {
+        cust = custService.getCustomerByPhone(uname);
+    }
     if (cust != nullptr) {
         if (!cust->getAccount().isActive()) {
             result.errorMessage = "Tài khoản đã bị vô hiệu hóa!";
@@ -120,14 +131,30 @@ inline bool AuthService::usernameExists(const std::string& username) const {
            custService.getCustomerByUsername(username) != nullptr;
 }
 
+// Kiểm tra số điện thoại đã tồn tại cho bất kỳ tài khoản nào chưa
+inline bool AuthService::phoneExists(const std::string& phone) const {
+    if (phone.empty()) return false;
+    return empService.phoneExists(phone) || custService.phoneExists(phone);
+}
+
 // Lấy Employee theo username (nullptr nếu không phải nhân viên)
 inline Employee* AuthService::getEmployee(const std::string& username) {
     return empService.getEmployeeByUsername(username);
 }
 
+// Lấy Employee theo số điện thoại (nullptr nếu không phải nhân viên)
+inline Employee* AuthService::getEmployeeByPhone(const std::string& phone) {
+    return empService.getEmployeeByPhone(phone);
+}
+
 // Lấy Customer theo username (nullptr nếu không phải khách hàng)
 inline Customer* AuthService::getCustomer(const std::string& username) {
     return custService.getCustomerByUsername(username);
+}
+
+// Lấy Customer theo số điện thoại (nullptr nếu không phải khách hàng)
+inline Customer* AuthService::getCustomerByPhone(const std::string& phone) {
+    return custService.getCustomerByPhone(phone);
 }
 
 #endif // AUTHSERVICE_H

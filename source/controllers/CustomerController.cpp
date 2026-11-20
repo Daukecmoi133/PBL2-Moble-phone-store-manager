@@ -3,163 +3,198 @@ using namespace AppControllerHelpers;
 
 // === KHÁCH HÀNG ===
 
-std::vector<CustomerItemViewModel> AppController::getCustomers(const std::string& keyword) {
-    auto& store = MockDataStore::getInstance();
-    if (keyword.empty()) return store.customers;
-
-    std::vector<CustomerItemViewModel> result;
-    for (const auto& c : store.customers) {
-        if (Utf8Helper::containsCaseInsensitive(c.fullName, keyword) ||
-            Utf8Helper::containsCaseInsensitive(c.id, keyword) ||
-            Utf8Helper::containsCaseInsensitive(c.phone, keyword)) {
-            result.push_back(c);
-        }
+std::vector<CustomerItemViewModel>
+AppController::getCustomers(const std::string &keyword) {
+  if (!currentSession.isAuthenticated ||
+      (!currentSession.isAdmin() && !currentSession.isSales()) ||
+      customerService == nullptr) {
+    return {};
+  }
+  const Vector<Customer> &customers = customerService->getAllCustomers();
+  std::vector<CustomerItemViewModel> result;
+  result.reserve(static_cast<size_t>(customers.getSize()));
+  for (int i = 0; i < customers.getSize(); ++i) {
+    CustomerItemViewModel c = customerToViewModel(customers[i]);
+    if (!keyword.empty()) {
+      if (!Utf8Helper::containsCaseInsensitive(c.fullName, keyword) &&
+          !Utf8Helper::containsCaseInsensitive(c.id, keyword) &&
+          !Utf8Helper::containsCaseInsensitive(c.phone, keyword)) {
+        continue;
+      }
     }
-    return result;
+    result.push_back(c);
+  }
+  return result;
 }
 
-CustomerItemViewModel AppController::getCustomerById(const std::string& id) {
-    auto& store = MockDataStore::getInstance();
-    for (const auto& c : store.customers) {
-        if (c.id == id) return c;
-    }
+CustomerItemViewModel AppController::getCustomerById(const std::string &id) {
+  if (!currentSession.isAuthenticated || currentSession.isWarehouse() ||
+      (currentSession.isCustomer() && currentSession.userId != id) ||
+      customerService == nullptr) {
     return CustomerItemViewModel();
+  }
+  Customer *c = customerService->getCustomerById(id);
+  return (c != nullptr) ? customerToViewModel(*c) : CustomerItemViewModel();
 }
 
-OperationResult AppController::addCustomer(const CustomerFormRequest& req) {
-    if (req.phone.empty() || req.firstName.empty() || req.lastName.empty()) {
-        return OperationResult::Fail("Họ, tên và số điện thoại là bắt buộc!");
-    }
+OperationResult AppController::addCustomer(const CustomerFormRequest &req) {
+  REQUIRE_ADMIN_OR_SALES_ROLE();
+  std::string phone = trimCopy(req.phone);
+  if (phone.empty() || req.firstName.empty() || req.lastName.empty()) {
+    return OperationResult::Fail("Họ, tên và số điện thoại là bắt buộc!");
+  }
+  if (!isValidPhone(phone)) {
+    return OperationResult::Fail("Số điện thoại không hợp lệ! Phải gồm đúng 10 "
+                                 "chữ số và bắt đầu bằng 0.");
+  }
+  if (customerService == nullptr) {
+    return OperationResult::Fail("Dịch vụ khách hàng chưa sẵn sàng!");
+  }
 
-    auto& store = MockDataStore::getInstance();
-    for (const auto& c : store.customers) {
-        if (c.phone == req.phone) {
-            return OperationResult::Fail("Số điện thoại '" + req.phone + "' đã được đăng ký bởi khách hàng khác!");
-        }
-    }
+  if (employeeService != nullptr &&
+      employeeService->getEmployeeByPhone(phone) != nullptr) {
+    return OperationResult::Fail(
+        "Số điện thoại '" + phone +
+        "' đã được sử dụng bởi nhân viên khác trong hệ thống!");
+  }
+  if (customerService->getCustomerByPhone(phone) != nullptr) {
+    return OperationResult::Fail("Số điện thoại '" + phone +
+                                 "' đã được đăng ký bởi khách hàng khác!");
+  }
 
-    std::string customerId;
-    std::string idError;
-    if (!IdGenerator::nextId("CUS", "", collectIds(store.customers), customerId, idError)) {
-        return OperationResult::Fail(idError);
-    }
-    std::string accountId;
-    if (!IdGenerator::nextId("ACC", "", collectIds(store.accounts), accountId, idError)) {
-        return OperationResult::Fail(idError);
-    }
+  std::string customerId;
+  std::string idError;
+  if (!IdGenerator::nextId("CUS", "",
+                           collectModelIds(customerService->getAllCustomers()),
+                           customerId, idError)) {
+    return OperationResult::Fail(idError);
+  }
+  std::string accountId;
+  if (!IdGenerator::nextId("ACC", "",
+                           collectAllAccountIds(employeeService, customerService),
+                           accountId, idError)) {
+    return OperationResult::Fail(idError);
+  }
 
-    CustomerItemViewModel newC;
-    newC.id = customerId;
-    newC.firstName = req.firstName;
-    newC.middleName = req.middleName;
-    newC.lastName = req.lastName;
-    newC.fullName = Name(req.firstName, req.middleName, req.lastName).getFullName();
-    newC.phone = req.phone;
-    newC.email = req.email;
-    newC.address = req.address;
-    newC.username = req.username.empty() ? ("cust_" + req.phone) : req.username;
-    newC.points = 0;
-    newC.updateTier();
+  const std::string username =
+      req.username.empty() ? ("cust_" + phone) : req.username;
+  Name name(req.firstName, req.middleName, req.lastName);
+  Customer cust(customerId, name, phone, req.email, req.address,
+                username, "123456", 0);
+  cust.getAccount().setID(accountId);
+  std::string serviceErr;
+  if (!customerService->registerCustomer(cust, serviceErr)) {
+    return OperationResult::Fail(
+        !serviceErr.empty() ? serviceErr
+                            : "Lỗi khi lưu khách hàng vào file dữ liệu!");
+  }
 
-    // Ghi xuống file qua CustomerService
-    if (customerService != nullptr) {
-        Name name(req.firstName, req.middleName, req.lastName);
-        Customer cust(customerId, name, req.phone, req.email, req.address, newC.username, "123456", 0);
-        cust.getAccount().setID(accountId);
-        std::string serviceErr;
-        if (!customerService->registerCustomer(cust, serviceErr)) {
-            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi lưu khách hàng vào file dữ liệu!");
-        }
-    }
-
-    store.customers.push_back(newC);
-    AccountItemViewModel account;
-    account.id = accountId;
-    account.username = newC.username;
-    account.role = RoleType::CUSTOMER;
-    account.roleName = roleTypeToString(account.role);
-    account.isActive = true;
-    account.linkedEntityId = newC.id;
-    account.linkedFullName = newC.fullName;
-    store.accounts.push_back(account);
-    return OperationResult::Ok("Thêm khách hàng '" + newC.fullName + "' thành công!");
+  return OperationResult::Ok("Thêm khách hàng '" + name.getFullName() +
+                             "' thành công!");
 }
 
-OperationResult AppController::updateCustomer(const CustomerFormRequest& req) {
-    if (!IdGenerator::isValidId(req.id, "CUS") || req.phone.empty()) {
-        return OperationResult::Fail("Thông tin khách hàng không hợp lệ!");
-    }
+OperationResult AppController::updateCustomer(const CustomerFormRequest &req) {
+  REQUIRE_ADMIN_OR_SALES_ROLE();
+  std::string phone = trimCopy(req.phone);
+  if (!IdGenerator::isValidId(req.id, "CUS") || phone.empty()) {
+    return OperationResult::Fail("Thông tin khách hàng không hợp lệ!");
+  }
+  if (!isValidPhone(phone)) {
+    return OperationResult::Fail("Số điện thoại không hợp lệ! Phải gồm đúng 10 "
+                                 "chữ số và bắt đầu bằng 0.");
+  }
+  if (customerService == nullptr) {
+    return OperationResult::Fail("Dịch vụ khách hàng chưa sẵn sàng!");
+  }
 
-    // Cập nhật xuống file qua CustomerService
-    if (customerService != nullptr) {
-        Customer* existing = customerService->getCustomerById(req.id);
-        std::string username = existing ? existing->getAccount().getUsername() : ("cust_" + req.phone);
-        std::string password = existing ? existing->getAccount().getPasswordHash() : "123456";
-        int pts = existing ? existing->getPoints() : 0;
-        std::string accId = existing ? existing->getAccount().getID() : "";
-        Name name(req.firstName, req.middleName, req.lastName);
-        Customer updated(req.id, name, req.phone, req.email, req.address, username, password, pts);
-        updated.getAccount().setID(accId);
-        if (existing) {
-            updated.getAccount().setActive(existing->getAccount().isActive());
-        }
-        std::string serviceErr;
-        if (!customerService->updateCustomer(updated, serviceErr)) {
-            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi cập nhật khách hàng vào file dữ liệu!");
-        }
-    }
+  if (employeeService != nullptr &&
+      employeeService->getEmployeeByPhone(phone) != nullptr) {
+    return OperationResult::Fail(
+        "Số điện thoại '" + phone +
+        "' đã được sử dụng bởi nhân viên khác trong hệ thống!");
+  }
+  Customer *matchCust = customerService->getCustomerByPhone(phone);
+  if (matchCust != nullptr && matchCust->getID() != req.id) {
+    return OperationResult::Fail("Số điện thoại '" + phone +
+                                 "' đã được đăng ký cho khách hàng khác!");
+  }
 
-    auto& store = MockDataStore::getInstance();
-    for (auto& c : store.customers) {
-        if (c.id == req.id) {
-            c.firstName = req.firstName;
-            c.middleName = req.middleName;
-            c.lastName = req.lastName;
-            c.fullName = Name(req.firstName, req.middleName, req.lastName).getFullName();
-            c.phone = req.phone;
-            c.email = req.email;
-            c.address = req.address;
-            return OperationResult::Ok("Cập nhật thông tin khách hàng thành công!");
-        }
-    }
+  Customer *existing = customerService->getCustomerById(req.id);
+  if (existing == nullptr) {
     return OperationResult::Fail("Không tìm thấy khách hàng!");
+  }
+
+  Name name(req.firstName, req.middleName, req.lastName);
+  Customer updated(req.id, name, phone, req.email, req.address,
+                   existing->getAccount().getUsername(),
+                   existing->getAccount().getPasswordHash(),
+                   existing->getPoints());
+  updated.getAccount().setID(existing->getAccount().getID());
+  updated.getAccount().setActive(existing->getAccount().isActive());
+  std::string serviceErr;
+  if (!customerService->updateCustomer(updated, serviceErr)) {
+    return OperationResult::Fail(
+        !serviceErr.empty()
+            ? serviceErr
+            : "Lỗi khi cập nhật khách hàng vào file dữ liệu!");
+  }
+
+  return OperationResult::Ok("Cập nhật thông tin khách hàng thành công!");
 }
 
-OperationResult AppController::deleteCustomer(const std::string& id) {
-    if (!IdGenerator::isValidId(id, "CUS")) {
-        return OperationResult::Fail("Mã khách hàng không đúng định dạng CUS-000001!");
-    }
-    auto& store = MockDataStore::getInstance();
-    for (const auto& order : store.orders) {
-        if (order.customerId == id) {
-            return OperationResult::Fail("Không thể xóa khách hàng đang được tham chiếu trong đơn hàng (" + order.id + ")!");
-        }
-    }
-    for (const auto& invoice : store.invoices) {
-        if (invoice.customerId == id) {
-            return OperationResult::Fail("Không thể xóa khách hàng đang được tham chiếu trong hóa đơn (" + invoice.id + ")!");
-        }
-    }
-    for (const auto& warranty : store.warranties) {
-        if (warranty.customerId == id) {
-            return OperationResult::Fail("Không thể xóa khách hàng đang được tham chiếu trong yêu cầu bảo hành (" + warranty.id + ")!");
-        }
-    }
+OperationResult AppController::deleteCustomer(const std::string &id) {
+  REQUIRE_ADMIN_ROLE();
+  if (!IdGenerator::isValidId(id, "CUS")) {
+    return OperationResult::Fail(
+        "Mã khách hàng không đúng định dạng CUS-000001!");
+  }
+  if (customerService == nullptr) {
+    return OperationResult::Fail("Dịch vụ khách hàng chưa sẵn sàng!");
+  }
 
-    // Xóa khỏi file qua CustomerService
-    if (customerService != nullptr) {
-        std::string serviceErr;
-        if (!customerService->deleteCustomer(id, serviceErr)) {
-            return OperationResult::Fail(!serviceErr.empty() ? serviceErr : "Lỗi khi xóa khách hàng khỏi file dữ liệu!");
-        }
+  if (orderService != nullptr) {
+    const Vector<Order> &orders = orderService->getAllOrders();
+    for (int i = 0; i < orders.getSize(); ++i) {
+      if (orders[i].getCustomerId() == id) {
+        return OperationResult::Fail(
+            "Không thể xóa khách hàng đang được tham chiếu trong đơn hàng (" +
+            orders[i].getID() + ")!");
+      }
     }
+  }
+  if (invoiceService != nullptr) {
+    const Vector<Invoice> &invoices = invoiceService->getAll();
+    for (int i = 0; i < invoices.getSize(); ++i) {
+      if (invoices[i].getCustomerId() == id) {
+        return OperationResult::Fail(
+            "Không thể xóa khách hàng đang được tham chiếu trong hóa đơn (" +
+            invoices[i].getID() + ")!");
+      }
+    }
+  }
+  if (warrantyService != nullptr) {
+    const Vector<WarrantyRequest> &warranties = warrantyService->getAll();
+    for (int i = 0; i < warranties.getSize(); ++i) {
+      if (warranties[i].getCustomerId() == id) {
+        return OperationResult::Fail("Không thể xóa khách hàng đang được tham "
+                                     "chiếu trong yêu cầu bảo hành (" +
+                                     warranties[i].getId() + ")!");
+      }
+    }
+  }
 
-    for (auto it = store.customers.begin(); it != store.customers.end(); ++it) {
-        if (it->id == id) {
-            std::string name = it->fullName;
-            store.customers.erase(it);
-            return OperationResult::Ok("Đã xóa khách hàng '" + name + "'!");
-        }
-    }
+  Customer *existing = customerService->getCustomerById(id);
+  if (existing == nullptr) {
     return OperationResult::Fail("Không tìm thấy khách hàng để xóa!");
+  }
+  const std::string name = existing->getName().getFullName();
+
+  std::string serviceErr;
+  if (!customerService->deleteCustomer(id, serviceErr)) {
+    return OperationResult::Fail(
+        !serviceErr.empty() ? serviceErr
+                            : "Lỗi khi xóa khách hàng khỏi file dữ liệu!");
+  }
+
+  return OperationResult::Ok("Đã xóa khách hàng '" + name + "'!");
 }

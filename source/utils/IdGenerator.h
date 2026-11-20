@@ -11,7 +11,10 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include "AppClock.h"
+#include "FileHelper.h"
 #include "PathHelper.h"
+#include "StringHelper.h"
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -69,8 +72,16 @@ private:
     static bool replaceFile(const std::string& temporaryPath,
                             const std::string& destinationPath) {
 #ifdef _WIN32
-        return MoveFileExA(temporaryPath.c_str(), destinationPath.c_str(),
-                           MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+        for (int i = 0; i < 5; ++i) {
+            SetFileAttributesA(destinationPath.c_str(), FILE_ATTRIBUTE_NORMAL);
+            if (MoveFileExA(temporaryPath.c_str(), destinationPath.c_str(),
+                            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0) {
+                return true;
+            }
+            Sleep(15);
+        }
+        // Tuyệt đối không DeleteFileA fallback vì làm mất tính nguyên tử và có thể xóa file gốc khi file đang bị khóa
+        return false;
 #else
         return std::rename(temporaryPath.c_str(), destinationPath.c_str()) == 0;
 #endif
@@ -90,6 +101,7 @@ private:
         std::size_t lineNumber = 0;
         while (std::getline(input, line)) {
             ++lineNumber;
+            if (lineNumber == 1) StringHelper::stripUtf8Bom(line);
             if (!line.empty() && line.back() == '\r') line.pop_back();
             if (line.empty()) continue;
 
@@ -137,7 +149,7 @@ private:
         const std::map<CounterKey, std::uint32_t>& counters,
         std::string& errorMessage) {
         const std::string temporaryPath = path + ".tmp";
-        std::ofstream output(temporaryPath, std::ios::trunc);
+        std::ofstream output(temporaryPath, std::ios::out | std::ios::trunc | std::ios::binary);
         if (!output.is_open()) {
             errorMessage = "Không thể ghi bộ đếm ID tại " + temporaryPath + ".";
             return false;
@@ -155,8 +167,12 @@ private:
             std::remove(temporaryPath.c_str());
             return false;
         }
+        bool writeOk = output.good() && !output.fail();
         output.close();
-        if (!output || !replaceFile(temporaryPath, path)) {
+        if (writeOk) {
+            FileHelper::flushFile(temporaryPath);
+        }
+        if (!writeOk || !replaceFile(temporaryPath, path)) {
             errorMessage = "Không thể cập nhật bộ đếm ID tại " + path + ".";
             std::remove(temporaryPath.c_str());
             return false;
@@ -166,6 +182,10 @@ private:
 
 public:
     static std::string currentDateKey() {
+        const std::string simKey = AppClock::currentDateKey();
+        if (simKey.size() == 8 && validDate(simKey)) {
+            return simKey;
+        }
         const std::time_t now = std::time(nullptr);
         const std::tm* localTime = std::localtime(&now);
         if (localTime == nullptr) return "";
